@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>J.A.R.V.I.S. - Autonomous AI Voice & Memory System</title>
+    <meta name="description" content="Next-generation J.A.R.V.I.S. AI voice assistant powered by Gemini Live with real-time multi-tiered memory (Short-Term, Episodic, Semantic, Long-Term), holographic arc-reactor visualizer, and low-latency audio." />
+    <meta property="og:title" content="J.A.R.V.I.S. - Autonomous AI Voice & Memory System" />
+    <meta property="og:description" content="Next-generation J.A.R.V.I.S. AI voice assistant powered by Gemini Live with real-time multi-tiered memory (Short-Term, Episodic, Semantic, Long-Term), holographic arc-reactor visualizer, and low-latency audio." />
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script>
+      // Clear legacy Service Workers and caches from other projects (e.g. LearnIQ) on port 3000
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function(registrations) {
+          for (var i = 0; i < registrations.length; i++) {
+            registrations[i].unregister();
+            console.log('[JARVIS] Purged stale service worker:', registrations[i]);
+          }
+        });
+      }
+      if ('caches' in window) {
+        caches.keys().then(function(keys) {
+          keys.forEach(function(key) { caches.delete(key); });
+        });
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+

@@ -1,0 +1,12 @@
+{
+  "name": "J.A.R.V.I.S. - Autonomous AI Voice & Memory System",
+  "description": "Next-generation J.A.R.V.I.S. AI voice assistant powered by Gemini Live with real-time multi-tiered memory (Short-Term, Episodic, Semantic, Long-Term), holographic arc-reactor visualizer, and low-latency audio.",
+  "requestFramePermissions": [
+    "microphone",
+    "camera",
+    "display-capture"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
