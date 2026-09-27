@@ -53,6 +53,7 @@ export default function App() {
 
   // Initial API Key, Server Health Check & Auth Listener
   useEffect(() => {
+    // Initial server health check and sovereign memory synchronization
     fetch('/api/health')
       .then(res => res.json())
       .then(data => {
@@ -63,6 +64,11 @@ export default function App() {
         }
       })
       .catch(err => console.warn('[App] Health check failed:', err));
+
+    // Sync with backend Sovereign Memory Vault & SQLite on startup
+    jarvisMemoryEngine.syncWithServer().then(() => {
+      refreshMemoryStats();
+    });
 
     const unsubscribeAuth = initAuthListener((user) => {
       setCurrentUser(user);
@@ -207,7 +213,7 @@ export default function App() {
     micSensitivity: 5,
     enableTranscription: true,
     enableNoiseFilter: true,
-    model: 'gemini-3.8-live'
+    model: 'gemini-3.1-flash-live-preview'
   });
 
   const wsRef = useRef<WebSocket | null>(null);
@@ -540,7 +546,7 @@ export default function App() {
         type: 'init',
         voiceName: 'Puck', // Default Puck Voice
         systemInstruction: combinedInstruction,
-        model: 'gemini-3.8-live'
+        model: 'gemini-3.1-flash-live-preview'
       }));
     };
 
@@ -610,6 +616,33 @@ export default function App() {
         if (msg.type === 'deactivate_vision') {
           console.log('[Live WS Tool] Deactivating vision stream');
           stopVision();
+        }
+
+        if (msg.type === 'memory_update' && msg.facts) {
+          console.log('[Live Memory Event] Received mined facts from backend:', msg.facts);
+          for (const f of msg.facts) {
+            jarvisMemoryEngine.addSemanticFact({
+              subject: 'Dynamic Rule Mining',
+              predicate: f.kind || 'fact',
+              object: f.content,
+              domain: 'preferences',
+              confidence: 0.95,
+              tags: ['dynamic-miner', f.kind || 'fact']
+            });
+          }
+          refreshMemoryStats();
+        }
+
+        if (msg.type === 'memory_fact_saved') {
+          console.log('[Live Memory Event] Fact committed to sovereign vault:', msg.key, msg.value);
+          jarvisMemoryEngine.addLongTermMemory({
+            category: 'directive',
+            title: msg.key,
+            content: msg.value,
+            importance: 'high',
+            isPinned: true
+          });
+          refreshMemoryStats();
         }
 
         if (msg.type === 'error') {

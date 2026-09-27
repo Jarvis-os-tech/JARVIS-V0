@@ -1,7 +1,7 @@
 import express from 'express';
 import http from 'http';
 import path from 'path';
-import { exec } from 'child_process';
+import { exec, execFile } from 'child_process';
 import { WebSocketServer, WebSocket } from 'ws';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI, Modality, LiveServerMessage, Type } from '@google/genai';
@@ -13,6 +13,24 @@ const __dirname = path.dirname(__filename);
 
 dotenv.config();
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
+
+const MEMORY_BRIDGE_SCRIPT = path.resolve(__dirname, 'memory_bridge.py');
+
+function runMemoryBridge(args: string[]): Promise<any> {
+  return new Promise((resolve) => {
+    execFile('python3', [MEMORY_BRIDGE_SCRIPT, ...args], { timeout: 15000, env: process.env }, (err, stdout) => {
+      if (err) {
+        console.warn('[Memory Bridge Warning]', err.message);
+        return resolve({ error: err.message });
+      }
+      try {
+        resolve(JSON.parse(stdout.trim()));
+      } catch (parseErr) {
+        resolve({ error: 'Failed to parse memory output' });
+      }
+    });
+  });
+}
 
 const PORT = Number(process.env.PORT) || 3000;
 
@@ -72,6 +90,42 @@ async function startServer() {
       hasApiKey: isConfigured,
       timestamp: new Date().toISOString()
     });
+  });
+
+  // Sovereign Memory REST Endpoints
+  app.get('/api/memory/status', async (_req, res) => {
+    const data = await runMemoryBridge(['status']);
+    res.json(data);
+  });
+
+  app.get('/api/memory/context', async (req, res) => {
+    const agentId = (req.query.agentId as string) || 'jarvis-prime';
+    const data = await runMemoryBridge(['context', agentId]);
+    res.json(data);
+  });
+
+  app.get('/api/memory/turns', async (req, res) => {
+    const limit = (req.query.limit as string) || '25';
+    const data = await runMemoryBridge(['turns', limit]);
+    res.json(data);
+  });
+
+  app.post('/api/memory/log', async (req, res) => {
+    const data = await runMemoryBridge(['log_turn', JSON.stringify(req.body)]);
+    res.json(data);
+  });
+
+  app.post('/api/memory/search', async (req, res) => {
+    const query = req.body.query || '';
+    const limit = String(req.body.limit || 10);
+    const data = await runMemoryBridge(['search', query, limit]);
+    res.json(data);
+  });
+
+  app.post('/api/memory/fact', async (req, res) => {
+    const { key, value, category } = req.body;
+    const data = await runMemoryBridge(['save_fact', key || '', value || '', category || 'custom']);
+    res.json(data);
   });
 
   // Helper for resilient text generation with fallback models and retry logic
@@ -157,17 +211,39 @@ async function startServer() {
   app.post('/api/chat', async (req, res) => {
     try {
       const { message, systemInstruction } = req.body;
+      const memRes = await runMemoryBridge(['context', 'jarvis-prime']);
+      const dynamicMemContext = memRes?.context ? `\n\n${memRes.context}` : '';
+      const baseInstruction = (systemInstruction || 'You are J.A.R.V.I.S., an autonomous AI operating system with ultra-rapid response latency and a 4-tier cognitive memory matrix. Respond with calm British wit, rapid verbal shortcuts (e.g. "Right away, Sir", "On it, Sir"), and proactively state if a complex task will require extra computing time.') + dynamicMemContext;
+
       const ai = getAi();
       try {
         const response = await generateWithFallback(ai, {
           contents: message,
-          systemInstruction: systemInstruction || 'You are J.A.R.V.I.S., an autonomous AI operating system with ultra-rapid response latency and a 4-tier cognitive memory matrix. Respond with calm British wit, rapid verbal shortcuts (e.g. "Right away, Sir", "On it, Sir"), and proactively state if a complex task will require extra computing time.'
+          systemInstruction: baseInstruction
         });
-        return res.json({ text: response.text });
+        const replyText = response.text || '';
+        // Asynchronously log to perpetual conversation and trigger dynamic memory miner
+        const logRes: any = await runMemoryBridge(['log_turn', JSON.stringify({
+          speaker: 'Operator Gopi',
+          text: message,
+          role: 'user',
+          other_speaker: 'JARVIS',
+          other_text: replyText
+        })]);
+        return res.json({ text: replyText, memoryUpdate: logRes?.extracted_facts || [] });
       } catch (genErr: any) {
         console.warn('API Chat generation failed after all model fallbacks, generating autonomous fallback:', genErr?.message || genErr);
+        const fallbackText = `Right away, Sir. Processing your directive: "${message.slice(0, 100)}...". I have logged this to cognitive memory and will synchronize telemetry across our subsystems.`;
+        const logRes: any = await runMemoryBridge(['log_turn', JSON.stringify({
+          speaker: 'Operator Gopi',
+          text: message,
+          role: 'user',
+          other_speaker: 'JARVIS',
+          other_text: fallbackText
+        })]);
         return res.json({
-          text: `Right away, Sir. Processing your directive: "${message.slice(0, 100)}...". I have logged this to cognitive memory and will synchronize telemetry across our subsystems.`
+          text: fallbackText,
+          memoryUpdate: logRes?.extracted_facts || []
         });
       }
     } catch (err: any) {
@@ -186,6 +262,8 @@ async function startServer() {
   wss.on('connection', (clientWs: WebSocket) => {
     console.log('[Live WS] Client connected');
     let session: any = null;
+    let currentTurnModelText = '';
+    let currentTurnUserText = '';
 
     clientWs.on('error', (err) => {
       console.error('[Live WS] Client socket error:', err);
@@ -209,16 +287,54 @@ async function startServer() {
 
         const ai = getAi();
         const voiceName = config.voiceName || 'Puck';
-        // Ensure valid Gemini Live API model
-        let model = config.model || 'gemini-3.8-live';
-        if (!model || model.includes('3.1-flash-live') || model.includes('preview')) {
-          model = 'gemini-3.8-live';
-        }
-        const systemInstruction = config.systemInstruction || 'You are J.A.R.V.I.S., a sophisticated and helpful AI companion. Respond with natural spoken warmth and empathy in the user language.';
+        const candidateModels = [
+          config.model,
+          'gemini-3.1-flash-live-preview',
+          'gemini-2.5-flash-native-audio-preview-12-2025'
+        ].filter(m => m && m !== 'gemini-3.8-live') as string[];
+        const uniqueModels = Array.from(new Set(candidateModels));
 
-        console.log(`[Live WS] Connecting to Gemini Live with model ${model} and voice ${voiceName}`);
+        const memRes = await runMemoryBridge(['context', 'jarvis-prime']);
+        const dynamicMemContext = memRes?.context ? `\n\n${memRes.context}` : '';
+        const systemInstruction = (config.systemInstruction || 'You are J.A.R.V.I.S., a sophisticated and helpful AI companion. Respond with natural spoken warmth and empathy in the user language.') + dynamicMemContext;
 
         const functionDeclarations = [
+          {
+            name: 'search_memory',
+            description: 'Search persistent long-term memory, Obsidian vault notes, and past conversation records for facts, past decisions, or user preferences.',
+            parameters: {
+              type: Type.OBJECT,
+              properties: {
+                query: {
+                  type: Type.STRING,
+                  description: 'Search term or query for facts, decisions, preferences or past conversations'
+                }
+              },
+              required: ['query']
+            }
+          },
+          {
+            name: 'save_memory_fact',
+            description: 'Save an important user preference, project decision, or permanent fact into the sovereign Obsidian vault and SQLite memory database.',
+            parameters: {
+              type: Type.OBJECT,
+              properties: {
+                key: {
+                  type: Type.STRING,
+                  description: 'Descriptive title or subject for the fact note (e.g. "Favorite Framework", "Deploy Region")'
+                },
+                value: {
+                  type: Type.STRING,
+                  description: 'The detail, directive, or fact content to remember permanently'
+                },
+                category: {
+                  type: Type.STRING,
+                  description: 'Category: preference, decision, lesson, or custom'
+                }
+              },
+              required: ['key', 'value']
+            }
+          },
           {
             name: 'switch_persona',
             description: 'Switch the conversational persona to a different agent. Use this when the user asks to speak to someone else (e.g., Nova, Ultron, Friday, Edith, Karen, Vision).',
@@ -294,9 +410,15 @@ async function startServer() {
 
         const toolsList = [{ functionDeclarations }];
 
-        session = await ai.live.connect({
-          model,
-          config: {
+        let connected = false;
+        let lastError: any = null;
+
+        for (const modelToTry of uniqueModels) {
+          try {
+            console.log(`[Live WS] Connecting to Gemini Live with model ${modelToTry} and voice ${voiceName}`);
+            session = await ai.live.connect({
+              model: modelToTry,
+              config: {
             responseModalities: [Modality.AUDIO],
             speechConfig: {
               voiceConfig: { prebuiltVoiceConfig: { voiceName } }
@@ -307,7 +429,7 @@ async function startServer() {
             inputAudioTranscription: {},
           },
           callbacks: {
-            onmessage: (message: LiveServerMessage) => {
+            onmessage: async (message: LiveServerMessage) => {
               if (clientWs.readyState !== WebSocket.OPEN) return;
 
               try {
@@ -322,6 +444,7 @@ async function startServer() {
                       }));
                     }
                     if (part.text) {
+                      currentTurnModelText += part.text;
                       clientWs.send(JSON.stringify({
                         type: 'output_transcription',
                         text: part.text
@@ -333,6 +456,7 @@ async function startServer() {
                 // Handle input audio transcription if emitted
                 const inputTranscript = (message as any).serverContent?.turnComplete ? null : (message as any).inputTranscription?.text;
                 if (inputTranscript) {
+                  currentTurnUserText += ' ' + inputTranscript;
                   clientWs.send(JSON.stringify({
                     type: 'input_transcription',
                     text: inputTranscript
@@ -341,15 +465,41 @@ async function startServer() {
 
                 // Handle Interrupted
                 if (message.serverContent?.interrupted) {
+                  currentTurnModelText = '';
                   clientWs.send(JSON.stringify({ type: 'interrupted' }));
                 }
 
-                // Handle Turn Complete
+                // Handle Turn Complete and Trigger Dynamic Self-Improving Memory Mining
                 if (message.serverContent?.turnComplete) {
                   clientWs.send(JSON.stringify({ type: 'turn_complete' }));
+
+                  const userTurn = currentTurnUserText.trim();
+                  const modelTurn = currentTurnModelText.trim();
+                  currentTurnUserText = '';
+                  currentTurnModelText = '';
+
+                  if (userTurn || modelTurn) {
+                    runMemoryBridge(['log_turn', JSON.stringify({
+                      speaker: 'Operator Gopi',
+                      text: userTurn || 'Audio interaction',
+                      role: 'user',
+                      other_speaker: 'JARVIS',
+                      other_text: modelTurn || 'Spoken response'
+                    })]).then((res: any) => {
+                      if (res && res.extracted_facts && res.extracted_facts.length > 0) {
+                        console.log('[Live Memory] Extracted dynamic facts from turn:', res.extracted_facts);
+                        if (clientWs.readyState === WebSocket.OPEN) {
+                          clientWs.send(JSON.stringify({
+                            type: 'memory_update',
+                            facts: res.extracted_facts
+                          }));
+                        }
+                      }
+                    }).catch(err => console.warn('[Live Memory Log Turn Error]', err));
+                  }
                 }
 
-                // Handle Tool Call for Persona Switch
+                // Handle Tool Call for Persona Switch, Memory, Reminders, and Vision
                 const toolCall = message.toolCall;
                 if (toolCall) {
                   const funcCall = toolCall.functionCalls?.[0];
@@ -375,6 +525,54 @@ async function startServer() {
                           }
                         ]
                       });
+                    }
+                  } else if (funcCall && funcCall.name === 'search_memory') {
+                    const args = funcCall.args as any;
+                    const query = args?.query || '';
+                    console.log(`[Live WS] Gemini querying sovereign memory: "${query}"`);
+                    const searchResult = await runMemoryBridge(['search', query, '5']);
+                    if (session) {
+                      session.sendToolResponse({
+                        functionResponses: [
+                          {
+                            id: funcCall.id,
+                            name: funcCall.name,
+                            response: { result: searchResult }
+                          }
+                        ]
+                      });
+                    }
+                    if (clientWs.readyState === WebSocket.OPEN) {
+                      clientWs.send(JSON.stringify({
+                        type: 'memory_searched',
+                        query,
+                        result: searchResult
+                      }));
+                    }
+                  } else if (funcCall && funcCall.name === 'save_memory_fact') {
+                    const args = funcCall.args as any;
+                    const { key, value, category } = args || {};
+                    console.log(`[Live WS] Gemini saving memory fact: [${category || 'custom'}] ${key}: ${value}`);
+                    const saveResult = await runMemoryBridge(['save_fact', key || '', value || '', category || 'custom']);
+                    if (session) {
+                      session.sendToolResponse({
+                        functionResponses: [
+                          {
+                            id: funcCall.id,
+                            name: funcCall.name,
+                            response: { result: saveResult }
+                          }
+                        ]
+                      });
+                    }
+                    if (clientWs.readyState === WebSocket.OPEN) {
+                      clientWs.send(JSON.stringify({
+                        type: 'memory_fact_saved',
+                        key,
+                        value,
+                        category: category || 'custom',
+                        result: saveResult
+                      }));
                     }
                   } else if (funcCall && funcCall.name === 'set_ui_reminder') {
                     const args = funcCall.args as any;
@@ -478,10 +676,22 @@ async function startServer() {
           }
         });
 
-        console.log('[Live WS] Connected successfully to Gemini Live');
-        if (clientWs.readyState === WebSocket.OPEN) {
-          clientWs.send(JSON.stringify({ type: 'connected' }));
-        }
+        connected = true;
+        console.log(`[Live WS] Connected successfully to Gemini Live using ${modelToTry}`);
+        break;
+      } catch (modelErr: any) {
+        console.warn(`[Live WS] Attempt with model ${modelToTry} failed:`, modelErr?.message || modelErr);
+        lastError = modelErr;
+      }
+    }
+
+    if (!connected) {
+      throw lastError || new Error('Failed to connect to any Gemini Live model');
+    }
+
+    if (clientWs.readyState === WebSocket.OPEN) {
+      clientWs.send(JSON.stringify({ type: 'connected' }));
+    }
       } catch (err: any) {
         console.error('[Live WS] Connection failed:', err);
         if (clientWs.readyState === WebSocket.OPEN) {
@@ -504,7 +714,7 @@ async function startServer() {
           await initSession({
             voiceName: msg.voiceName,
             systemInstruction: msg.systemInstruction,
-            model: msg.model || 'gemini-3.8-live'
+            model: (msg.model && msg.model !== 'gemini-3.8-live') ? msg.model : 'gemini-3.1-flash-live-preview'
           });
           if (clientWs.readyState === WebSocket.OPEN) {
             clientWs.send(JSON.stringify({ type: 'persona_switched', voiceName: msg.voiceName }));
@@ -528,6 +738,7 @@ async function startServer() {
         }
 
         if (msg.type === 'text' && msg.text) {
+          currentTurnUserText += ' ' + msg.text;
           if (session) {
             try {
               session.sendRealtimeInput({

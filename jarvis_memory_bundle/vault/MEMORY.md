@@ -35,3 +35,6 @@
 - § [SYSTEM_OS] [[facts/system_platform|system_platform]]: JARVIS-OS runs on Arch/Omarchy with Hyprland and Quickshell
 - § [PREFERENCES] [[facts/Favorite_Language|Favorite Language]]: Python 3.12+ for AI core and Rust for zero-GC audio & memory.
 - § [PREFERENCES] [[facts/Favorite_Language|Favorite Language]]: Python 3.12+ for AI core and Rust for zero-GC audio & memory.
+- § [FACT] [[facts/using_PostgreSQL_over_MongoDB_for_backen|using PostgreSQL over MongoDB for backen]]: using PostgreSQL over MongoDB for backend storage.
+- § [FACT] [[facts/we_always_use_TypeScript_with_strict_nul|we always use TypeScript with strict nul]]: we always use TypeScript with strict null checks.
+- § [DECISION] [[facts/use_TypeScript_with_strict_null_checks|use TypeScript with strict null checks.]]: use TypeScript with strict null checks.

@@ -112,9 +112,42 @@ const INITIAL_SHORT_TERM_MEMORY: ShortTermMemory = {
 
 class MemoryEngine {
   private state: JarvisMemoryState;
+  private vaultTelemetry: any = null;
 
   constructor() {
     this.state = this.loadFromStorage();
+  }
+
+  public getVaultTelemetry(): any {
+    return this.vaultTelemetry;
+  }
+
+  public async syncWithServer(): Promise<{ success: boolean; vaultStatus?: any; contextSummary?: string }> {
+    try {
+      const [statusRes, contextRes] = await Promise.all([
+        fetch('/api/memory/status').then(r => r.json()),
+        fetch('/api/memory/context').then(r => r.json())
+      ]);
+
+      if (statusRes && !statusRes.error) {
+        this.vaultTelemetry = statusRes;
+      }
+
+      if (contextRes?.context) {
+        this.state.shortTerm.activeContext = `Sovereign Vault Connected (SQLite WAL + Markdown). Active Operator: Gopi.`;
+        this.state.lastSyncTime = new Date().toISOString();
+        this.saveToStorage();
+      }
+
+      return {
+        success: true,
+        vaultStatus: statusRes,
+        contextSummary: contextRes?.context
+      };
+    } catch (e) {
+      console.warn('[MemoryEngine] Server sync warning:', e);
+      return { success: false };
+    }
   }
 
   private loadFromStorage(): JarvisMemoryState {
@@ -225,6 +258,37 @@ class MemoryEngine {
     };
 
     this.saveToStorage();
+
+    // Async sync with backend sovereign memory vault and dynamic pattern miner
+    try {
+      fetch('/api/memory/log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          speaker: speaker === 'user' ? 'Operator Gopi' : 'JARVIS',
+          text: content.trim(),
+          role: speaker === 'user' ? 'user' : 'assistant'
+        })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data?.extracted_facts && data.extracted_facts.length > 0) {
+          for (const f of data.extracted_facts) {
+            this.addSemanticFact({
+              subject: 'User Directive',
+              predicate: f.kind || 'fact',
+              object: f.content,
+              domain: 'preferences',
+              confidence: 0.95,
+              tags: ['mined', f.kind || 'fact']
+            });
+          }
+        }
+      })
+      .catch(() => {});
+    } catch (e) {
+      // ignore offline fetch errors
+    }
   }
 
   public clearWorkingMemory(): void {
@@ -314,54 +378,78 @@ class MemoryEngine {
     const rememberMatch = userText.match(/(?:remember that|remember|please note that|keep in mind that|memorize that)\s+(.+)/i);
     if (rememberMatch && rememberMatch[1]) {
       const memoryContent = rememberMatch[1].trim();
+      const title = `User Directive: "${memoryContent.slice(0, 30)}..."`;
       this.addLongTermMemory({
         category: 'user_profile',
-        title: `User Directive: "${memoryContent.slice(0, 30)}..."`,
+        title,
         content: memoryContent,
         importance: 'high',
         isPinned: true
       });
+      fetch('/api/memory/fact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: title, value: memoryContent, category: 'directive' })
+      }).catch(() => {});
       return;
     }
 
     // 2. Identity facts (e.g. "My name is...", "I am a...", "I work at...")
     const nameMatch = userText.match(/my name is ([a-zA-Z\s]+)/i);
     if (nameMatch && nameMatch[1]) {
+      const val = nameMatch[1].trim();
       this.addSemanticFact({
         subject: 'User',
         predicate: 'name is',
-        object: nameMatch[1].trim(),
+        object: val,
         domain: 'identity',
         confidence: 0.99,
         tags: ['user', 'name', 'identity']
       });
+      fetch('/api/memory/fact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: 'Operator Name', value: val, category: 'identity' })
+      }).catch(() => {});
     }
 
     // 3. User Preferences (e.g. "I prefer...", "I like...", "My favorite...")
     const preferMatch = userText.match(/I (?:prefer|like|love|always use) ([a-zA-Z0-9\s,.-]+)/i);
     if (preferMatch && preferMatch[1]) {
+      const val = preferMatch[1].trim();
       this.addSemanticFact({
         subject: 'User',
         predicate: 'prefers',
-        object: preferMatch[1].trim(),
+        object: val,
         domain: 'preferences',
         confidence: 0.90,
         tags: ['preference', 'user']
       });
+      fetch('/api/memory/fact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: 'User Preference', value: val, category: 'preference' })
+      }).catch(() => {});
     }
 
     // 4. Project/Coding facts
     if (lower.includes('project') || lower.includes('developing') || lower.includes('building')) {
       const buildMatch = userText.match(/(?:building|developing|working on)\s+([a-zA-Z0-9\s,.-]+)/i);
       if (buildMatch && buildMatch[1]) {
+        const val = buildMatch[1].trim();
         this.addSemanticFact({
           subject: 'Current Project',
           predicate: 'involves',
-          object: buildMatch[1].trim(),
+          object: val,
           domain: 'coding',
           confidence: 0.88,
           tags: ['project', 'development']
         });
+        fetch('/api/memory/fact', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ key: 'Project Architecture', value: val, category: 'project' })
+        }).catch(() => {});
       }
     }
   }

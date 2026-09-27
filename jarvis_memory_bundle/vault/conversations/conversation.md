@@ -220,3 +220,12 @@ Remember that project Ironclad deadline is next Friday.
 ### [2026-09-26 17:04:32] [JARVIS]
 Acknowledged. Ironclad milestone recorded in your sovereign vault.
 
+### [2026-09-26 20:13:41] [Gopi]
+I prefer using PostgreSQL over MongoDB for backend storage.
+
+### [2026-09-26 20:17:20] [Gopi]
+Remember that we always use TypeScript with strict null checks.
+
+### [2026-09-26 20:17:22] [JARVIS]
+Understood, Sir. TypeScript strict null checks locked into persistent memory.
+
