@@ -6,7 +6,7 @@ import { getSystemControlDeclarations, dispatchSystemControl, isSystemControl } 
 export class GeminiLiveBrain {
   private ai: GoogleGenAI;
   private activeSession: any = null;
-  private model: string = 'gemini-3.1-flash-live-preview';
+  private model: string = 'gemini-8-flash-live';
 
   constructor(apiKey?: string) {
     const key = apiKey || process.env.GEMINI_API_KEY;

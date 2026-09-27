@@ -145,6 +145,7 @@ async function startServer() {
   }) {
     // Valid models according to gemini_api skill
     const candidateModels = [
+      'gemini-8-flash',
       'gemini-3.8-flash',
       'gemini-flash-latest',
       'gemini-3.1-flash-lite',
@@ -192,7 +193,7 @@ async function startServer() {
     if (config.tools && config.tools.length > 0) {
       try {
         console.log('[Gemini API] Attempting tool-less fallback generation for query...');
-        for (const model of ['gemini-3.8-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite']) {
+        for (const model of ['gemini-8-flash', 'gemini-3.8-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite']) {
           try {
             const fallbackResponse = await ai.models.generateContent({
               model,
@@ -298,6 +299,7 @@ async function startServer() {
         const voiceName = config.voiceName || 'Puck';
         const candidateModels = [
           config.model,
+          'gemini-8-flash-live',
           'gemini-3.1-flash-live-preview',
           'gemini-2.5-flash-native-audio-preview-12-2025'
         ].filter(m => m && m !== 'gemini-3.8-live') as string[];
@@ -750,7 +752,7 @@ async function startServer() {
           await initSession({
             voiceName: msg.voiceName,
             systemInstruction: msg.systemInstruction,
-            model: (msg.model && msg.model !== 'gemini-3.8-live') ? msg.model : 'gemini-3.1-flash-live-preview'
+            model: (msg.model && msg.model !== 'gemini-3.8-live') ? msg.model : 'gemini-8-flash-live'
           });
           if (clientWs.readyState === WebSocket.OPEN) {
             clientWs.send(JSON.stringify({ type: 'persona_switched', voiceName: msg.voiceName }));

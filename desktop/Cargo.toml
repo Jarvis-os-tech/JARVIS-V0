@@ -1,0 +1,20 @@
+[package]
+name = "jarvis-desktop"
+version = "0.1.0"
+edition = "2021"
+description = "J.A.R.V.I.S. Native Rust Desktop Application & Production Update Supervisor"
+
+[dependencies]
+tao = "0.37"
+wry = "0.57"
+rfd = "0.17"
+ureq = { version = "2.10", features = ["json", "tls"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+chrono = "0.4"
+which = "7"
+
+[profile.release]
+opt-level = 3
+lto = true
+strip = true
