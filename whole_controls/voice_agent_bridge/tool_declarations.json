@@ -1,0 +1,324 @@
+{
+  "tools": [
+    {
+      "functionDeclarations": [
+        {
+          "name": "omarchy_control",
+          "description": "Sub-millisecond native Omarchy OS & Hyprland desktop controller. Controls window management (close, fullscreen, float, cycle), workspace switching (1-10), desktop themes & dynamic wallpaper switching, hardware toggles (nightlight, status bar, touchpad, stay-awake), service restarts (audio, bluetooth, wifi, shell), screen capture/OCR, and OSD notifications.",
+          "parameters": {
+            "type": "OBJECT",
+            "properties": {
+              "domain": {
+                "type": "STRING",
+                "description": "Domain of control: 'hyprland', 'theme', 'toggle', 'restart', 'capture', 'launch', 'system', 'osd', or 'raw'.",
+                "enum": ["hyprland", "theme", "toggle", "restart", "capture", "launch", "system", "osd", "raw"]
+              },
+              "action": {
+                "type": "STRING",
+                "description": "Action within domain: e.g. 'workspace', 'close_window', 'fullscreen', 'float', 'cyclenext', 'cycleprev', 'active', 'next_bg', 'set', 'current', 'nightlight', 'bar', 'touchpad', 'stay_awake', 'audio', 'wifi', 'bluetooth', 'screenshot', 'text'."
+              },
+              "target": {
+                "type": "STRING",
+                "description": "Optional argument or target: workspace number ('1'-'10'), theme name ('Nord', 'Tokyo Night'), direction ('l', 'r', 'u', 'd'), or notification text."
+              }
+            },
+            "required": ["domain", "action"]
+          }
+        },
+        {
+          "name": "launch_application",
+          "description": "Launches a desktop GUI application or opens a website in the default browser. Resolves smart aliases ('terminal', 'calc', 'editor', 'browser') and web shortcuts ('youtube', 'github', 'gmail', 'chatgpt', 'claude').",
+          "parameters": {
+            "type": "OBJECT",
+            "properties": {
+              "app_name": {
+                "type": "STRING",
+                "description": "Name of the application (e.g. 'code', 'google-chrome', 'nautilus', 'kitty') or URL/shortcut (e.g. 'youtube', 'https://github.com')."
+              },
+              "args": {
+                "type": "STRING",
+                "description": "Optional command-line arguments to pass to the application binary."
+              }
+            },
+            "required": ["app_name"]
+          }
+        },
+        {
+          "name": "close_window",
+          "description": "Closes the active window, a specific named application window, or browser tabs.",
+          "parameters": {
+            "type": "OBJECT",
+            "properties": {
+              "target": {
+                "type": "STRING",
+                "description": "Window title, application name, or 'active' for the focused window. Supports 'tab' to close current browser tab."
+              }
+            }
+          }
+        },
+        {
+          "name": "close_tab",
+          "description": "Closes the currently active browser tab via native keyboard shortcut synthesis (Ctrl+W).",
+          "parameters": {
+            "type": "OBJECT",
+            "properties": {}
+          }
+        },
+        {
+          "name": "close_all_tabs",
+          "description": "Closes all active web browser windows and tabs.",
+          "parameters": {
+            "type": "OBJECT",
+            "properties": {}
+          }
+        },
+        {
+          "name": "set_system_volume",
+          "description": "Sets or adjusts master audio sink volume, or toggles mute status.",
+          "parameters": {
+            "type": "OBJECT",
+            "properties": {
+              "volume": {
+                "type": "INTEGER",
+                "description": "Absolute target volume percentage from 0 to 150."
+              },
+              "relative": {
+                "type": "STRING",
+                "description": "Relative volume adjustment, e.g. '+5%' or '-10%'."
+              },
+              "mute": {
+                "type": "BOOLEAN",
+                "description": "Set to true to mute audio, false to unmute."
+              },
+              "toggleMute": {
+                "type": "BOOLEAN",
+                "description": "Set to true to toggle mute state."
+              }
+            }
+          }
+        },
+        {
+          "name": "get_system_volume",
+          "description": "Retrieves the current system master volume percentage and mute status.",
+          "parameters": {
+            "type": "OBJECT",
+            "properties": {}
+          }
+        },
+        {
+          "name": "set_display_brightness",
+          "description": "Adjusts display monitor backlight brightness level.",
+          "parameters": {
+            "type": "OBJECT",
+            "properties": {
+              "brightness": {
+                "type": "INTEGER",
+                "description": "Brightness percentage from 1 to 100."
+              }
+            },
+            "required": ["brightness"]
+          }
+        },
+        {
+          "name": "get_screen_brightness",
+          "description": "Reads current display monitor backlight brightness percentage.",
+          "parameters": {
+            "type": "OBJECT",
+            "properties": {}
+          }
+        },
+        {
+          "name": "set_power_profile",
+          "description": "Switches the system power management profile.",
+          "parameters": {
+            "type": "OBJECT",
+            "properties": {
+              "profile": {
+                "type": "STRING",
+                "description": "Target power profile.",
+                "enum": ["performance", "balanced", "power-saver"]
+              }
+            },
+            "required": ["profile"]
+          }
+        },
+        {
+          "name": "control_media_playback",
+          "description": "Controls active desktop media playback (Spotify, Chrome, Firefox, VLC) via MPRIS2.",
+          "parameters": {
+            "type": "OBJECT",
+            "properties": {
+              "action": {
+                "type": "STRING",
+                "description": "Media playback action.",
+                "enum": ["play", "pause", "toggle", "next", "previous", "stop"]
+              }
+            },
+            "required": ["action"]
+          }
+        },
+        {
+          "name": "system_power_action",
+          "description": "Executes system power and session state transitions.",
+          "parameters": {
+            "type": "OBJECT",
+            "properties": {
+              "action": {
+                "type": "STRING",
+                "description": "Power action to execute.",
+                "enum": ["lock", "sleep", "reboot", "shutdown"]
+              }
+            },
+            "required": ["action"]
+          }
+        },
+        {
+          "name": "take_screenshot",
+          "description": "Captures a full-resolution screenshot of the desktop screen.",
+          "parameters": {
+            "type": "OBJECT",
+            "properties": {
+              "outputPath": {
+                "type": "STRING",
+                "description": "Optional file path where the screenshot PNG will be saved."
+              }
+            }
+          }
+        },
+        {
+          "name": "desktop_control",
+          "description": "Deterministic computer use input automation (mouse clicks, movement, typing text, hotkeys).",
+          "parameters": {
+            "type": "OBJECT",
+            "properties": {
+              "action": {
+                "type": "STRING",
+                "description": "Desktop action: 'click', 'move', 'scroll', 'type_text', 'hotkey', 'screenshot'.",
+                "enum": ["click", "move", "scroll", "type_text", "hotkey", "screenshot"]
+              },
+              "x": { "type": "INTEGER", "description": "X coordinate for mouse click or move." },
+              "y": { "type": "INTEGER", "description": "Y coordinate for mouse click or move." },
+              "button": { "type": "STRING", "description": "Mouse button: 'left', 'right', 'middle'." },
+              "text": { "type": "STRING", "description": "Text to type for 'type_text'." },
+              "combo": { "type": "STRING", "description": "Key combo for 'hotkey', e.g. 'ctrl+c', 'alt+F4'." }
+            },
+            "required": ["action"]
+          }
+        },
+        {
+          "name": "clipboard_control",
+          "description": "Reads or writes text to the system clipboard across Wayland and X11.",
+          "parameters": {
+            "type": "OBJECT",
+            "properties": {
+              "action": {
+                "type": "STRING",
+                "description": "Action: 'read' or 'write'.",
+                "enum": ["read", "write"]
+              },
+              "text": {
+                "type": "STRING",
+                "description": "Text content to copy to clipboard (required if action is 'write')."
+              }
+            },
+            "required": ["action"]
+          }
+        },
+        {
+          "name": "manage_systemd_service",
+          "description": "Controls and inspects systemd system and user service units.",
+          "parameters": {
+            "type": "OBJECT",
+            "properties": {
+              "action": {
+                "type": "STRING",
+                "description": "Action: 'status', 'start', 'stop', 'restart', 'list'.",
+                "enum": ["status", "start", "stop", "restart", "list"]
+              },
+              "unit": {
+                "type": "STRING",
+                "description": "Name of the systemd service (e.g. 'hermes', 'openclaw', 'jarvis', 'pipewire')."
+              }
+            },
+            "required": ["action"]
+          }
+        },
+        {
+          "name": "manage_process",
+          "description": "Terminates or signals running processes by process name or PID.",
+          "parameters": {
+            "type": "OBJECT",
+            "properties": {
+              "processName": {
+                "type": "STRING",
+                "description": "Name of the process to signal or terminate."
+              },
+              "pid": {
+                "type": "INTEGER",
+                "description": "Specific Process ID to signal or terminate."
+              },
+              "signal": {
+                "type": "STRING",
+                "description": "Signal to send (e.g. 'SIGTERM', 'SIGKILL'). Defaults to SIGTERM."
+              }
+            }
+          }
+        },
+        {
+          "name": "control_vision_mode",
+          "description": "Enables or disables real-time camera feed or screen sharing feed to the AI voice session.",
+          "parameters": {
+            "type": "OBJECT",
+            "properties": {
+              "mode": {
+                "type": "STRING",
+                "description": "Vision mode: 'screen', 'camera', or 'off'.",
+                "enum": ["screen", "camera", "off"]
+              },
+              "action": {
+                "type": "STRING",
+                "description": "Action: 'start' or 'stop'.",
+                "enum": ["start", "stop"]
+              }
+            },
+            "required": ["mode"]
+          }
+        },
+        {
+          "name": "execute_linux_command",
+          "description": "Executes an arbitrary Linux shell command asynchronously with timeout protection.",
+          "parameters": {
+            "type": "OBJECT",
+            "properties": {
+              "command": {
+                "type": "STRING",
+                "description": "The bash shell command line to execute."
+              },
+              "timeout": {
+                "type": "NUMBER",
+                "description": "Maximum execution time in seconds before terminating (default 10.0s)."
+              }
+            },
+            "required": ["command"]
+          }
+        },
+        {
+          "name": "get_system_telemetry",
+          "description": "Retrieves real-time CPU usage, RAM utilization, disk free space, uptime, and load averages.",
+          "parameters": {
+            "type": "OBJECT",
+            "properties": {}
+          }
+        },
+        {
+          "name": "run_full_system_diagnostics",
+          "description": "Performs a full preflight diagnostic sweep across hardware sensors, memory integrity, and audio actuators.",
+          "parameters": {
+            "type": "OBJECT",
+            "properties": {}
+          }
+        }
+      ]
+    }
+  ]
+}

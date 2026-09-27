@@ -220,7 +220,7 @@ export default function App() {
   const audioQueuePlayerRef = useRef<AudioQueuePlayer | null>(null);
   const micStreamRef = useRef<MediaStream | null>(null);
   const inputAudioCtxRef = useRef<AudioContext | null>(null);
-  const processorRef = useRef<ScriptProcessorNode | null>(null);
+  const processorRef = useRef<AudioWorkletNode | null>(null);
   const isMutedRef = useRef(isMuted);
 
   const localRecRef = useRef<any>(null);
@@ -458,6 +458,7 @@ export default function App() {
       stopMicStream();
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
+          sampleRate: 16000,
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true
@@ -467,33 +468,40 @@ export default function App() {
 
       const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
       const inputAudioCtx = new AudioCtx({ sampleRate: 16000 });
+      if (inputAudioCtx.state === 'suspended') {
+        await inputAudioCtx.resume();
+      }
       inputAudioCtxRef.current = inputAudioCtx;
 
-      const source = inputAudioCtx.createMediaStreamSource(stream);
-      const processor = inputAudioCtx.createScriptProcessor(4096, 1, 1);
-      processorRef.current = processor;
+      // Load capture AudioWorklet (runs on real-time audio thread, not main thread)
+      await inputAudioCtx.audioWorklet.addModule('/audio-processors/capture.worklet.js');
+      const workletNode = new AudioWorkletNode(inputAudioCtx, 'audio-capture-processor');
+      processorRef.current = workletNode;
 
-      source.connect(processor);
-      processor.connect(inputAudioCtx.destination);
-
-      processor.onaudioprocess = (e) => {
+      // Handle audio chunks from the worklet
+      workletNode.port.onmessage = (event: MessageEvent) => {
         if (isMutedRef.current) {
           setInputVolume(0);
           return;
         }
 
-        const inputBuffer = e.inputBuffer.getChannelData(0);
-        const vol = calculateVolume(inputBuffer);
-        setInputVolume(vol);
+        if (event.data.type === 'audio') {
+          const inputData = event.data.data as Float32Array;
+          const vol = calculateVolume(inputData);
+          setInputVolume(vol);
 
-        const base64Pcm = float32ToInt16Base64(inputBuffer);
-        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-          wsRef.current.send(JSON.stringify({
-            type: 'audio',
-            audio: base64Pcm
-          }));
+          const base64Pcm = float32ToInt16Base64(inputData);
+          if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+            wsRef.current.send(JSON.stringify({
+              type: 'audio',
+              audio: base64Pcm
+            }));
+          }
         }
       };
+
+      const source = inputAudioCtx.createMediaStreamSource(stream);
+      source.connect(workletNode);
 
       startLocalSpeechRecognition();
     } catch (err: any) {

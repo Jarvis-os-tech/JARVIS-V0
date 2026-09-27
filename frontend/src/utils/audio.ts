@@ -1,6 +1,13 @@
 /**
- * Utility functions for Web Audio API PCM capture, base64 encoding/decoding,
- * gapless audio queue playback at 24kHz, and volume visualization metering.
+ * Audio utilities for Gemini Live API — AudioWorklet-based capture & playback.
+ *
+ * Reference implementation: google-gemini/gemini-live-api-examples
+ *
+ * Key improvements over the old ScriptProcessorNode approach:
+ *   - Capture runs on the real-time audio rendering thread (AudioWorklet)
+ *   - 32ms buffer chunks (512 samples @ 16kHz) instead of 256ms (4096 samples)
+ *   - Playback uses a zero-copy ring-buffer worklet instead of per-chunk AudioBufferSourceNode
+ *   - No GC pauses on the main thread during audio processing
  */
 
 export function float32ToInt16Base64(buffer: Float32Array): string {
@@ -19,23 +26,6 @@ export function float32ToInt16Base64(buffer: Float32Array): string {
   return btoa(binary);
 }
 
-export function base64ToAudioBuffer(base64: string, ctx: AudioContext): AudioBuffer {
-  const binary = atob(base64);
-  const len = binary.length;
-  const bytes = new Uint8Array(len);
-  for (let i = 0; i < len; i++) {
-    bytes[i] = binary.charCodeAt(i);
-  }
-  const int16 = new Int16Array(bytes.buffer);
-  const float32 = new Float32Array(int16.length);
-  for (let i = 0; i < int16.length; i++) {
-    float32[i] = int16[i] / 32768.0;
-  }
-  const buffer = ctx.createBuffer(1, float32.length, 24000);
-  buffer.getChannelData(0).set(float32);
-  return buffer;
-}
-
 export function calculateVolume(buffer: Float32Array): number {
   let sum = 0;
   for (let i = 0; i < buffer.length; i++) {
@@ -46,15 +36,19 @@ export function calculateVolume(buffer: Float32Array): number {
 }
 
 /**
- * Audio Queue Manager for scheduling 24kHz incoming PCM chunks gaplessly
+ * AudioWorklet-based playback queue.
+ * Sends Float32 PCM chunks directly to a worklet ring-buffer on the audio thread.
+ * Zero AudioBufferSourceNode creation per chunk — no GC pressure or scheduling gaps.
  */
 export class AudioQueuePlayer {
   private ctx: AudioContext | null = null;
-  private nextStartTime = 0;
-  private activeSources: AudioBufferSourceNode[] = [];
+  private workletNode: AudioWorkletNode | null = null;
+  private gainNode: GainNode | null = null;
   private onVolumeChange?: (volume: number) => void;
   private onPlaybackStateChange?: (isPlaying: boolean) => void;
   private isWarmedUp = false;
+  private isPlaying = false;
+  private silenceTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(onVolumeChange?: (vol: number) => void, onPlaybackStateChange?: (isPlaying: boolean) => void) {
     this.onVolumeChange = onVolumeChange;
@@ -62,34 +56,34 @@ export class AudioQueuePlayer {
   }
 
   /**
-   * Pre-warms the Web Audio Context and audio output pipeline immediately.
-   * This awakens the audio hardware clock, executes a micro-buffer of silence
-   * to prime the DAC/audio rendering thread, and eliminates initial time-to-first-word latency.
+   * Pre-warms the Web Audio Context, loads the playback worklet, and primes the DAC.
    */
   public async prewarm(): Promise<void> {
     try {
-      const ctx = this.getAudioContext();
-      if (ctx.state === 'suspended') {
-        await ctx.resume();
+      if (this.isWarmedUp && this.ctx && this.ctx.state === 'running') return;
+
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!this.ctx || this.ctx.state === 'closed') {
+        this.ctx = new AudioCtx({ sampleRate: 24000 });
+      }
+      if (this.ctx.state === 'suspended') {
+        await this.ctx.resume();
       }
 
-      // Generate a tiny silent buffer (0.005s / 120 samples at 24kHz) to prime the hardware output pipe
-      const silentBuffer = ctx.createBuffer(1, 120, 24000);
-      const source = ctx.createBufferSource();
-      source.buffer = silentBuffer;
+      // Load the playback worklet if not yet loaded
+      if (!this.workletNode) {
+        await this.ctx.audioWorklet.addModule('/audio-processors/playback.worklet.js');
+        this.workletNode = new AudioWorkletNode(this.ctx, 'pcm-processor');
+        this.gainNode = this.ctx.createGain();
+        this.gainNode.gain.value = 1.0;
+        this.workletNode.connect(this.gainNode);
+        this.gainNode.connect(this.ctx.destination);
+      }
 
-      // Connect through a tiny gain node to keep output completely silent during warmup
-      const gainNode = ctx.createGain();
-      gainNode.gain.setValueAtTime(0, ctx.currentTime);
-      source.connect(gainNode);
-      gainNode.connect(ctx.destination);
-
-      source.start(ctx.currentTime);
-      this.nextStartTime = ctx.currentTime;
       this.isWarmedUp = true;
-      console.log('[AudioQueuePlayer] Audio output stream pre-warmed & primed for ultra-low latency.');
+      console.log('[AudioQueuePlayer] Worklet-based playback pipeline pre-warmed.');
     } catch (err) {
-      console.warn('[AudioQueuePlayer] Audio pre-warming notice:', err);
+      console.warn('[AudioQueuePlayer] Prewarm notice:', err);
     }
   }
 
@@ -109,68 +103,73 @@ export class AudioQueuePlayer {
   }
 
   public enqueueChunk(base64Pcm: string) {
-    const ctx = this.getAudioContext();
-    if (ctx.state === 'suspended') {
-      ctx.resume().catch(() => {});
+    if (!this.workletNode || !this.ctx) {
+      // Fallback: if worklet isn't loaded yet, try to prewarm
+      this.prewarm().then(() => this.enqueueChunk(base64Pcm)).catch(() => {});
+      return;
+    }
+
+    if (this.ctx.state === 'suspended') {
+      this.ctx.resume().catch(() => {});
     }
 
     try {
-      const audioBuffer = base64ToAudioBuffer(base64Pcm, ctx);
-      const channelData = audioBuffer.getChannelData(0);
-      const vol = calculateVolume(channelData);
+      // Decode base64 → Int16 → Float32
+      const binaryString = atob(base64Pcm);
+      const len = binaryString.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      const int16 = new Int16Array(bytes.buffer);
+      const float32Data = new Float32Array(int16.length);
+      for (let i = 0; i < int16.length; i++) {
+        float32Data[i] = int16[i] / 32768;
+      }
+
+      // Volume metering
+      const vol = calculateVolume(float32Data);
       if (this.onVolumeChange) {
         this.onVolumeChange(vol);
       }
 
-      const source = ctx.createBufferSource();
-      source.buffer = audioBuffer;
-      source.connect(ctx.destination);
+      // Send to worklet for gapless playback
+      this.workletNode.port.postMessage(float32Data);
 
-      const currentTime = ctx.currentTime;
-      if (this.nextStartTime < currentTime) {
-        this.nextStartTime = currentTime + 0.005; // Tight 5ms buffer for seamless playback
+      // Track playback state
+      if (!this.isPlaying) {
+        this.isPlaying = true;
+        if (this.onPlaybackStateChange) {
+          this.onPlaybackStateChange(true);
+        }
       }
 
-      source.start(this.nextStartTime);
-      this.nextStartTime += audioBuffer.duration;
-      this.activeSources.push(source);
-
-      if (this.onPlaybackStateChange && this.activeSources.length === 1) {
-        this.onPlaybackStateChange(true);
-      }
-
-      source.onended = () => {
-        const idx = this.activeSources.indexOf(source);
-        if (idx !== -1) {
-          this.activeSources.splice(idx, 1);
+      // Reset silence detection timer — after ~300ms of no new chunks, consider playback done
+      if (this.silenceTimer) clearTimeout(this.silenceTimer);
+      this.silenceTimer = setTimeout(() => {
+        this.isPlaying = false;
+        if (this.onPlaybackStateChange) {
+          this.onPlaybackStateChange(false);
         }
-        if (this.activeSources.length === 0) {
-          if (this.onPlaybackStateChange) {
-            this.onPlaybackStateChange(false);
-          }
-          if (this.onVolumeChange) {
-            this.onVolumeChange(0);
-          }
+        if (this.onVolumeChange) {
+          this.onVolumeChange(0);
         }
-      };
+      }, 300);
     } catch (err) {
       console.error('Error playing audio chunk:', err);
     }
   }
 
   public stopAndClear() {
-    this.activeSources.forEach((source) => {
-      try {
-        source.stop();
-        source.disconnect();
-      } catch (e) {
-        // ignore
-      }
-    });
-    this.activeSources = [];
-    if (this.ctx) {
-      this.nextStartTime = this.ctx.currentTime;
+    // Tell worklet to flush its ring buffer
+    if (this.workletNode) {
+      this.workletNode.port.postMessage('interrupt');
     }
+    if (this.silenceTimer) {
+      clearTimeout(this.silenceTimer);
+      this.silenceTimer = null;
+    }
+    this.isPlaying = false;
     if (this.onPlaybackStateChange) {
       this.onPlaybackStateChange(false);
     }
@@ -181,9 +180,18 @@ export class AudioQueuePlayer {
 
   public close() {
     this.stopAndClear();
+    if (this.workletNode) {
+      this.workletNode.disconnect();
+      this.workletNode = null;
+    }
+    if (this.gainNode) {
+      this.gainNode.disconnect();
+      this.gainNode = null;
+    }
     if (this.ctx) {
       this.ctx.close();
       this.ctx = null;
     }
+    this.isWarmedUp = false;
   }
 }

@@ -5,6 +5,7 @@ import { exec, execFile } from 'child_process';
 import { WebSocketServer, WebSocket } from 'ws';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI, Modality, LiveServerMessage, Type } from '@google/genai';
+import fs from 'fs';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 
@@ -14,7 +15,15 @@ const __dirname = path.dirname(__filename);
 dotenv.config();
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
-const MEMORY_BRIDGE_SCRIPT = path.resolve(__dirname, 'memory_bridge.py');
+import { getSystemControlDeclarations, dispatchSystemControl, isSystemControl } from './system_modules/intelligent_system/system_controls';
+
+const OPERATOR_NAME = process.env.OPERATOR_NAME || (process.env.USER ? `Operator ${process.env.USER}` : 'Operator');
+
+const MEMORY_BRIDGE_SCRIPT = [
+  path.resolve(__dirname, 'memory_bridge.py'),
+  path.resolve(__dirname, '../backend/memory_bridge.py'),
+  path.resolve(process.cwd(), 'backend/memory_bridge.py')
+].find(p => fs.existsSync(p)) || path.resolve(__dirname, 'memory_bridge.py');
 
 function runMemoryBridge(args: string[]): Promise<any> {
   return new Promise((resolve) => {
@@ -224,7 +233,7 @@ async function startServer() {
         const replyText = response.text || '';
         // Asynchronously log to perpetual conversation and trigger dynamic memory miner
         const logRes: any = await runMemoryBridge(['log_turn', JSON.stringify({
-          speaker: 'Operator Gopi',
+          speaker: OPERATOR_NAME,
           text: message,
           role: 'user',
           other_speaker: 'JARVIS',
@@ -235,7 +244,7 @@ async function startServer() {
         console.warn('API Chat generation failed after all model fallbacks, generating autonomous fallback:', genErr?.message || genErr);
         const fallbackText = `Right away, Sir. Processing your directive: "${message.slice(0, 100)}...". I have logged this to cognitive memory and will synchronize telemetry across our subsystems.`;
         const logRes: any = await runMemoryBridge(['log_turn', JSON.stringify({
-          speaker: 'Operator Gopi',
+          speaker: OPERATOR_NAME,
           text: message,
           role: 'user',
           other_speaker: 'JARVIS',
@@ -405,7 +414,8 @@ async function startServer() {
                 }
               }
             }
-          }
+          },
+          ...getSystemControlDeclarations()
         ];
 
         const toolsList = [{ functionDeclarations }];
@@ -453,8 +463,18 @@ async function startServer() {
                   }
                 }
 
+                // Handle output transcription stream from serverContent (synthesized voice text)
+                const outputTranscript = (message as any).serverContent?.outputTranscription?.text || (message as any).outputTranscription?.text;
+                if (outputTranscript) {
+                  currentTurnModelText += outputTranscript;
+                  clientWs.send(JSON.stringify({
+                    type: 'output_transcription',
+                    text: outputTranscript
+                  }));
+                }
+
                 // Handle input audio transcription if emitted
-                const inputTranscript = (message as any).serverContent?.turnComplete ? null : (message as any).inputTranscription?.text;
+                const inputTranscript = (message as any).serverContent?.inputTranscription?.text || (message as any).inputTranscription?.text;
                 if (inputTranscript) {
                   currentTurnUserText += ' ' + inputTranscript;
                   clientWs.send(JSON.stringify({
@@ -480,7 +500,7 @@ async function startServer() {
 
                   if (userTurn || modelTurn) {
                     runMemoryBridge(['log_turn', JSON.stringify({
-                      speaker: 'Operator Gopi',
+                      speaker: OPERATOR_NAME,
                       text: userTurn || 'Audio interaction',
                       role: 'user',
                       other_speaker: 'JARVIS',
@@ -499,148 +519,164 @@ async function startServer() {
                   }
                 }
 
-                // Handle Tool Call for Persona Switch, Memory, Reminders, and Vision
+                // Handle Parallel Tool Calls (Simultaneous Turn Execution)
                 const toolCall = message.toolCall;
-                if (toolCall) {
-                  const funcCall = toolCall.functionCalls?.[0];
-                  if (funcCall && funcCall.name === 'switch_persona') {
-                    const args = funcCall.args as any;
-                    const targetPersonaId = args?.targetPersonaId;
-                    console.log(`[Live WS] Gemini requested persona switch to: ${targetPersonaId}`);
-                    clientWs.send(JSON.stringify({
-                      type: 'switch_persona_tool_call',
-                      targetPersonaId
-                    }));
+                if (toolCall && toolCall.functionCalls && toolCall.functionCalls.length > 0) {
+                  const functionCalls = toolCall.functionCalls;
+                  console.log(`[Live WS] Received ${functionCalls.length} simultaneous tool call(s):`, functionCalls.map((c: any) => c.name));
 
-                    // Reply back to Gemini so it knows the tool call succeeded
-                    if (session) {
-                      session.sendToolResponse({
-                        functionResponses: [
-                          {
-                            id: funcCall.id,
-                            name: funcCall.name,
-                            response: {
-                              result: "success, switched"
-                            }
-                          }
-                        ]
-                      });
+                  const functionResponses = await Promise.all(functionCalls.map(async (funcCall: any) => {
+                    const callId = funcCall.id;
+                    const name = funcCall.name;
+                    const args = funcCall.args as any || {};
+
+                    try {
+                      if (name === 'switch_persona') {
+                        const targetPersonaId = args?.targetPersonaId;
+                        console.log(`[Live WS] Gemini requested persona switch to: ${targetPersonaId}`);
+                        if (clientWs.readyState === WebSocket.OPEN) {
+                          clientWs.send(JSON.stringify({
+                            type: 'switch_persona_tool_call',
+                            targetPersonaId
+                          }));
+                        }
+                        return {
+                          id: callId,
+                          name,
+                          response: { result: "success, switched" }
+                        };
+                      }
+
+                      if (name === 'search_memory') {
+                        const query = args?.query || '';
+                        console.log(`[Live WS] Gemini querying sovereign memory: "${query}"`);
+                        const searchResult = await runMemoryBridge(['search', query, '5']);
+                        if (clientWs.readyState === WebSocket.OPEN) {
+                          clientWs.send(JSON.stringify({
+                            type: 'memory_searched',
+                            query,
+                            result: searchResult
+                          }));
+                        }
+                        return {
+                          id: callId,
+                          name,
+                          response: { result: searchResult }
+                        };
+                      }
+
+                      if (name === 'save_memory_fact') {
+                        const { key, value, category } = args || {};
+                        console.log(`[Live WS] Gemini saving memory fact: [${category || 'custom'}] ${key}: ${value}`);
+                        const saveResult = await runMemoryBridge(['save_fact', key || '', value || '', category || 'custom']);
+                        if (clientWs.readyState === WebSocket.OPEN) {
+                          clientWs.send(JSON.stringify({
+                            type: 'memory_fact_saved',
+                            key,
+                            value,
+                            category: category || 'custom',
+                            result: saveResult
+                          }));
+                        }
+                        return {
+                          id: callId,
+                          name,
+                          response: { result: saveResult }
+                        };
+                      }
+
+                      if (name === 'set_ui_reminder') {
+                        console.log(`[Live WS] Gemini set a UI reminder:`, args);
+                        if (clientWs.readyState === WebSocket.OPEN) {
+                          clientWs.send(JSON.stringify({
+                            type: 'set_ui_reminder',
+                            title: args?.title || 'Reminder',
+                            minutes: args?.minutes || 5
+                          }));
+                        }
+                        return {
+                          id: callId,
+                          name,
+                          response: { result: "reminder_scheduled_in_ui" }
+                        };
+                      }
+
+                      if (name === 'activate_camera') {
+                        console.log(`[Live WS] Gemini requested camera optical feed activation`);
+                        if (clientWs.readyState === WebSocket.OPEN) {
+                          clientWs.send(JSON.stringify({ type: 'activate_camera' }));
+                        }
+                        return {
+                          id: callId,
+                          name,
+                          response: { result: "Optical camera stream successfully activated and transmitting frames." }
+                        };
+                      }
+
+                      if (name === 'activate_screen_share') {
+                        console.log(`[Live WS] Gemini requested screen share activation`);
+                        if (clientWs.readyState === WebSocket.OPEN) {
+                          clientWs.send(JSON.stringify({ type: 'activate_screen_share' }));
+                        }
+                        return {
+                          id: callId,
+                          name,
+                          response: { result: "Screen sharing stream successfully activated and transmitting telemetry frames." }
+                        };
+                      }
+
+                      if (name === 'deactivate_vision') {
+                        console.log(`[Live WS] Gemini requested vision deactivation`);
+                        if (clientWs.readyState === WebSocket.OPEN) {
+                          clientWs.send(JSON.stringify({ type: 'deactivate_vision' }));
+                        }
+                        return {
+                          id: callId,
+                          name,
+                          response: { result: "Vision feed successfully deactivated." }
+                        };
+                      }
+
+                      // Check whole_controls vault actuators
+                      if (isSystemControl(name)) {
+                        console.log(`[Live WS] Executing system control '${name}' with args:`, args);
+                        const result = await dispatchSystemControl(name, args);
+                        if (clientWs.readyState === WebSocket.OPEN) {
+                          clientWs.send(JSON.stringify({
+                            type: 'system_control_executed',
+                            tool: name,
+                            args,
+                            result
+                          }));
+                        }
+                        return {
+                          id: callId,
+                          name,
+                          response: { output: result }
+                        };
+                      }
+
+                      console.warn(`[Live WS] Unhandled tool '${name}'`);
+                      return {
+                        id: callId,
+                        name,
+                        response: { output: { error: `Tool ${name} not recognized` } }
+                      };
+                    } catch (toolErr: any) {
+                      console.error(`[Live WS] Tool execution error in '${name}':`, toolErr);
+                      return {
+                        id: callId,
+                        name,
+                        response: { output: { error: toolErr?.message || 'Execution error' } }
+                      };
                     }
-                  } else if (funcCall && funcCall.name === 'search_memory') {
-                    const args = funcCall.args as any;
-                    const query = args?.query || '';
-                    console.log(`[Live WS] Gemini querying sovereign memory: "${query}"`);
-                    const searchResult = await runMemoryBridge(['search', query, '5']);
-                    if (session) {
-                      session.sendToolResponse({
-                        functionResponses: [
-                          {
-                            id: funcCall.id,
-                            name: funcCall.name,
-                            response: { result: searchResult }
-                          }
-                        ]
-                      });
-                    }
-                    if (clientWs.readyState === WebSocket.OPEN) {
-                      clientWs.send(JSON.stringify({
-                        type: 'memory_searched',
-                        query,
-                        result: searchResult
-                      }));
-                    }
-                  } else if (funcCall && funcCall.name === 'save_memory_fact') {
-                    const args = funcCall.args as any;
-                    const { key, value, category } = args || {};
-                    console.log(`[Live WS] Gemini saving memory fact: [${category || 'custom'}] ${key}: ${value}`);
-                    const saveResult = await runMemoryBridge(['save_fact', key || '', value || '', category || 'custom']);
-                    if (session) {
-                      session.sendToolResponse({
-                        functionResponses: [
-                          {
-                            id: funcCall.id,
-                            name: funcCall.name,
-                            response: { result: saveResult }
-                          }
-                        ]
-                      });
-                    }
-                    if (clientWs.readyState === WebSocket.OPEN) {
-                      clientWs.send(JSON.stringify({
-                        type: 'memory_fact_saved',
-                        key,
-                        value,
-                        category: category || 'custom',
-                        result: saveResult
-                      }));
-                    }
-                  } else if (funcCall && funcCall.name === 'set_ui_reminder') {
-                    const args = funcCall.args as any;
-                    console.log(`[Live WS] Gemini set a UI reminder:`, args);
-                    clientWs.send(JSON.stringify({
-                      type: 'set_ui_reminder',
-                      title: args?.title || 'Reminder',
-                      minutes: args?.minutes || 5
-                    }));
-                    if (session) {
-                      session.sendToolResponse({
-                        functionResponses: [
-                          {
-                            id: funcCall.id,
-                            name: funcCall.name,
-                            response: { result: "reminder_scheduled_in_ui" }
-                          }
-                        ]
-                      });
-                    }
-                  } else if (funcCall && funcCall.name === 'activate_camera') {
-                    console.log(`[Live WS] Gemini requested camera optical feed activation`);
-                    clientWs.send(JSON.stringify({
-                      type: 'activate_camera'
-                    }));
-                    if (session) {
-                      session.sendToolResponse({
-                        functionResponses: [
-                          {
-                            id: funcCall.id,
-                            name: funcCall.name,
-                            response: { result: "Optical camera stream successfully activated and transmitting frames." }
-                          }
-                        ]
-                      });
-                    }
-                  } else if (funcCall && funcCall.name === 'activate_screen_share') {
-                    console.log(`[Live WS] Gemini requested screen share activation`);
-                    clientWs.send(JSON.stringify({
-                      type: 'activate_screen_share'
-                    }));
-                    if (session) {
-                      session.sendToolResponse({
-                        functionResponses: [
-                          {
-                            id: funcCall.id,
-                            name: funcCall.name,
-                            response: { result: "Screen sharing stream successfully activated and transmitting telemetry frames." }
-                          }
-                        ]
-                      });
-                    }
-                  } else if (funcCall && funcCall.name === 'deactivate_vision') {
-                    console.log(`[Live WS] Gemini requested vision deactivation`);
-                    clientWs.send(JSON.stringify({
-                      type: 'deactivate_vision'
-                    }));
-                    if (session) {
-                      session.sendToolResponse({
-                        functionResponses: [
-                          {
-                            id: funcCall.id,
-                            name: funcCall.name,
-                            response: { result: "Vision feed successfully deactivated." }
-                          }
-                        ]
-                      });
-                    }
+                  }));
+
+                  // Reply with all function responses simultaneously in one frame
+                  if (session && functionResponses.length > 0) {
+                    session.sendToolResponse({
+                      functionResponses
+                    });
                   }
                 }
               } catch (e) {

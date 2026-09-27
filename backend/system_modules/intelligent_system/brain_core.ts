@@ -1,6 +1,7 @@
 import { GoogleGenAI, Modality, Type } from '@google/genai';
 import { LiveSessionConfig } from './intelligent_types';
 import { workspaceFunctionDeclarations, handleWorkspaceToolCall } from './workspace_tools';
+import { getSystemControlDeclarations, dispatchSystemControl, isSystemControl } from './system_controls';
 
 export class GeminiLiveBrain {
   private ai: GoogleGenAI;
@@ -80,6 +81,7 @@ export class GeminiLiveBrain {
 
     const allDeclarations = [
       ...baseFunctionDeclarations,
+      ...getSystemControlDeclarations(),
       ...(config.googleAccessToken ? workspaceFunctionDeclarations : [])
     ];
 
@@ -118,47 +120,45 @@ export class GeminiLiveBrain {
             callbacks.onTurnComplete();
           }
 
-          // Handle Function/Tool Calls
-          if (message.toolCall) {
-            for (const call of message.toolCall.functionCalls || []) {
+          // Handle Function/Tool Calls Simultaneously in Parallel
+          if (message.toolCall && message.toolCall.functionCalls?.length > 0) {
+            const functionCalls = message.toolCall.functionCalls;
+            const functionResponses = await Promise.all(functionCalls.map(async (call: any) => {
               try {
                 let result: any = null;
                 if (callbacks.onToolCall) {
                   result = await callbacks.onToolCall(call);
                 }
 
-                // If not handled by caller callback, check workspace tools
-                if (result === undefined || result === null) {
-                  if (config.googleAccessToken) {
-                    result = await handleWorkspaceToolCall(call.name, call.args, config.googleAccessToken);
-                  }
+                // If not handled by caller callback, check whole_controls system vault
+                if ((result === undefined || result === null) && isSystemControl(call.name)) {
+                  result = await dispatchSystemControl(call.name, call.args);
                 }
 
-                // Send tool response back to Gemini
-                await this.activeSession.send({
-                  toolResponse: {
-                    functionResponses: [
-                      {
-                        response: { output: result || { status: 'completed' } },
-                        id: call.id
-                      }
-                    ]
-                  }
-                });
+                // If still not handled, check workspace tools
+                if ((result === undefined || result === null) && config.googleAccessToken) {
+                  result = await handleWorkspaceToolCall(call.name, call.args, config.googleAccessToken);
+                }
+
+                return {
+                  response: { output: result || { status: 'completed' } },
+                  id: call.id
+                };
               } catch (err: any) {
                 console.error(`[GeminiLiveBrain] Error executing tool ${call.name}:`, err);
-                await this.activeSession.send({
-                  toolResponse: {
-                    functionResponses: [
-                      {
-                        response: { error: err.message },
-                        id: call.id
-                      }
-                    ]
-                  }
-                });
+                return {
+                  response: { error: err.message },
+                  id: call.id
+                };
               }
-            }
+            }));
+
+            // Send bundled toolResponse back to Gemini Live
+            await this.activeSession.send({
+              toolResponse: {
+                functionResponses
+              }
+            });
           }
         },
         onerror: (err: any) => {
