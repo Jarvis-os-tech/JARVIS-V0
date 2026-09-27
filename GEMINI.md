@@ -20,3 +20,7 @@ The workspace is organized into four core subfolders:
 ## Verification & Quality Gates
 - **Type Checking**: Run `npm run lint` (`tsc --noEmit`) before completing server or client code changes.
 - **Production Build**: Run `npm run build` to verify frontend bundling and backend compilation.
+
+## Branching & Release Policy
+- **Active Development**: All ongoing development, commits, and pushes MUST target the `dev` branch.
+- **Main Branch Gate**: Do NOT push to `main` until the user explicitly confirms and approves (e.g. "all are ok push to main branch").
