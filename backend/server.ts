@@ -886,15 +886,9 @@ async function startServer() {
   }
 
   server.on('error', (err: any) => {
-    if (err.code === 'EADDRINUSE' && process.env.NODE_ENV !== 'production') {
-      const fallbackPort = PORT === 3000 ? 3001 : PORT + 1;
-      console.warn(`[Dev Server] Port ${PORT} is in use (Desktop J.A.R.V.I.S. is active). Switching dev server to http://localhost:${fallbackPort}...`);
-      server.listen(fallbackPort, '0.0.0.0', () => {
-        const localUrl = `http://localhost:${fallbackPort}`;
-        console.log(`Dev server running on ${localUrl} (also accessible on http://0.0.0.0:${fallbackPort})`);
-        autoLaunchBrowser(localUrl);
-      });
-      return;
+    if (err.code === 'EADDRINUSE') {
+      console.error(`[Server] Port ${PORT} is already in use. Kill the process or change PORT in .env`);
+      process.exit(1);
     }
     console.error('Server error:', err);
     process.exit(1);
