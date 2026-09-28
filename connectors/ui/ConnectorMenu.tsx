@@ -17,12 +17,13 @@ export interface ConnectorMenuProps {
 }
 
 export const ConnectorMenu: React.FC<ConnectorMenuProps> = ({
-  connectors,
+  connectors = [],
   onOpenDirectory,
   onSelectConnector,
   className = "",
 }) => {
-  const connectedCount = connectors.filter((c) => c.status?.connected).length;
+  const safeConnectors = Array.isArray(connectors) ? connectors : [];
+  const connectedCount = safeConnectors.filter((c) => c.status?.connected).length;
 
   return (
     <div
@@ -34,15 +35,15 @@ export const ConnectorMenu: React.FC<ConnectorMenuProps> = ({
           Active Connectors
         </span>
         <span className="text-[9px] font-mono text-gray-400">
-          {connectedCount}/{connectors.length}
+          {connectedCount}/{safeConnectors.length}
         </span>
       </div>
 
       <div className="flex flex-col gap-1 max-h-48 overflow-y-auto pr-1">
-        {connectors.length === 0 ? (
+        {safeConnectors.length === 0 ? (
           <div className="px-3 py-2 text-[11px] text-gray-500 text-center">No connectors found</div>
         ) : (
-          connectors.map((conn) => {
+          safeConnectors.map((conn) => {
             const isConn = conn.status?.connected;
             return (
               <button

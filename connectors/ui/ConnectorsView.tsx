@@ -32,13 +32,15 @@ export const ConnectorsView: React.FC<ConnectorsViewProps> = ({ onClose, classNa
   const [searchQuery, setSearchQuery] = useState("");
   const [filterMode, setFilterMode] = useState<"all" | "connected" | "available">("all");
 
+  const safeConnectors = Array.isArray(connectors) ? connectors : [];
+
   // Filtering logic
-  const filteredConnectors = connectors.filter((c) => {
+  const filteredConnectors = safeConnectors.filter((c) => {
     const matchesSearch =
       c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       c.tagline.toLowerCase().includes(searchQuery.toLowerCase()) ||
       c.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.tools.some((t) => t.name.toLowerCase().includes(searchQuery.toLowerCase()));
+      c.tools?.some((t) => t.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
     if (!matchesSearch) return false;
 
@@ -47,7 +49,7 @@ export const ConnectorsView: React.FC<ConnectorsViewProps> = ({ onClose, classNa
     return true;
   });
 
-  const connectedCount = connectors.filter((c) => c.status?.connected).length;
+  const connectedCount = safeConnectors.filter((c) => c.status?.connected).length;
 
   return (
     <div className={`flex flex-col h-full bg-[#0a0f1d] text-white rounded-2xl overflow-hidden border border-[#2a2a3e]/60 ${className}`}>
@@ -61,7 +63,7 @@ export const ConnectorsView: React.FC<ConnectorsViewProps> = ({ onClose, classNa
             <h1 className="text-lg font-bold tracking-wide flex items-center gap-2">
               Model Context Protocol Connectors
               <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
-                {connectedCount} / {connectors.length} Connected
+                {connectedCount} / {safeConnectors.length} Connected
               </span>
             </h1>
             <p className="text-[12px] text-gray-400">
@@ -126,7 +128,7 @@ export const ConnectorsView: React.FC<ConnectorsViewProps> = ({ onClose, classNa
                       : "text-gray-400 hover:text-gray-200"
                   }`}
                 >
-                  All ({connectors.length})
+                  All ({safeConnectors.length})
                 </button>
                 <button
                   onClick={() => setFilterMode("connected")}
@@ -146,7 +148,7 @@ export const ConnectorsView: React.FC<ConnectorsViewProps> = ({ onClose, classNa
                       : "text-gray-400 hover:text-gray-200"
                   }`}
                 >
-                  Available ({connectors.length - connectedCount})
+                  Available ({safeConnectors.length - connectedCount})
                 </button>
               </div>
             </div>
@@ -160,7 +162,7 @@ export const ConnectorsView: React.FC<ConnectorsViewProps> = ({ onClose, classNa
             )}
 
             {/* Connector Grid */}
-            {isLoading && connectors.length === 0 ? (
+            {isLoading && safeConnectors.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 gap-3 text-gray-500">
                 <div className="w-8 h-8 rounded-full border-2 border-cyan-500/30 border-t-cyan-400 animate-spin" />
                 <span className="text-xs font-mono">Loading connector catalog...</span>

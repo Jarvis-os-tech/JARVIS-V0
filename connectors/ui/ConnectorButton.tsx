@@ -18,8 +18,8 @@ export const ConnectorButton: React.FC<ConnectorButtonProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const { connectors, isLoading } = useConnectors({ pollingIntervalMs: 10000, autoFetch: true });
-
-  const connectedCount = connectors.filter((c) => c.status?.connected).length;
+  const connectorList = Array.isArray(connectors) ? connectors : [];
+  const connectedCount = connectorList.filter((c) => c.status?.connected).length;
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {

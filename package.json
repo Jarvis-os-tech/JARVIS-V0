@@ -1,16 +1,13 @@
 {
-  "name": "jarvis-os",
+  "name": "jarvis",
+  "private": true,
   "version": "1.0.0",
   "description": "J.A.R.V.I.S. — Autonomous AI Operating System",
   "type": "module",
-  "bin": {
-    "jarvis": "./bin/jarvis.js"
-  },
   "scripts": {
     "dev": "tsx backend/server.ts",
-    "build": "vite build frontend && esbuild backend/server.ts --bundle --platform=node --format=esm --packages=external --sourcemap --outfile=dist/server.js",
-    "start": "node dist/server.js",
-    "clean": "rm -rf dist server.js",
+    "build": "vite build frontend",
+    "clean": "rm -rf dist",
     "lint": "tsc --noEmit"
   },
   "dependencies": {
