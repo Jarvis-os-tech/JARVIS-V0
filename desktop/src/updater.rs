@@ -1,13 +1,10 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
-use std::thread;
-use std::time::Duration;
-
-use crate::config::{find_workspace_root, DEV_BRANCH, GITHUB_REPO, PRODUCTION_BRANCH, UPDATE_CHECK_INTERVAL_SECS};
-use rfd::{MessageButtons, MessageDialog, MessageDialogResult, MessageLevel};
 use serde::Deserialize;
+use rfd::{MessageButtons, MessageDialog, MessageDialogResult, MessageLevel};
+
+use crate::config::{find_production_dir, GITHUB_REPO, PRODUCTION_BRANCH};
+use crate::server_supervisor::copy_dir_all;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct GithubCommitAuthor {
@@ -27,50 +24,7 @@ pub struct GithubCommitResponse {
     pub commit: GithubCommitDetails,
 }
 
-#[derive(Debug, Clone)]
-pub enum AppEvent {
-    UpdateAvailable(GithubCommitResponse),
-}
-
-pub struct UpdateChecker {
-    is_checking: Arc<AtomicBool>,
-}
-
-impl UpdateChecker {
-    pub fn new() -> Self {
-        Self {
-            is_checking: Arc::new(AtomicBool::new(false)),
-        }
-    }
-
-    /// Starts a background thread that periodically checks for production updates strictly on 'main'.
-    /// Dispatches UI update dialogs to the main thread via EventLoopProxy to guarantee GTK thread safety.
-    pub fn start_background_monitor(&self, proxy: tao::event_loop::EventLoopProxy<AppEvent>) {
-        let is_checking = self.is_checking.clone();
-
-        thread::spawn(move || {
-            // Give the desktop UI 5 seconds to initialize before the first check
-            thread::sleep(Duration::from_secs(5));
-
-            loop {
-                if !is_checking.load(Ordering::SeqCst) {
-                    is_checking.store(true, Ordering::SeqCst);
-                    let root = find_workspace_root();
-                    if let Some(commit) = check_for_main_update(&root) {
-                        println!("[Updater] Update available on 'main'. Dispatching to main UI thread...");
-                        let _ = proxy.send_event(AppEvent::UpdateAvailable(commit));
-                    }
-                    is_checking.store(false, Ordering::SeqCst);
-                }
-
-                thread::sleep(Duration::from_secs(UPDATE_CHECK_INTERVAL_SECS));
-            }
-        });
-    }
-}
-
 /// Queries GitHub API strictly for the 'main' (production) branch.
-/// Ignores the 'dev' branch completely.
 fn fetch_latest_main_commit() -> Result<GithubCommitResponse, String> {
     let url = format!(
         "https://api.github.com/repos/{}/commits/{}",
@@ -80,7 +34,7 @@ fn fetch_latest_main_commit() -> Result<GithubCommitResponse, String> {
     let resp = ureq::get(&url)
         .set("User-Agent", "JARVIS-Desktop-Updater")
         .set("Accept", "application/vnd.github.v3+json")
-        .timeout(Duration::from_secs(10))
+        .timeout(std::time::Duration::from_secs(10))
         .call()
         .map_err(|e| format!("GitHub API network error: {}", e))?;
 
@@ -91,9 +45,9 @@ fn fetch_latest_main_commit() -> Result<GithubCommitResponse, String> {
     Ok(commit)
 }
 
-/// Reads the local applied release commit SHA from .release_commit, or queries git refs for origin/main.
-fn get_local_production_sha(workspace_root: &Path) -> Option<String> {
-    let release_file = workspace_root.join(".release_commit");
+/// Reads the currently applied release commit SHA from prod_dir/.release_commit
+fn get_local_production_sha(prod_dir: &Path) -> Option<String> {
+    let release_file = prod_dir.join(".release_commit");
     if release_file.exists() {
         if let Ok(content) = std::fs::read_to_string(&release_file) {
             let trimmed = content.trim();
@@ -102,34 +56,18 @@ fn get_local_production_sha(workspace_root: &Path) -> Option<String> {
             }
         }
     }
-
-    // Fall back to git rev-parse refs/remotes/origin/main
-    let output = Command::new("git")
-        .arg("rev-parse")
-        .arg("refs/remotes/origin/main")
-        .current_dir(workspace_root)
-        .output()
-        .ok()?;
-
-    if output.status.success() {
-        let sha = String::from_utf8_lossy(&output.stdout).trim().to_string();
-        if !sha.is_empty() {
-            return Some(sha);
-        }
-    }
-
     None
 }
 
-/// Sets the current applied release commit SHA in .release_commit
-fn save_local_production_sha(workspace_root: &Path, sha: &str) {
-    let release_file = workspace_root.join(".release_commit");
+/// Sets the current applied release commit SHA in prod_dir/.release_commit
+fn save_local_production_sha(prod_dir: &Path, sha: &str) {
+    let release_file = prod_dir.join(".release_commit");
     let _ = std::fs::write(release_file, sha.trim());
 }
 
-/// Pure check function: returns Some(commit) if an update is available on 'main'
-pub fn check_for_main_update(workspace_root: &Path) -> Option<GithubCommitResponse> {
-    println!("[Updater] Checking production branch '{}' on GitHub for updates...", PRODUCTION_BRANCH);
+/// Checks GitHub 'main' branch for updates against the local production installation.
+pub fn check_for_main_update(prod_dir: &Path) -> Option<GithubCommitResponse> {
+    println!("[Updater] Checking production branch '{}' on GitHub for new releases...", PRODUCTION_BRANCH);
 
     let remote_commit = match fetch_latest_main_commit() {
         Ok(c) => c,
@@ -139,12 +77,13 @@ pub fn check_for_main_update(workspace_root: &Path) -> Option<GithubCommitRespon
         }
     };
 
-    let local_sha = get_local_production_sha(workspace_root);
+    let local_sha = get_local_production_sha(prod_dir);
     let remote_sha = remote_commit.sha.trim();
 
     if let Some(ref local) = local_sha {
-        if local.trim() == remote_sha {
-            println!("[Updater] J.A.R.V.I.S. is already running the latest production release ({})", &remote_sha[..7.min(remote_sha.len())]);
+        let local_trimmed = local.trim();
+        if local_trimmed == remote_sha || remote_sha.starts_with(local_trimmed) || local_trimmed.starts_with(remote_sha) {
+            println!("[Updater] J.A.R.V.I.S. Desktop is running the latest production release ({})", &remote_sha[..7.min(remote_sha.len())]);
             return None;
         }
     }
@@ -152,32 +91,33 @@ pub fn check_for_main_update(workspace_root: &Path) -> Option<GithubCommitRespon
     Some(remote_commit)
 }
 
-/// Prompts the user on the main UI thread and applies the update if approved.
-pub fn prompt_user_and_apply(workspace_root: &Path, remote_commit: &GithubCommitResponse) {
+/// Prompts the user with a dialog asking whether they want to apply the new feature/update.
+/// UNTIL the user accepts, the current version is kept 100% untouched.
+pub fn prompt_user_and_apply(workspace_root: &Path, prod_dir: &Path, remote_commit: &GithubCommitResponse) {
     let remote_sha = remote_commit.sha.trim();
     let short_remote = &remote_sha[..7.min(remote_sha.len())];
     let commit_msg = remote_commit.commit.message.lines().next().unwrap_or("Production update");
     let author = &remote_commit.commit.author.name;
     let date = &remote_commit.commit.author.date;
 
-    println!("[Updater] New production update detected on 'main'!");
-    println!("          Remote Commit: {}", remote_sha);
-    println!("          Description  : {}", commit_msg);
+    println!("[Updater] New production feature available on 'main'!");
+    println!("          Commit      : {}", remote_sha);
+    println!("          Description : {}", commit_msg);
 
-    // Native UI Popup (always executes on main GTK thread)
     let dialog_description = format!(
-        "A new production update is available on the 'main' branch!\n\n\
+        "A new feature/update has been released to the 'main' branch!\n\n\
+         • Feature: {}\n\
          • Commit : {}\n\
-         • Message: {}\n\
          • Author : {}\n\
          • Date   : {}\n\n\
-         Note: The '{}' branch codes are strictly isolated and will never update here.\n\n\
-         Would you like to install the production update now?",
-        short_remote, commit_msg, author, date, DEV_BRANCH
+         Would you like to apply this new feature to your Desktop J.A.R.V.I.S. now?\n\n\
+         (If you click 'No', J.A.R.V.I.S. will remain on your current stable version.\n\
+          Active development work on 'dev' will never be applied to your Desktop version.)",
+        commit_msg, short_remote, author, date
     );
 
     let result = MessageDialog::new()
-        .set_title("J.A.R.V.I.S. System Update Available")
+        .set_title("J.A.R.V.I.S. Update Available")
         .set_description(&dialog_description)
         .set_buttons(MessageButtons::YesNo)
         .set_level(MessageLevel::Info)
@@ -185,89 +125,109 @@ pub fn prompt_user_and_apply(workspace_root: &Path, remote_commit: &GithubCommit
 
     if result == MessageDialogResult::Yes {
         println!("[Updater] User confirmed update. Applying production release from 'main'...");
-        apply_production_update(workspace_root, remote_sha);
+        apply_production_update(workspace_root, prod_dir, remote_sha);
     } else {
-        println!("[Updater] User chose to postpone update.");
+        println!("[Updater] User chose to keep current version. Update postponed.");
     }
 }
 
-/// CLI entrypoint for manual check
+/// Entrypoint to check for updates and prompt
 pub fn check_and_prompt_update(workspace_root: &Path) {
-    if let Some(commit) = check_for_main_update(workspace_root) {
-        prompt_user_and_apply(workspace_root, &commit);
+    let prod_dir = find_production_dir();
+    if let Some(commit) = check_for_main_update(&prod_dir) {
+        prompt_user_and_apply(workspace_root, &prod_dir, &commit);
     }
 }
 
-/// Performs safe update from origin/main without overwriting active dev work.
-fn apply_production_update(workspace_root: &Path, new_sha: &str) {
+/// Applies update from origin/main using an isolated temporary git worktree so active dev work is never disrupted.
+fn apply_production_update(workspace_root: &Path, prod_dir: &Path, new_sha: &str) {
     // 1. Fetch origin main
-    let fetch_res = Command::new("git")
-        .args(["fetch", "origin", "main"])
+    let _ = Command::new("git")
+        .args(["fetch", "origin", "main:main"])
         .current_dir(workspace_root)
         .status();
 
-    if let Err(e) = fetch_res {
+    // 2. Use isolated temporary worktree to build main without touching dev branch
+    let tmp_worktree = PathBuf::from("/tmp/jarvis_main_update_build");
+    let _ = std::fs::remove_dir_all(&tmp_worktree);
+
+    let wt_status = Command::new("git")
+        .args(["worktree", "add", "--detach", tmp_worktree.to_str().unwrap(), "origin/main"])
+        .current_dir(workspace_root)
+        .status();
+
+    if let Err(e) = wt_status {
         MessageDialog::new()
             .set_title("Update Failed")
-            .set_description(&format!("Failed to fetch updates from origin: {}", e))
+            .set_description(&format!("Failed to prepare update worktree: {}", e))
             .set_level(MessageLevel::Error)
             .show();
         return;
     }
 
-    // 2. Check current branch
-    let branch_out = Command::new("git")
-        .args(["rev-parse", "--abbrev-ref", "HEAD"])
-        .current_dir(workspace_root)
-        .output();
+    // 3. Symlink node_modules in worktree to avoid re-installing
+    #[cfg(unix)]
+    let _ = std::os::unix::fs::symlink(workspace_root.join("node_modules"), tmp_worktree.join("node_modules"));
 
-    let current_branch = branch_out
-        .ok()
-        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
-        .unwrap_or_else(|| "dev".to_string());
-
-    if current_branch == "main" {
-        // If already on main, fast-forward merge
-        let _ = Command::new("git")
-            .args(["merge", "origin/main", "--ff-only"])
-            .current_dir(workspace_root)
-            .status();
-    } else {
-        // If on dev, fetch the latest main ref into local main without touching dev working tree
-        let _ = Command::new("git")
-            .args(["fetch", "origin", "main:main"])
-            .current_dir(workspace_root)
-            .status();
-        println!("[Updater] Successfully synced 'main' branch ref without disrupting '{}' workspace.", current_branch);
-    }
-
-    // 3. Build production bundle (npm run build)
-    println!("[Updater] Rebuilding J.A.R.V.I.S. frontend & backend assets...");
+    // 4. Run build inside the temporary worktree
+    println!("[Updater] Compiling production release from 'main'...");
     let npm_bin = which::which("npm").unwrap_or_else(|_| PathBuf::from("npm"));
     let build_status = Command::new(npm_bin)
         .args(["run", "build"])
-        .current_dir(workspace_root)
+        .current_dir(&tmp_worktree)
         .status();
 
-    if let Ok(st) = build_status {
-        if st.success() {
-            save_local_production_sha(workspace_root, new_sha);
-            MessageDialog::new()
-                .set_title("J.A.R.V.I.S. Update Complete")
-                .set_description(&format!(
-                    "J.A.R.V.I.S. has been successfully updated to production commit {}.\n\n\
-                     The desktop session is active and up to date.",
-                    &new_sha[..7.min(new_sha.len())]
-                ))
-                .set_level(MessageLevel::Info)
-                .show();
-            return;
-        }
-    }
+    let build_success = build_status.map(|s| s.success()).unwrap_or(false);
 
-    MessageDialog::new()
-        .set_title("Build Notice")
-        .set_description("Update fetched, but asset build encountered an issue. Check terminal logs.")
-        .set_level(MessageLevel::Warning)
-        .show();
+    if build_success {
+        // Copy built dist to production directory
+        let _ = copy_dir_all(&tmp_worktree.join("dist"), &prod_dir.join("dist"));
+
+        // Copy connectors to production directory
+        let _ = copy_dir_all(&tmp_worktree.join("connectors"), &prod_dir.join("connectors"));
+
+        // Save new SHA
+        save_local_production_sha(prod_dir, new_sha);
+
+        // Restart running server if active
+        let _ = Command::new("fuser")
+            .args(["-k", "3000/tcp"])
+            .status();
+
+        // Cleanup temporary worktree
+        let _ = Command::new("git")
+            .args(["worktree", "remove", "--force", tmp_worktree.to_str().unwrap()])
+            .current_dir(workspace_root)
+            .status();
+        let _ = Command::new("git")
+            .args(["worktree", "prune"])
+            .current_dir(workspace_root)
+            .status();
+
+        MessageDialog::new()
+            .set_title("J.A.R.V.I.S. Updated Successfully")
+            .set_description(&format!(
+                "J.A.R.V.I.S. Desktop has been updated to production release {}.\n\n\
+                 The new feature has been applied.",
+                &new_sha[..7.min(new_sha.len())]
+            ))
+            .set_level(MessageLevel::Info)
+            .show();
+    } else {
+        // Cleanup worktree on error
+        let _ = Command::new("git")
+            .args(["worktree", "remove", "--force", tmp_worktree.to_str().unwrap()])
+            .current_dir(workspace_root)
+            .status();
+        let _ = Command::new("git")
+            .args(["worktree", "prune"])
+            .current_dir(workspace_root)
+            .status();
+
+        MessageDialog::new()
+            .set_title("Update Failed")
+            .set_description("Failed to compile production bundle from 'main'. Keeping existing version.")
+            .set_level(MessageLevel::Error)
+            .show();
+    }
 }
