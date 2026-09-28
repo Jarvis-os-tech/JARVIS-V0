@@ -51,6 +51,45 @@ connectorRouter.get("/api/connectors/status/all", async (_req, res) => {
 });
 
 /**
+ * GET /api/connectors/callback
+ * OAuth callback handler redirecting back to UI.
+ * Must be registered BEFORE /api/connectors/:id to avoid parameter collision.
+ */
+connectorRouter.get("/api/connectors/callback", async (req, res) => {
+  const { code, state, error } = req.query;
+  if (error) {
+    return res.redirect(`/?connector_error=${encodeURIComponent(String(error))}`);
+  }
+  if (!code || !state) {
+    return res.status(400).json({ error: "Missing code or state parameter" });
+  }
+
+  const protocol = req.headers["x-forwarded-proto"] || req.protocol || "http";
+  const host = req.headers.host || "localhost:3000";
+  const callbackUrl = `${protocol}://${host}/api/connectors/callback`;
+
+  const result = await runConnectorPython(["callback", String(state), String(code), callbackUrl]);
+  if (result.success) {
+    res.redirect(`/?connector_connected=${encodeURIComponent(String(state))}`);
+  } else {
+    res.redirect(`/?connector_error=${encodeURIComponent(result.error || "OAuth failed")}`);
+  }
+});
+
+/**
+ * POST /api/connectors/call
+ * Direct HTTP execution for tools.
+ */
+connectorRouter.post("/api/connectors/call", async (req, res) => {
+  const { tool, args } = req.body;
+  if (!tool) {
+    return res.status(400).json({ error: "Tool name required" });
+  }
+  const result = await runConnectorPython(["call", tool, JSON.stringify(args || {})]);
+  res.json(result);
+});
+
+/**
  * GET /api/connectors/:id
  * Single connector status with definition.
  */
@@ -80,49 +119,11 @@ connectorRouter.post("/api/connectors/:id/auth", async (req, res) => {
 });
 
 /**
- * GET /api/connectors/callback
- * OAuth callback handler redirecting back to UI.
- */
-connectorRouter.get("/api/connectors/callback", async (req, res) => {
-  const { code, state, error } = req.query;
-  if (error) {
-    return res.redirect(`/?connector_error=${encodeURIComponent(String(error))}`);
-  }
-  if (!code || !state) {
-    return res.status(400).json({ error: "Missing code or state parameter" });
-  }
-
-  const protocol = req.headers["x-forwarded-proto"] || req.protocol || "http";
-  const host = req.headers.host || "localhost:3000";
-  const callbackUrl = `${protocol}://${host}/api/connectors/callback`;
-
-  const result = await runConnectorPython(["callback", String(state), String(code), callbackUrl]);
-  if (result.success) {
-    res.redirect(`/?connector_connected=${encodeURIComponent(String(state))}`);
-  } else {
-    res.redirect(`/?connector_error=${encodeURIComponent(result.error || "OAuth failed")}`);
-  }
-});
-
-/**
  * POST /api/connectors/:id/disconnect
  * Disconnects connector and revokes credentials.
  */
 connectorRouter.post("/api/connectors/:id/disconnect", async (req, res) => {
   const result = await runConnectorPython(["disconnect", req.params.id]);
-  res.json(result);
-});
-
-/**
- * POST /api/connectors/call
- * Direct HTTP execution for tools.
- */
-connectorRouter.post("/api/connectors/call", async (req, res) => {
-  const { tool, args } = req.body;
-  if (!tool) {
-    return res.status(400).json({ error: "Tool name required" });
-  }
-  const result = await runConnectorPython(["call", tool, JSON.stringify(args || {})]);
   res.json(result);
 });
 

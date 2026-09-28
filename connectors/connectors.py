@@ -22,6 +22,20 @@ DATA_DIR = ROOT_DIR / "data"
 STORE_FILE = DATA_DIR / "connectors.json"
 VAULT_KEY_FILE = DATA_DIR / ".vault-key"
 
+def _load_env() -> None:
+    env_path = ROOT_DIR / ".env"
+    if env_path.exists():
+        for line in env_path.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            k, v = line.split("=", 1)
+            k, v = k.strip(), v.strip().strip("'\"")
+            if k not in os.environ or not os.environ[k]:
+                os.environ[k] = v
+
+_load_env()
+
 # Registry definitions
 REGISTRY = [
     {
@@ -261,8 +275,8 @@ def handle_oauth_callback(connector_id: str, code: str, callback_url: str) -> di
     cfg = OAUTH_CONFIGS.get(connector_id)
     if not cfg:
         return {"error": f"Unknown connector {connector_id}"}
-    client_id = os.environ.get(cfg["client_id_env"]) or os.environ.get(f"VITE_{cfg['client_id_env']}") or ""
-    client_secret = os.environ.get(cfg["client_secret_env"]) or os.environ.get(f"VITE_{cfg['client_secret_env']}") or ""
+    client_id = (os.environ.get(cfg["client_id_env"]) or os.environ.get(f"VITE_{cfg['client_id_env']}") or "").strip("'\"")
+    client_secret = (os.environ.get(cfg["client_secret_env"]) or os.environ.get(f"VITE_{cfg['client_secret_env']}") or "").strip("'\"")
     if not client_id or not client_secret:
         return {"error": f"Missing credentials for {connector_id} in environment"}
 
@@ -273,8 +287,12 @@ def handle_oauth_callback(connector_id: str, code: str, callback_url: str) -> di
         "redirect_uri": callback_url,
         "grant_type": "authorization_code",
     }
-    headers = {"Accept": "application/json"}
-    resp = _http(cfg["token_url"], headers=headers, method="POST", body=token_data)
+    encoded_body = urllib.parse.urlencode(token_data).encode("utf-8")
+    headers = {
+        "Accept": "application/json",
+        "Content-Type": "application/x-www-form-urlencoded",
+    }
+    resp = _http(cfg["token_url"], headers=headers, method="POST", body=encoded_body)
     if "error" in resp and not resp.get("access_token"):
         return {"error": resp["error"]}
 
@@ -318,15 +336,21 @@ def get_valid_token(connector_id: str) -> str:
             refresh_token = _decrypt(refresh_cipher)
             cfg = OAUTH_CONFIGS.get(connector_id)
             if cfg and refresh_token:
-                client_id = os.environ.get(cfg["client_id_env"], "")
-                client_secret = os.environ.get(cfg["client_secret_env"], "")
+                client_id = (os.environ.get(cfg["client_id_env"]) or os.environ.get(f"VITE_{cfg['client_id_env']}") or "").strip("'\"")
+                client_secret = (os.environ.get(cfg["client_secret_env"]) or os.environ.get(f"VITE_{cfg['client_secret_env']}") or "").strip("'\"")
                 refresh_body = {
                     "client_id": client_id,
                     "client_secret": client_secret,
                     "refresh_token": refresh_token,
                     "grant_type": "refresh_token",
                 }
-                resp = _http(cfg["token_url"], headers={"Accept": "application/json"}, method="POST", body=refresh_body)
+                encoded_refresh = urllib.parse.urlencode(refresh_body).encode("utf-8")
+                resp = _http(
+                    cfg["token_url"],
+                    headers={"Accept": "application/json", "Content-Type": "application/x-www-form-urlencoded"},
+                    method="POST",
+                    body=encoded_refresh,
+                )
                 new_access = resp.get("access_token")
                 if new_access:
                     tok["accessToken"] = _encrypt(new_access)
@@ -577,10 +601,16 @@ def run_tests():
     gh_url = get_oauth_url("github", "http://localhost:3000/api/connectors/callback")
     assert "authUrl" in gh_url and "dummy_github_id" in gh_url["authUrl"], "GitHub OAuth URL generation failed"
 
-    # Test store disconnect
-    save_store({"test": {"id": "test", "connected": True}})
-    disconnect("test")
-    assert get_status("test")["connected"] is False, "Disconnect state test failed"
+    # Test store disconnect without overwriting real store
+    orig = load_store()
+    try:
+        temp_store = dict(orig)
+        temp_store["test"] = {"id": "test", "connected": True}
+        save_store(temp_store)
+        disconnect("test")
+        assert get_status("test")["connected"] is False, "Disconnect state test failed"
+    finally:
+        save_store(orig)
 
     print("ALL_TESTS_PASSED")
 
