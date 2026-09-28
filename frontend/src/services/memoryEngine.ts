@@ -4,7 +4,9 @@ import {
   LongTermMemoryItem,
   SemanticMemoryItem,
   EpisodicMemoryItem,
-  WorkingTurn
+  WorkingTurn,
+  TriadMemoryItem,
+  TriadMemoryCategory
 } from '../types';
 
 const MEMORY_STORAGE_KEY = 'jarvis_memory_engine_v1';
@@ -110,12 +112,157 @@ const INITIAL_SHORT_TERM_MEMORY: ShortTermMemory = {
   lastUpdated: new Date().toISOString()
 };
 
+export const INITIAL_PERSONAL_DATA: TriadMemoryItem[] = [
+  {
+    id: 'pd-01',
+    category: 'personal_data',
+    content: '**User Name**: Gopi',
+    learnedDate: '2026-09-28T09:00:00.000Z'
+  },
+  {
+    id: 'pd-02',
+    category: 'personal_data',
+    content: '**Environment Focus**: Enterprise Node.js / Python Full-Stack Engineering Workspace',
+    learnedDate: '2026-09-28T09:00:00.000Z'
+  },
+  {
+    id: 'pd-03',
+    category: 'personal_data',
+    content: '**Host Target Architecture**: Windows Host Runtimes (Windows 11 / i5 laptop)',
+    learnedDate: '2026-09-28T09:00:00.000Z'
+  },
+  {
+    id: 'pd-04',
+    category: 'personal_data',
+    content: '**Work Cycle Window**: 09:00 AM - 18:30 PM IST',
+    learnedDate: '2026-09-28T09:00:00.000Z'
+  },
+  {
+    id: 'pd-05',
+    category: 'personal_data',
+    content: 'User is studying BTech',
+    learnedDate: '2026-09-28T09:00:00.000Z'
+  },
+  {
+    id: 'pd-06',
+    category: 'personal_data',
+    content: 'User is studying to implement multi-system agents',
+    learnedDate: '2026-09-28T09:00:00.000Z'
+  }
+];
+
+export const INITIAL_PREFERENCES: TriadMemoryItem[] = [
+  {
+    id: 'pref-01',
+    category: 'preferences',
+    content: "User wants a full agent log to track each agent's steps.",
+    learnedDate: '2026-09-28T09:00:00.000Z'
+  },
+  {
+    id: 'pref-02',
+    category: 'preferences',
+    content: 'User suggests a "console team" concept: agents debate, create documents, and vote on outcomes.',
+    learnedDate: '2026-09-28T09:00:00.000Z'
+  },
+  {
+    id: 'pref-03',
+    category: 'preferences',
+    content: '**UI Interface**: Electric Cyan & Arc-Reactor Blue Holographic Aesthetics',
+    learnedDate: '2026-09-28T09:00:00.000Z'
+  },
+  {
+    id: 'pref-04',
+    category: 'preferences',
+    content: '**Architecture**: Prefers clean modular TypeScript architecture and minimal verbal latency',
+    learnedDate: '2026-09-28T09:00:00.000Z'
+  }
+];
+
+export const INITIAL_INSTRUCTIONS: TriadMemoryItem[] = [
+  {
+    id: 'inst-01',
+    category: 'instructions',
+    content: 'Always verify port availability and execute tests before finalizing code',
+    learnedDate: '2026-09-28T09:00:00.000Z'
+  },
+  {
+    id: 'inst-02',
+    category: 'instructions',
+    content: 'Never push to main branch directly; use dev branch for all active engineering',
+    learnedDate: '2026-09-28T09:00:00.000Z'
+  },
+  {
+    id: 'inst-03',
+    category: 'instructions',
+    content: 'Ensure J.A.R.V.I.S. speaks crisply, concisely, and with uncompromising execution fidelity',
+    learnedDate: '2026-09-28T09:00:00.000Z'
+  },
+  {
+    id: 'inst-04',
+    category: 'instructions',
+    content: 'Full-duplex bidirectional streaming powered by Gemini Live API over WebSocket',
+    learnedDate: '2026-09-28T09:00:00.000Z'
+  }
+];
+
 class MemoryEngine {
   private state: JarvisMemoryState;
   private vaultTelemetry: any = null;
+  private listeners: Set<() => void> = new Set();
 
   constructor() {
     this.state = this.loadFromStorage();
+    if (typeof window !== 'undefined') {
+      this.fetchTriadMemory().catch(() => {});
+    }
+  }
+
+  public subscribe(listener: () => void): () => void {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
+  }
+
+  private notifyListeners(): void {
+    this.listeners.forEach((listener) => {
+      try {
+        listener();
+      } catch (e) {
+        console.error('[MemoryEngine] Listener error:', e);
+      }
+    });
+  }
+
+  public async fetchTriadMemory(): Promise<{ personal_data: TriadMemoryItem[]; preferences: TriadMemoryItem[]; instructions: TriadMemoryItem[] } | null> {
+    try {
+      const res = await fetch('/api/memory/triad');
+      if (!res.ok) return null;
+      const data = await res.json();
+      if (data && typeof data === 'object') {
+        let changed = false;
+        if (Array.isArray(data.personal_data) && data.personal_data.length > 0) {
+          this.state.personalData = data.personal_data;
+          changed = true;
+        }
+        if (Array.isArray(data.preferences) && data.preferences.length > 0) {
+          this.state.preferences = data.preferences;
+          changed = true;
+        }
+        if (Array.isArray(data.instructions) && data.instructions.length > 0) {
+          this.state.instructions = data.instructions;
+          changed = true;
+        }
+        if (changed) {
+          this.saveToStorage();
+          this.notifyListeners();
+        }
+        return data;
+      }
+    } catch (e) {
+      console.warn('[MemoryEngine] Failed to fetch triad memory:', e);
+    }
+    return null;
   }
 
   public getVaultTelemetry(): any {
@@ -126,7 +273,8 @@ class MemoryEngine {
     try {
       const [statusRes, contextRes] = await Promise.all([
         fetch('/api/memory/status').then(r => r.json()),
-        fetch('/api/memory/context').then(r => r.json())
+        fetch('/api/memory/context').then(r => r.json()),
+        this.fetchTriadMemory()
       ]);
 
       if (statusRes && !statusRes.error) {
@@ -160,6 +308,9 @@ class MemoryEngine {
           longTerm: parsed.longTerm?.length ? parsed.longTerm : INITIAL_LONG_TERM_MEMORIES,
           semantic: parsed.semantic?.length ? parsed.semantic : INITIAL_SEMANTIC_MEMORIES,
           episodic: parsed.episodic?.length ? parsed.episodic : INITIAL_EPISODIC_MEMORIES,
+          personalData: parsed.personalData?.length ? parsed.personalData : INITIAL_PERSONAL_DATA,
+          preferences: parsed.preferences?.length ? parsed.preferences : INITIAL_PREFERENCES,
+          instructions: parsed.instructions?.length ? parsed.instructions : INITIAL_INSTRUCTIONS,
           memoryHealthIndex: parsed.memoryHealthIndex || 100,
           lastSyncTime: parsed.lastSyncTime || new Date().toISOString()
         };
@@ -173,6 +324,9 @@ class MemoryEngine {
       longTerm: INITIAL_LONG_TERM_MEMORIES,
       semantic: INITIAL_SEMANTIC_MEMORIES,
       episodic: INITIAL_EPISODIC_MEMORIES,
+      personalData: INITIAL_PERSONAL_DATA,
+      preferences: INITIAL_PREFERENCES,
+      instructions: INITIAL_INSTRUCTIONS,
       memoryHealthIndex: 100,
       lastSyncTime: new Date().toISOString()
     };
@@ -199,6 +353,142 @@ class MemoryEngine {
 
   public getState(): JarvisMemoryState {
     return { ...this.state };
+  }
+
+  // ----------------------------------------------------
+  // Triad Memory Methods (Personal Data, Preferences, Instructions)
+  // ----------------------------------------------------
+  public getPersonalData(): TriadMemoryItem[] {
+    return this.state.personalData && this.state.personalData.length > 0 ? this.state.personalData : INITIAL_PERSONAL_DATA;
+  }
+
+  public addPersonalData(content: string): TriadMemoryItem {
+    return this.addTriadItem('personal_data', content);
+  }
+
+  public removePersonalData(idOrContent: string): void {
+    this.removeTriadItem('personal_data', idOrContent);
+  }
+
+  public getPreferences(): TriadMemoryItem[] {
+    return this.state.preferences && this.state.preferences.length > 0 ? this.state.preferences : INITIAL_PREFERENCES;
+  }
+
+  public addPreference(content: string): TriadMemoryItem {
+    return this.addTriadItem('preferences', content);
+  }
+
+  public removePreference(idOrContent: string): void {
+    this.removeTriadItem('preferences', idOrContent);
+  }
+
+  public getInstructions(): TriadMemoryItem[] {
+    return this.state.instructions && this.state.instructions.length > 0 ? this.state.instructions : INITIAL_INSTRUCTIONS;
+  }
+
+  public addInstruction(content: string): TriadMemoryItem {
+    return this.addTriadItem('instructions', content);
+  }
+
+  public removeInstruction(idOrContent: string): void {
+    this.removeTriadItem('instructions', idOrContent);
+  }
+
+  public addTriadItem(category: TriadMemoryCategory, content: string): TriadMemoryItem {
+    const item: TriadMemoryItem = {
+      id: `m-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      category,
+      content: content.trim(),
+      learnedDate: new Date().toISOString().split('T')[0]
+    };
+
+    if (category === 'personal_data') {
+      this.state.personalData = [item, ...(this.state.personalData || [])];
+    } else if (category === 'preferences') {
+      this.state.preferences = [item, ...(this.state.preferences || [])];
+    } else if (category === 'instructions') {
+      this.state.instructions = [item, ...(this.state.instructions || [])];
+    }
+
+    this.saveToStorage();
+    this.notifyListeners();
+
+    // Persist to backend SQLite & Markdown vault
+    fetch(`/api/memory/${category}/add`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content })
+    }).catch(err => console.warn(`[MemoryEngine] Failed to persist new ${category} to server:`, err));
+
+    return item;
+  }
+
+  public removeTriadItem(category: TriadMemoryCategory, idOrContent: string): void {
+    let targetContent = idOrContent;
+
+    if (category === 'personal_data') {
+      const match = (this.state.personalData || []).find(i => i.id === idOrContent || i.content === idOrContent);
+      if (match) targetContent = match.content;
+      this.state.personalData = (this.state.personalData || []).filter(i => i.id !== idOrContent && i.content !== idOrContent);
+    } else if (category === 'preferences') {
+      const match = (this.state.preferences || []).find(i => i.id === idOrContent || i.content === idOrContent);
+      if (match) targetContent = match.content;
+      this.state.preferences = (this.state.preferences || []).filter(i => i.id !== idOrContent && i.content !== idOrContent);
+    } else if (category === 'instructions') {
+      const match = (this.state.instructions || []).find(i => i.id === idOrContent || i.content === idOrContent);
+      if (match) targetContent = match.content;
+      this.state.instructions = (this.state.instructions || []).filter(i => i.id !== idOrContent && i.content !== idOrContent);
+    }
+
+    this.saveToStorage();
+    this.notifyListeners();
+
+    // Persist removal to backend SQLite & Markdown vault
+    fetch(`/api/memory/${category}/remove`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: targetContent })
+    }).catch(err => console.warn(`[MemoryEngine] Failed to delete ${category} on server:`, err));
+  }
+
+  public rewriteTriadItem(category: TriadMemoryCategory, oldContent: string, newContent: string): void {
+    const updateList = (list?: TriadMemoryItem[]) => {
+      if (!list) return [];
+      let replaced = false;
+      const updated = list.map(item => {
+        if (item.content.trim() === oldContent.trim() || item.id === oldContent) {
+          replaced = true;
+          return { ...item, content: newContent.trim() };
+        }
+        return item;
+      });
+      if (!replaced && updated.length > 0) {
+        // Fallback: check substring match
+        const idx = updated.findIndex(i => i.content.toLowerCase().includes(oldContent.toLowerCase()));
+        if (idx !== -1) {
+          updated[idx] = { ...updated[idx], content: newContent.trim() };
+        }
+      }
+      return updated;
+    };
+
+    if (category === 'personal_data') {
+      this.state.personalData = updateList(this.state.personalData);
+    } else if (category === 'preferences') {
+      this.state.preferences = updateList(this.state.preferences);
+    } else if (category === 'instructions') {
+      this.state.instructions = updateList(this.state.instructions);
+    }
+
+    this.saveToStorage();
+    this.notifyListeners();
+
+    // Persist rewrite to backend SQLite & Markdown vault
+    fetch(`/api/memory/${category}/rewrite`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ oldContent, newContent })
+    }).catch(err => console.warn(`[MemoryEngine] Failed to rewrite ${category} on server:`, err));
   }
 
   public getStats(): { totalItems: number; ltm: number; sem: number; epi: number; shortTermTurns: number; health: number } {

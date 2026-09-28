@@ -668,6 +668,12 @@ export default function App() {
           refreshMemoryStats();
         }
 
+        if (msg.type === 'memory_updated') {
+          console.log('[Live Memory Event] Memory updated on backend:', msg.category, msg.action, msg.data);
+          jarvisMemoryEngine.fetchTriadMemory();
+          refreshMemoryStats();
+        }
+
         if (msg.type === 'memory_fact_saved') {
           console.log('[Live Memory Event] Fact committed to sovereign vault:', msg.key, msg.value);
           jarvisMemoryEngine.addLongTermMemory({

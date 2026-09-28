@@ -134,10 +134,105 @@ async function startServer() {
     res.json(data);
   });
 
-  app.post('/api/memory/fact', async (req, res) => {
-    const { key, value, category } = req.body;
-    const data = await runMemoryBridge(['save_fact', key || '', value || '', category || 'custom']);
-    res.json(data);
+  // Broadcast helper for real-time client sync
+  let activeWss: WebSocketServer | null = null;
+
+  function broadcastMemoryUpdated(category: string, action: string, data: any) {
+    if (!activeWss) return;
+    const payload = JSON.stringify({
+      type: 'memory_updated',
+      category,
+      action,
+      data
+    });
+    activeWss.clients.forEach((client) => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(payload);
+      }
+    });
+  }
+
+  // Triad Memory REST Endpoints (Personal Data, Preferences, Instructions)
+  app.get('/api/memory/triad', async (_req, res) => {
+    try {
+      const data = await runMemoryBridge(['get_triad']);
+      res.json(data);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.get(['/api/memory/personal_data', '/api/memory/personalDetails'], async (_req, res) => {
+    try {
+      const data = await runMemoryBridge(['get_triad', 'personal_data']);
+      res.json(data);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.get('/api/memory/preferences', async (_req, res) => {
+    try {
+      const data = await runMemoryBridge(['get_triad', 'preferences']);
+      res.json(data);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.get('/api/memory/instructions', async (_req, res) => {
+    try {
+      const data = await runMemoryBridge(['get_triad', 'instructions']);
+      res.json(data);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post(['/api/memory/add', '/api/memory/:category', '/api/memory/:category/add'], async (req, res) => {
+    try {
+      const category = req.params.category || req.body.category || 'personal_data';
+      const content = req.body.content || req.body.detail || req.body.preference || req.body.instruction || '';
+      if (!content) {
+        return res.status(400).json({ error: 'Content is required.' });
+      }
+      const data = await runMemoryBridge(['add_triad', category, content]);
+      broadcastMemoryUpdated(category, 'add', data);
+      res.json(data);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/memory/:category/remove', async (req, res) => {
+    try {
+      const category = req.params.category;
+      const target = req.body.content || req.body.detail || req.body.preference || req.body.instruction || req.body.id || '';
+      if (!target) {
+        return res.status(400).json({ error: 'Target content or ID is required.' });
+      }
+      const data = await runMemoryBridge(['remove_triad', category, String(target)]);
+      broadcastMemoryUpdated(category, 'remove', data);
+      res.json(data);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/memory/:category/rewrite', async (req, res) => {
+    try {
+      const category = req.params.category;
+      const oldContent = req.body.oldContent || req.body.old_content || req.body.id || '';
+      const newContent = req.body.newContent || req.body.new_content || req.body.content || '';
+      if (!oldContent || !newContent) {
+        return res.status(400).json({ error: 'Both oldContent and newContent are required.' });
+      }
+      const data = await runMemoryBridge(['rewrite_triad', category, String(oldContent), String(newContent)]);
+      broadcastMemoryUpdated(category, 'rewrite', data);
+      res.json(data);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
   });
 
   // Mount Connectors API (Google Workspace & GitHub MCP backed by Python)
@@ -270,6 +365,7 @@ async function startServer() {
 
   // WebSocket Server for Gemini Live API
   const wss = new WebSocketServer({ server, path: '/live' });
+  activeWss = wss;
 
   wss.on('error', (err) => {
     console.error('[Live WSS Error]', err);
@@ -313,9 +409,104 @@ async function startServer() {
 
         const memRes = await runMemoryBridge(['context', 'jarvis-prime']);
         const dynamicMemContext = memRes?.context ? `\n\n${memRes.context}` : '';
-        const systemInstruction = (config.systemInstruction || 'You are J.A.R.V.I.S., a sophisticated and helpful AI companion. Respond with natural spoken warmth and empathy in the user language.') + dynamicMemContext;
+        const memoryDirectives = `\n\nAUTONOMOUS MEMORY CONTROL DIRECTIVES:
+You have complete autonomous authority to control and maintain your own long-term memory across three categories:
+1. "personal_data": Personal details, identity vectors, academic/work details, background facts about the user.
+2. "preferences": User preferences, tools, default save locations, software choices, UI styles.
+3. "instructions": System execution rules, behavioral guidelines, operational constraints.
+
+When the user shares personal facts or instructions:
+- Proactively call \`add_memory(category, content)\`.
+When the user updates, modifies, changes, or corrects any existing detail:
+- Proactively call \`rewrite_memory(category, old_content, new_content)\` to update your memory core.
+When the user tells you to forget, remove, or delete a fact or preference:
+- Proactively call \`remove_memory(category, content)\` to purge it.
+When you need to look up personal data, preferences, or instructions:
+- Call \`query_memory(category, query)\`.
+Respond to the user with crisp British wit confirming the action (e.g. "I've committed that to memory, Sir.", "I've rewritten that rule in my core matrix, Sir.", "Understood, Sir. Fact purged.").`;
+
+        const systemInstruction = (config.systemInstruction || 'You are J.A.R.V.I.S., a sophisticated and helpful AI companion. Respond with natural spoken warmth and empathy in the user language.') + memoryDirectives + dynamicMemContext;
 
         const functionDeclarations = [
+          {
+            name: 'query_memory',
+            description: 'Query J.A.R.V.I.S. sovereign memory bank for personal data, preferences, or instructions.',
+            parameters: {
+              type: Type.OBJECT,
+              properties: {
+                category: {
+                  type: Type.STRING,
+                  enum: ['personal_data', 'preferences', 'instructions', 'all'],
+                  description: 'Memory category to query: personal_data, preferences, instructions, or all'
+                },
+                query: {
+                  type: Type.STRING,
+                  description: 'Optional search keyword to filter records'
+                }
+              }
+            }
+          },
+          {
+            name: 'add_memory',
+            description: 'Autonomously record a new memory fact, preference, or system instruction into J.A.R.V.I.S. memory core.',
+            parameters: {
+              type: Type.OBJECT,
+              properties: {
+                category: {
+                  type: Type.STRING,
+                  enum: ['personal_data', 'preferences', 'instructions'],
+                  description: 'The memory category to store this under'
+                },
+                content: {
+                  type: Type.STRING,
+                  description: 'The exact fact, preference, or instruction statement to remember'
+                }
+              },
+              required: ['category', 'content']
+            }
+          },
+          {
+            name: 'remove_memory',
+            description: 'Autonomously delete or forget an existing personal fact, user preference, or instruction from J.A.R.V.I.S. memory core.',
+            parameters: {
+              type: Type.OBJECT,
+              properties: {
+                category: {
+                  type: Type.STRING,
+                  enum: ['personal_data', 'preferences', 'instructions'],
+                  description: 'The category of the memory to remove'
+                },
+                content: {
+                  type: Type.STRING,
+                  description: 'The text snippet, fact statement, or identifier to remove'
+                }
+              },
+              required: ['category', 'content']
+            }
+          },
+          {
+            name: 'rewrite_memory',
+            description: 'Autonomously rewrite, edit, or update an existing personal fact, preference, or instruction in J.A.R.V.I.S. memory core. Use when the user modifies, corrects, or updates existing information.',
+            parameters: {
+              type: Type.OBJECT,
+              properties: {
+                category: {
+                  type: Type.STRING,
+                  enum: ['personal_data', 'preferences', 'instructions'],
+                  description: 'The category of the memory to rewrite'
+                },
+                old_content: {
+                  type: Type.STRING,
+                  description: 'The current/old content or keyword identifying the memory to update'
+                },
+                new_content: {
+                  type: Type.STRING,
+                  description: 'The new replacement content or updated rule'
+                }
+              },
+              required: ['category', 'old_content', 'new_content']
+            }
+          },
           {
             name: 'search_memory',
             description: 'Search persistent long-term memory, Obsidian vault notes, and past conversation records for facts, past decisions, or user preferences.',
@@ -572,6 +763,54 @@ async function startServer() {
                           id: callId,
                           name,
                           response: { result: "success, switched" }
+                        };
+                      }
+
+                      if (name === 'query_memory') {
+                        const cat = args?.category || 'all';
+                        const query = args?.query || '';
+                        console.log(`[Live WS] J.A.R.V.I.S. querying memory: category=${cat}, query=${query}`);
+                        const data = await runMemoryBridge(['get_triad', cat]);
+                        return {
+                          id: callId,
+                          name,
+                          response: { result: data }
+                        };
+                      }
+
+                      if (name === 'add_memory') {
+                        const { category, content } = args || {};
+                        console.log(`[Live WS] J.A.R.V.I.S. autonomously adding memory: [${category}] ${content}`);
+                        const addResult = await runMemoryBridge(['add_triad', category || 'personal_data', content || '']);
+                        broadcastMemoryUpdated(category || 'personal_data', 'add', addResult);
+                        return {
+                          id: callId,
+                          name,
+                          response: { result: `Successfully committed to ${category} memory core: "${content}"` }
+                        };
+                      }
+
+                      if (name === 'remove_memory') {
+                        const { category, content } = args || {};
+                        console.log(`[Live WS] J.A.R.V.I.S. autonomously removing memory: [${category}] ${content}`);
+                        const removeResult = await runMemoryBridge(['remove_triad', category || 'personal_data', content || '']);
+                        broadcastMemoryUpdated(category || 'personal_data', 'remove', removeResult);
+                        return {
+                          id: callId,
+                          name,
+                          response: { result: `Successfully removed from ${category} memory core: "${content}"` }
+                        };
+                      }
+
+                      if (name === 'rewrite_memory') {
+                        const { category, old_content, new_content } = args || {};
+                        console.log(`[Live WS] J.A.R.V.I.S. autonomously rewriting memory: [${category}] "${old_content}" -> "${new_content}"`);
+                        const rewriteResult = await runMemoryBridge(['rewrite_triad', category || 'personal_data', old_content || '', new_content || '']);
+                        broadcastMemoryUpdated(category || 'personal_data', 'rewrite', rewriteResult);
+                        return {
+                          id: callId,
+                          name,
+                          response: { result: `Successfully rewritten in ${category} memory: "${new_content}"` }
                         };
                       }
 
