@@ -15,10 +15,23 @@ from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional
 
 from .config import CONVERSATIONS_DIR, VAULT_ROOT
-from brain.logger import log_info, log_success, log_warn, log_error
-from brain.providers import llm_manager
 
 logger = logging.getLogger("jarvis.summarizer")
+log_info = lambda msg, **kw: logger.info(f"[{kw.get('source', 'Summarizer')}] {msg}")
+log_warn = lambda msg, **kw: logger.warning(f"[{kw.get('source', 'Summarizer')}] {msg}")
+log_error = lambda msg, **kw: logger.error(f"[{kw.get('source', 'Summarizer')}] {msg}")
+log_success = lambda msg, **kw: logger.info(f"[{kw.get('source', 'Summarizer')}] SUCCESS: {msg}")
+
+try:
+    from brain.logger import log_info as _bi, log_success as _bs, log_warn as _bw, log_error as _be
+    log_info, log_success, log_warn, log_error = _bi, _bs, _bw, _be
+except ImportError:
+    pass
+
+try:
+    from brain.providers import llm_manager
+except ImportError:
+    llm_manager = None
 
 
 class ConversationSummarizer:
@@ -103,17 +116,38 @@ class ConversationSummarizer:
             {"role": "user", "content": user_prompt},
         ]
 
-        response = await llm_manager.chat_completion(
-            messages=messages,
-            temperature=0.3,
-            max_tokens=3000
-        )
+        if llm_manager is not None:
+            response = await llm_manager.chat_completion(
+                messages=messages,
+                temperature=0.3,
+                max_tokens=3000
+            )
+            choices = response.get("choices", [])
+            if choices and "message" in choices[0]:
+                return choices[0]["message"].get("content", "").strip()
+            raise RuntimeError("No summary content returned from LLM provider.")
 
-        choices = response.get("choices", [])
-        if choices and "message" in choices[0]:
-            return choices[0]["message"].get("content", "").strip()
+        api_key = os.environ.get("GEMINI_API_KEY")
+        if not api_key:
+            raise RuntimeError("LLM provider unavailable: brain.providers not found and GEMINI_API_KEY is not set.")
 
-        raise RuntimeError("No summary content returned from LLM provider.")
+        import json
+        import urllib.request
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
+        payload = {
+            "contents": [{"role": "user", "parts": [{"text": system_prompt + "\n\n" + user_prompt}]}],
+            "generationConfig": {"temperature": 0.3, "maxOutputTokens": 3000}
+        }
+        req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers={"Content-Type": "application/json"})
+        loop = asyncio.get_running_loop()
+        res_json = await loop.run_in_executor(None, lambda: json.loads(urllib.request.urlopen(req, timeout=30).read().decode("utf-8")))
+        candidates = res_json.get("candidates", [])
+        if candidates and "content" in candidates[0]:
+            parts = candidates[0]["content"].get("parts", [])
+            if parts and "text" in parts[0]:
+                return parts[0]["text"].strip()
+
+        raise RuntimeError("No summary content returned from Gemini API fallback.")
 
     async def summarize_file(self, file_path: str, force: bool = False) -> Dict[str, Any]:
         """
@@ -165,8 +199,10 @@ turns_count: {turn_count}
 {summary_markdown}
 """
             # Atomically write back to file
-            with open(file_path, "w", encoding="utf-8") as f:
+            tmp_path = f"{file_path}.tmp.{os.getpid()}_{time.time()}"
+            with open(tmp_path, "w", encoding="utf-8") as f:
                 f.write(new_file_content)
+            os.replace(tmp_path, file_path)
 
             log_success(f"✅ Daily summary saved to {filename} ({len(summary_markdown)} chars).", source="Summarizer")
             return {

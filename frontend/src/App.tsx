@@ -6,13 +6,13 @@ import { Header } from './components/Header';
 import { VoiceVisualizer } from './components/VoiceVisualizer';
 import { VisionPreviewModal } from './components/VisionPreviewModal';
 import { JarvisMemoryHUD } from './components/JarvisMemoryHUD';
-import { ConnectorsModal } from './components/ConnectorsModal';
+import { ConnectorsView } from '@connectors/ui';
 import { CommandInputBar } from './components/CommandInputBar';
 import { jarvisMemoryEngine } from './services/memoryEngine';
 import { AudioQueuePlayer, float32ToInt16Base64, calculateVolume } from './utils/audio';
 import { demoVoiceInstance } from './services/demoVoiceService';
 import { initAuthListener } from './services/authService';
-import { AlertCircle, RefreshCw, Cpu } from 'lucide-react';
+import { AlertCircle, RefreshCw, Cpu, Zap } from 'lucide-react';
 
 export default function App() {
   const [selectedPersona, setSelectedPersona] = useState<VoicePersona>(PERSONAS[0]);
@@ -24,6 +24,7 @@ export default function App() {
   const [memoryCount, setMemoryCount] = useState<number>(jarvisMemoryEngine.getStats().totalItems);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [reminders, setReminders] = useState<{ id: string; title: string }[]>([]);
+  const [fastActuationAlert, setFastActuationAlert] = useState<{ tool: string; latencyMs: number } | null>(null);
 
   const [inputVolume, setInputVolume] = useState<number>(0);
   const [outputVolume, setOutputVolume] = useState<number>(0);
@@ -601,6 +602,32 @@ export default function App() {
           setConnectionState('listening');
         }
 
+        if (msg.type === 'mid_sentence_tool_executed') {
+          console.log(`⚡ [Mid-Sentence Fast Execution] ${msg.tool} executed in ${msg.execLatencyMs || msg.totalLatencyMs}ms`);
+          setFastActuationAlert({
+            tool: msg.tool,
+            latencyMs: msg.totalLatencyMs || msg.execLatencyMs || 0
+          });
+          setTimeout(() => {
+            setFastActuationAlert(null);
+          }, 3500);
+
+          if (msg.tool === 'activate_camera') {
+            startVision('camera');
+            setIsLiveStreaming(true);
+          } else if (msg.tool === 'activate_screen_share') {
+            startVision('screen');
+            setIsLiveStreaming(true);
+          } else if (msg.tool === 'deactivate_vision') {
+            stopVision();
+          } else if (msg.tool === 'set_ui_reminder' && msg.args) {
+            const ms = (msg.args.minutes || 5) * 60 * 1000;
+            setTimeout(() => {
+              setReminders(prev => [...prev, { id: Date.now().toString(), title: msg.args.title || 'Reminder' }]);
+            }, ms);
+          }
+        }
+
         if (msg.type === 'set_ui_reminder') {
           console.log(`[WS Tool] Scheduling reminder for ${msg.minutes} minutes: ${msg.title}`);
           const ms = msg.minutes * 60 * 1000;
@@ -897,16 +924,14 @@ export default function App() {
         onSendPromptToJarvis={(p) => handleSendPrompt(p)}
       />
 
-      {/* Connectors & Google Auth Modal */}
-      <ConnectorsModal
-        isOpen={isConnectorsOpen}
-        onClose={() => setIsConnectorsOpen(false)}
-        currentUser={currentUser}
-        onUserUpdate={(u) => {
-          setCurrentUser(u);
-          refreshMemoryStats();
-        }}
-      />
+      {/* Model Context Protocol Connectors Directory Modal */}
+      {isConnectorsOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="w-full max-w-5xl h-[88vh] shadow-[0_0_50px_rgba(0,216,255,0.2)] rounded-2xl overflow-hidden border border-cyan-500/30">
+            <ConnectorsView onClose={() => setIsConnectorsOpen(false)} />
+          </div>
+        </div>
+      )}
 
       {/* Vision Preview PiP Widget */}
       <VisionPreviewModal
@@ -920,6 +945,17 @@ export default function App() {
         onToggleLiveStreaming={() => setIsLiveStreaming(!isLiveStreaming)}
         onLiveStreamFrame={handleLiveStreamFrame}
       />
+
+      {/* Mid-Sentence Fast Actuation Toast */}
+      {fastActuationAlert && (
+        <div className="fixed top-20 right-6 z-50 flex items-center gap-3 bg-amber-950/80 border border-amber-400/60 backdrop-blur-md px-4 py-2.5 rounded-xl shadow-[0_0_20px_rgba(245,158,11,0.3)] animate-fade-in pointer-events-auto">
+          <Zap className="w-4 h-4 text-amber-400 animate-pulse" />
+          <div className="flex flex-col">
+            <span className="text-[10px] font-mono tracking-widest text-amber-300 font-bold uppercase">⚡ Fast Actuator Triggered</span>
+            <span className="text-xs font-mono text-white">{fastActuationAlert.tool} ({fastActuationAlert.latencyMs}ms)</span>
+          </div>
+        </div>
+      )}
 
       {/* Reminders Notification Banner */}
       <div className="fixed bottom-6 right-6 flex flex-col gap-3 z-50 pointer-events-none">

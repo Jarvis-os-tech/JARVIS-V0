@@ -17,12 +17,17 @@ from .types import (
 )
 
 
+STOP_WORDS = {"what", "did", "we", "is", "a", "an", "the", "and", "or", "to", "of", "in", "for", "on", "with", "about"}
+
+
 def _sanitize_fts5_query(query: str) -> str:
-    """Sanitize query string for safe SQLite FTS5 MATCH execution."""
-    tokens = re.findall(r'[\w]+', query)
+    """Sanitize query string for safe SQLite FTS5 MATCH execution with stop-word filtering."""
+    all_tokens = re.findall(r'[\w]+', query)
+    filtered = [t for t in all_tokens if t.lower() not in STOP_WORDS]
+    tokens = filtered if filtered else all_tokens
     if not tokens:
         return ""
-    return " ".join(f'"{t}"*' for t in tokens)
+    return " OR ".join(f'"{t}"*' for t in tokens)
 
 
 
@@ -34,7 +39,8 @@ class MemoryEngine:
         self._ensure_schema()
 
     def _conn(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(self.db_path)
+        conn = sqlite3.connect(self.db_path, timeout=30.0)
+        conn.execute("PRAGMA busy_timeout = 5000;")
         conn.execute("PRAGMA journal_mode=WAL;")
         conn.execute("PRAGMA synchronous=NORMAL;")
         conn.row_factory = sqlite3.Row

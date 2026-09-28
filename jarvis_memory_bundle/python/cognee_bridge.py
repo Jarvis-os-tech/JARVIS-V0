@@ -47,7 +47,10 @@ DEFAULT_MCP_URL = os.environ.get("COGNEE_MCP_URL", "")
 DEFAULT_DATASET = os.environ.get("COGNEE_DATASET", "jarvis_knowledge")
 DEFAULT_API_KEY = os.environ.get("COGNEE_API_KEY", "")
 DEFAULT_TENANT_ID = os.environ.get("COGNEE_TENANT_ID", "")
-COGNEE_ENABLED = os.environ.get("COGNEE_ENABLED", "true").lower() in ("1", "true", "yes", "on")
+COGNEE_ENABLED = (
+    os.environ.get("COGNEE_ENABLED", "false").lower() in ("1", "true", "yes", "on")
+    and bool(os.environ.get("COGNEE_API_KEY") or os.environ.get("COGNEE_MCP_URL"))
+)
 
 
 class CogneeBridge:
@@ -80,7 +83,7 @@ class CogneeBridge:
         self.default_dataset = default_dataset
         self.api_key = api_key or os.environ.get("COGNEE_API_KEY", "")
         self.tenant_id = tenant_id or os.environ.get("COGNEE_TENANT_ID", "")
-        self.enabled = enabled
+        self.enabled = enabled and bool(self.api_key or self.mcp_url)
 
         # Cached availability to prevent blocking on repeated calls when offline
         self._is_available: Optional[bool] = None

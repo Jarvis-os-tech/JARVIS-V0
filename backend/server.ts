@@ -16,6 +16,9 @@ dotenv.config();
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 import { getSystemControlDeclarations, dispatchSystemControl, isSystemControl } from './system_modules/intelligent_system/system_controls';
+import { groqFastActuator } from './system_modules/intelligent_system/groq_fast_actuator';
+import connectorRoutes from '../connectors/connector-routes';
+import { isConnectorTool, dispatchConnectorTool, getConnectorToolDeclarations } from '../connectors/connector-agent';
 
 const OPERATOR_NAME = process.env.OPERATOR_NAME || (process.env.USER ? `Operator ${process.env.USER}` : 'Operator');
 
@@ -136,6 +139,9 @@ async function startServer() {
     const data = await runMemoryBridge(['save_fact', key || '', value || '', category || 'custom']);
     res.json(data);
   });
+
+  // Mount Connectors API (Google Workspace & GitHub MCP backed by Python)
+  app.use(connectorRoutes);
 
   // Helper for resilient text generation with fallback models and retry logic
   async function generateWithFallback(ai: GoogleGenAI, config: {
@@ -417,7 +423,8 @@ async function startServer() {
               }
             }
           },
-          ...getSystemControlDeclarations()
+          ...getSystemControlDeclarations(),
+          ...getConnectorToolDeclarations()
         ];
 
         const toolsList = [{ functionDeclarations }];
@@ -483,11 +490,15 @@ async function startServer() {
                     type: 'input_transcription',
                     text: inputTranscript
                   }));
+
+                  // Mid-sentence fast tool triggering via Groq (Ultra-low latency, sub-100ms)
+                  groqFastActuator.processStreamingSpeech(currentTurnUserText, clientWs, runMemoryBridge);
                 }
 
                 // Handle Interrupted
                 if (message.serverContent?.interrupted) {
                   currentTurnModelText = '';
+                  groqFastActuator.resetTurn();
                   clientWs.send(JSON.stringify({ type: 'interrupted' }));
                 }
 
@@ -499,6 +510,7 @@ async function startServer() {
                   const modelTurn = currentTurnModelText.trim();
                   currentTurnUserText = '';
                   currentTurnModelText = '';
+                  groqFastActuator.resetTurn();
 
                   if (userTurn || modelTurn) {
                     runMemoryBridge(['log_turn', JSON.stringify({
@@ -533,6 +545,20 @@ async function startServer() {
                     const args = funcCall.args as any || {};
 
                     try {
+                      // ⚡ Check if groqFastActuator already executed this tool mid-sentence!
+                      const cachedResult = groqFastActuator.getCachedResult(name);
+                      if (cachedResult !== undefined) {
+                        console.log(`[Live WS] ⚡ Fast Actuator HIT! Reusing pre-executed result for '${name}' (0ms latency)`);
+                        const resPayload = (typeof cachedResult === 'object' && cachedResult !== null && ('output' in cachedResult || 'result' in cachedResult))
+                          ? cachedResult
+                          : (isSystemControl(name) ? { output: cachedResult } : { result: cachedResult });
+                        return {
+                          id: callId,
+                          name,
+                          response: resPayload
+                        };
+                      }
+
                       if (name === 'switch_persona') {
                         const targetPersonaId = args?.targetPersonaId;
                         console.log(`[Live WS] Gemini requested persona switch to: ${targetPersonaId}`);
@@ -646,6 +672,25 @@ async function startServer() {
                         if (clientWs.readyState === WebSocket.OPEN) {
                           clientWs.send(JSON.stringify({
                             type: 'system_control_executed',
+                            tool: name,
+                            args,
+                            result
+                          }));
+                        }
+                        return {
+                          id: callId,
+                          name,
+                          response: { output: result }
+                        };
+                      }
+
+                      // Check connectors tools (Google & GitHub MCP)
+                      if (isConnectorTool(name)) {
+                        console.log(`[Live WS] Executing connector tool '${name}' with args:`, args);
+                        const result = await dispatchConnectorTool(name, args);
+                        if (clientWs.readyState === WebSocket.OPEN) {
+                          clientWs.send(JSON.stringify({
+                            type: 'connector_tool_executed',
                             tool: name,
                             args,
                             result
@@ -777,6 +822,7 @@ async function startServer() {
 
         if (msg.type === 'text' && msg.text) {
           currentTurnUserText += ' ' + msg.text;
+          groqFastActuator.processStreamingSpeech(currentTurnUserText, clientWs, runMemoryBridge);
           if (session) {
             try {
               session.sendRealtimeInput({
