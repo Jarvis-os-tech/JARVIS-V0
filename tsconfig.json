@@ -18,6 +18,9 @@
     "paths": {
       "@/*": [
         "./frontend/src/*"
+      ],
+      "@connectors/*": [
+        "./connectors/*"
       ]
     },
     "allowImportingTsExtensions": true,
@@ -26,6 +29,7 @@
   "include": [
     "frontend/src/**/*",
     "frontend/vite.config.ts",
-    "backend/**/*"
+    "backend/**/*",
+    "connectors/**/*"
   ]
 }

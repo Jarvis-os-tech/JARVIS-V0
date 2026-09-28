@@ -6,7 +6,7 @@ import { Header } from './components/Header';
 import { VoiceVisualizer } from './components/VoiceVisualizer';
 import { VisionPreviewModal } from './components/VisionPreviewModal';
 import { JarvisMemoryHUD } from './components/JarvisMemoryHUD';
-import { ConnectorsModal } from './components/ConnectorsModal';
+import { ConnectorsView } from '@connectors/ui';
 import { CommandInputBar } from './components/CommandInputBar';
 import { jarvisMemoryEngine } from './services/memoryEngine';
 import { AudioQueuePlayer, float32ToInt16Base64, calculateVolume } from './utils/audio';
@@ -897,16 +897,14 @@ export default function App() {
         onSendPromptToJarvis={(p) => handleSendPrompt(p)}
       />
 
-      {/* Connectors & Google Auth Modal */}
-      <ConnectorsModal
-        isOpen={isConnectorsOpen}
-        onClose={() => setIsConnectorsOpen(false)}
-        currentUser={currentUser}
-        onUserUpdate={(u) => {
-          setCurrentUser(u);
-          refreshMemoryStats();
-        }}
-      />
+      {/* Model Context Protocol Connectors Directory Modal */}
+      {isConnectorsOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="w-full max-w-5xl h-[88vh] shadow-[0_0_50px_rgba(0,216,255,0.2)] rounded-2xl overflow-hidden border border-cyan-500/30">
+            <ConnectorsView onClose={() => setIsConnectorsOpen(false)} />
+          </div>
+        </div>
+      )}
 
       {/* Vision Preview PiP Widget */}
       <VisionPreviewModal

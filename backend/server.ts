@@ -16,6 +16,8 @@ dotenv.config();
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 import { getSystemControlDeclarations, dispatchSystemControl, isSystemControl } from './system_modules/intelligent_system/system_controls';
+import connectorRoutes from '../connectors/connector-routes';
+import { isConnectorTool, dispatchConnectorTool, getConnectorToolDeclarations } from '../connectors/connector-agent';
 
 const OPERATOR_NAME = process.env.OPERATOR_NAME || (process.env.USER ? `Operator ${process.env.USER}` : 'Operator');
 
@@ -136,6 +138,9 @@ async function startServer() {
     const data = await runMemoryBridge(['save_fact', key || '', value || '', category || 'custom']);
     res.json(data);
   });
+
+  // Mount Connectors API (Google Workspace & GitHub MCP backed by Python)
+  app.use(connectorRoutes);
 
   // Helper for resilient text generation with fallback models and retry logic
   async function generateWithFallback(ai: GoogleGenAI, config: {
@@ -417,7 +422,8 @@ async function startServer() {
               }
             }
           },
-          ...getSystemControlDeclarations()
+          ...getSystemControlDeclarations(),
+          ...getConnectorToolDeclarations()
         ];
 
         const toolsList = [{ functionDeclarations }];
@@ -646,6 +652,25 @@ async function startServer() {
                         if (clientWs.readyState === WebSocket.OPEN) {
                           clientWs.send(JSON.stringify({
                             type: 'system_control_executed',
+                            tool: name,
+                            args,
+                            result
+                          }));
+                        }
+                        return {
+                          id: callId,
+                          name,
+                          response: { output: result }
+                        };
+                      }
+
+                      // Check connectors tools (Google & GitHub MCP)
+                      if (isConnectorTool(name)) {
+                        console.log(`[Live WS] Executing connector tool '${name}' with args:`, args);
+                        const result = await dispatchConnectorTool(name, args);
+                        if (clientWs.readyState === WebSocket.OPEN) {
+                          clientWs.send(JSON.stringify({
+                            type: 'connector_tool_executed',
                             tool: name,
                             args,
                             result
