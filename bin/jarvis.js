@@ -8,16 +8,17 @@
  * What happens when you type `jarvis`:
  *   1. Checks GitHub main branch for updates
  *   2. If update available → prompts you interactively
- *   3. Builds production bundle if needed
- *   4. Starts the server on port 3000
- *   5. Opens your browser automatically
+ *   3. Merges main into current branch (no branch switch!)
+ *   4. Builds production bundle if needed
+ *   5. Starts the server on port 3000
+ *   6. Opens your browser automatically (once, not twice)
  * 
  * Jarvis handles everything internally. No subcommands needed.
  */
 
 import { execSync, spawn } from 'child_process';
 import { createInterface } from 'readline';
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
+import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import https from 'https';
@@ -56,7 +57,6 @@ function getCurrentCommit() {
   try {
     return readFileSync(RELEASE_FILE, 'utf-8').trim();
   } catch {
-    // If no release file, use current HEAD
     try {
       return execSync('git rev-parse HEAD', { cwd: PROJECT_ROOT, encoding: 'utf-8' }).trim();
     } catch {
@@ -112,6 +112,14 @@ function run(cmd, opts = {}) {
   }
 }
 
+function runCapture(cmd) {
+  try {
+    return execSync(cmd, { cwd: PROJECT_ROOT, encoding: 'utf-8', stdio: 'pipe' }).trim();
+  } catch {
+    return '';
+  }
+}
+
 function killPort(port) {
   try {
     execSync(`fuser -k ${port}/tcp 2>/dev/null`, { stdio: 'pipe' });
@@ -135,7 +143,8 @@ function openBrowser(url) {
 }
 
 function hasDist() {
-  return existsSync(resolve(PROJECT_ROOT, 'dist', 'server.js'));
+  return existsSync(resolve(PROJECT_ROOT, 'dist', 'server.js')) &&
+         existsSync(resolve(PROJECT_ROOT, 'dist', 'index.html'));
 }
 
 // ─── Update Check ───────────────────────────────────────────────────────────
@@ -181,28 +190,29 @@ async function checkForUpdates() {
       console.log('');
       console.log(c.cyan('  ⟳ Pulling latest from main...'));
 
-      // Fetch and reset to main
+      // Fetch main without switching branches
       if (!run('git fetch origin main')) {
         console.log(c.red('  ✗ Failed to fetch. Check your network connection.'));
         return false;
       }
 
-      if (!run('git checkout main')) {
-        console.log(c.red('  ✗ Failed to checkout main.'));
-        return false;
-      }
-
-      if (!run('git reset --hard origin/main')) {
-        console.log(c.red('  ✗ Failed to reset to origin/main.'));
+      // Merge main into current branch (keeps user on their branch)
+      const currentBranch = runCapture('git branch --show-current');
+      console.log(c.dim(`  → Merging main into ${currentBranch || 'current branch'}...`));
+      
+      if (!run('git merge origin/main --no-edit', { silent: true })) {
+        // If merge conflicts, abort and inform
+        run('git merge --abort', { silent: true });
+        console.log(c.yellow('  ⚠ Merge conflict detected. Skipping update — running current version.'));
         return false;
       }
 
       console.log(c.cyan('  ⟳ Installing dependencies...'));
-      run('npm install --production=false');
+      run('npm install');
 
       console.log(c.cyan('  ⟳ Building production bundle...'));
       if (!run('npm run build')) {
-        console.log(c.red('  ✗ Build failed. Reverting is not automatic — check logs above.'));
+        console.log(c.red('  ✗ Build failed. Check logs above.'));
         return false;
       }
 
@@ -261,11 +271,17 @@ function startServer() {
   const serverPath = resolve(PROJECT_ROOT, 'dist', 'server.js');
   const child = spawn('node', [serverPath], {
     cwd: PROJECT_ROOT,
-    env: { ...process.env, NODE_ENV: 'production', PORT: String(PORT) },
+    env: {
+      ...process.env,
+      NODE_ENV: 'production',
+      PORT: String(PORT),
+      // Tell the server NOT to auto-launch browser — the CLI handles it
+      AUTO_LAUNCH: 'false',
+    },
     stdio: 'inherit',
   });
 
-  // Give server a moment to bind, then open browser
+  // Give server a moment to bind, then open browser (ONCE, from CLI only)
   setTimeout(() => {
     const url = `http://localhost:${PORT}`;
     openBrowser(url);
