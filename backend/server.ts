@@ -19,6 +19,14 @@ import { getSystemControlDeclarations, dispatchSystemControl, isSystemControl } 
 import { groqFastActuator } from './system_modules/intelligent_system/groq_fast_actuator';
 import connectorRoutes from '../connectors/connector-routes';
 import { isConnectorTool, dispatchConnectorTool, getConnectorToolDeclarations } from '../connectors/connector-agent';
+import {
+  scanAndIndexSkills,
+  installSkills,
+  loadSkillContent,
+  executeSkillScript,
+  removeSkill,
+  getSkillsPromptContext
+} from './skills_manager';
 
 const OPERATOR_NAME = process.env.OPERATOR_NAME || (process.env.USER ? `Operator ${process.env.USER}` : 'Operator');
 
@@ -238,6 +246,83 @@ async function startServer() {
   // Mount Connectors API (Google Workspace & GitHub MCP backed by Python)
   app.use(connectorRoutes);
 
+  // J.A.R.V.I.S. Universal Skills & Plugins REST Endpoints
+  app.get('/api/skills', (_req, res) => {
+    try {
+      const skills = scanAndIndexSkills();
+      res.json({ skills });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/skills/install', async (req, res) => {
+    try {
+      const target = req.body.command || req.body.repoUrl || req.body.query || req.body.target || '';
+      console.log(`[Server] Received skill install directive: "${target}"`);
+      const result = await installSkills(target);
+
+      // Broadcast real-time skill acquisition event to all connected UI clients
+      if (activeWss) {
+        const payload = JSON.stringify({
+          type: 'skills_updated',
+          action: 'install',
+          skills: result.skills
+        });
+        activeWss.clients.forEach((client) => {
+          if (client.readyState === WebSocket.OPEN) {
+            client.send(payload);
+          }
+        });
+      }
+
+      res.json(result);
+    } catch (err: any) {
+      console.error('[Server] Skill install error:', err);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  app.get('/api/skills/:slug', (req, res) => {
+    try {
+      const result = loadSkillContent(req.params.slug);
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.delete('/api/skills/:slug', (req, res) => {
+    try {
+      const result = removeSkill(req.params.slug);
+      if (activeWss) {
+        const payload = JSON.stringify({
+          type: 'skills_updated',
+          action: 'remove',
+          slug: req.params.slug
+        });
+        activeWss.clients.forEach((client) => {
+          if (client.readyState === WebSocket.OPEN) {
+            client.send(payload);
+          }
+        });
+      }
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/skills/:slug/execute', async (req, res) => {
+    try {
+      const { scriptName, args } = req.body;
+      const result = await executeSkillScript(req.params.slug, scriptName, args || []);
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   // Helper for resilient text generation with fallback models and retry logic
   async function generateWithFallback(ai: GoogleGenAI, config: {
     contents: any;
@@ -324,7 +409,8 @@ async function startServer() {
       const { message, systemInstruction } = req.body;
       const memRes = await runMemoryBridge(['context', 'jarvis-prime']);
       const dynamicMemContext = memRes?.context ? `\n\n${memRes.context}` : '';
-      const baseInstruction = (systemInstruction || 'You are J.A.R.V.I.S., an autonomous AI operating system with ultra-rapid response latency and a 4-tier cognitive memory matrix. Respond with calm British wit, rapid verbal shortcuts (e.g. "Right away, Sir", "On it, Sir"), and proactively state if a complex task will require extra computing time.') + dynamicMemContext;
+      const skillsContext = getSkillsPromptContext();
+      const baseInstruction = (systemInstruction || 'You are J.A.R.V.I.S., an autonomous AI operating system with ultra-rapid response latency and a 4-tier cognitive memory matrix. Respond with calm British wit, rapid verbal shortcuts (e.g. "Right away, Sir", "On it, Sir"), and proactively state if a complex task will require extra computing time.') + dynamicMemContext + skillsContext;
 
       const ai = getAi();
       try {
@@ -425,7 +511,8 @@ When you need to look up personal data, preferences, or instructions:
 - Call \`query_memory(category, query)\`.
 Respond to the user with crisp British wit confirming the action (e.g. "I've committed that to memory, Sir.", "I've rewritten that rule in my core matrix, Sir.", "Understood, Sir. Fact purged.").`;
 
-        const systemInstruction = (config.systemInstruction || 'You are J.A.R.V.I.S., a sophisticated and helpful AI companion. Respond with natural spoken warmth and empathy in the user language.') + memoryDirectives + dynamicMemContext;
+        const skillsContext = getSkillsPromptContext();
+        const systemInstruction = (config.systemInstruction || 'You are J.A.R.V.I.S., a sophisticated and helpful AI companion. Respond with natural spoken warmth and empathy in the user language.') + memoryDirectives + dynamicMemContext + skillsContext;
 
         const functionDeclarations = [
           {
@@ -612,6 +699,51 @@ Respond to the user with crisp British wit confirming the action (e.g. "I've com
                   description: 'Reason for stopping vision'
                 }
               }
+            }
+          },
+          {
+            name: 'list_skills',
+            description: 'List all operational domain skills and plugins currently installed in J.A.R.V.I.S., along with their capabilities.',
+            parameters: {
+              type: Type.OBJECT,
+              properties: {}
+            }
+          },
+          {
+            name: 'load_skill',
+            description: 'Load and read the complete operational instructions, workflow rules, design principles, or guidelines of an installed skill.',
+            parameters: {
+              type: Type.OBJECT,
+              properties: {
+                skill_slug: {
+                  type: Type.STRING,
+                  description: 'The slug or name of the skill to load (e.g. "typesafe-ai", "find-skills", "ui-design-guide")'
+                }
+              },
+              required: ['skill_slug']
+            }
+          },
+          {
+            name: 'execute_skill_script',
+            description: 'Execute an automation script bundled inside an installed skill.',
+            parameters: {
+              type: Type.OBJECT,
+              properties: {
+                skill_slug: {
+                  type: Type.STRING,
+                  description: 'The skill name or slug'
+                },
+                script_name: {
+                  type: Type.STRING,
+                  description: 'The script file name (e.g. "audit.py", "generate.js", "deploy.sh")'
+                },
+                args: {
+                  type: Type.ARRAY,
+                  items: { type: Type.STRING },
+                  description: 'Optional command-line arguments to pass to the script'
+                }
+              },
+              required: ['skill_slug', 'script_name']
             }
           },
           ...getSystemControlDeclarations(),
@@ -901,6 +1033,39 @@ Respond to the user with crisp British wit confirming the action (e.g. "I've com
                           id: callId,
                           name,
                           response: { result: "Vision feed successfully deactivated." }
+                        };
+                      }
+
+                      // J.A.R.V.I.S. Skills & Plugins Subsystem Tool Handlers
+                      if (name === 'list_skills') {
+                        console.log(`[Live WS] J.A.R.V.I.S. listing installed skills`);
+                        const skills = scanAndIndexSkills();
+                        return {
+                          id: callId,
+                          name,
+                          response: { result: skills.map(s => ({ name: s.name, slug: s.slug, description: s.description, scripts: s.scripts, source: s.source })) }
+                        };
+                      }
+
+                      if (name === 'load_skill') {
+                        const slug = args?.skill_slug || '';
+                        console.log(`[Live WS] J.A.R.V.I.S. loading skill details: "${slug}"`);
+                        const skillData = loadSkillContent(slug);
+                        return {
+                          id: callId,
+                          name,
+                          response: { result: skillData }
+                        };
+                      }
+
+                      if (name === 'execute_skill_script') {
+                        const { skill_slug, script_name, args: scriptArgs } = args || {};
+                        console.log(`[Live WS] J.A.R.V.I.S. executing skill script: [${skill_slug}] ${script_name}`);
+                        const res = await executeSkillScript(skill_slug || '', script_name || '', scriptArgs || []);
+                        return {
+                          id: callId,
+                          name,
+                          response: { result: res }
                         };
                       }
 

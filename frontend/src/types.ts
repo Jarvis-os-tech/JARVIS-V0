@@ -131,3 +131,12 @@ export interface JarvisMemoryState {
   lastSyncTime: string;
 }
 
+export interface SkillItem {
+  name: string;
+  slug: string;
+  description: string;
+  source?: string;
+  path?: string;
+  scripts?: string[];
+  installedAt?: string;
+}
