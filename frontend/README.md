@@ -16,7 +16,7 @@ frontend/
 │   └── types.ts            # Frontend TypeScript types and interfaces
 ├── index.html              # HTML shell with service worker cache management
 ├── vite.config.ts          # Vite configuration with Tailwind CSS v4 and React plugins
-├── firebase-applet-config.json # Firebase authentication configuration
+├── firebase-applet-config.example.json # Firebase configuration template (gitignored for real configs)
 └── README.md
 ```
 

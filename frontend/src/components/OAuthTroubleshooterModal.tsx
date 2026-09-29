@@ -37,7 +37,11 @@ export const OAuthTroubleshooterModal: React.FC<OAuthTroubleshooterModalProps> =
   };
 
   const currentDevOrigin = window.location.origin;
-  const firebaseHandler = 'https://gen-lang-client-0509942846.firebaseapp.com/__/auth/handler';
+  const projectId = import.meta.env.VITE_FIREBASE_PROJECT_ID || 'your-project-id';
+  const authDomain = import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || `${projectId}.firebaseapp.com`;
+  const firebaseHandler = `https://${authDomain}/__/auth/handler`;
+  const credentialsUrl = `https://console.cloud.google.com/apis/credentials?project=${projectId}`;
+  const consentUrl = `https://console.cloud.google.com/apis/credentials/consent?project=${projectId}`;
   const devAppUrl = 'https://ais-dev-zsu33xgoebp5uutq6m5ikv-83765131071.asia-southeast1.run.app';
   const preAppUrl = 'https://ais-pre-zsu33xgoebp5uutq6m5ikv-83765131071.asia-southeast1.run.app';
 
@@ -134,7 +138,7 @@ export const OAuthTroubleshooterModal: React.FC<OAuthTroubleshooterModalProps> =
                   </span>
                 </div>
                 <a
-                  href="https://console.cloud.google.com/apis/credentials?project=gen-lang-client-0509942846"
+                  href={credentialsUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="px-3.5 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-mono font-bold text-xs flex items-center gap-1.5 transition-colors"
@@ -175,7 +179,7 @@ export const OAuthTroubleshooterModal: React.FC<OAuthTroubleshooterModalProps> =
                       Authorized JavaScript Origins:
                     </span>
                     <button
-                      onClick={() => copyToClipboard(`${devAppUrl}\n${preAppUrl}\nhttps://gen-lang-client-0509942846.firebaseapp.com`, 'origins')}
+                      onClick={() => copyToClipboard(`${devAppUrl}\n${preAppUrl}\nhttps://${authDomain}`, 'origins')}
                       className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-300 text-[11px] font-mono flex items-center gap-1 transition-colors"
                     >
                       {copiedField === 'origins' ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
@@ -190,7 +194,7 @@ export const OAuthTroubleshooterModal: React.FC<OAuthTroubleshooterModalProps> =
                       {preAppUrl}
                     </code>
                     <code className="text-[11px] font-mono text-slate-300 bg-black/60 p-1.5 rounded block break-all border border-slate-800">
-                      https://gen-lang-client-0509942846.firebaseapp.com
+                      https://{authDomain}
                     </code>
                   </div>
                 </div>
@@ -229,7 +233,7 @@ export const OAuthTroubleshooterModal: React.FC<OAuthTroubleshooterModalProps> =
                       Open the OAuth Consent Screen
                     </span>
                     <a
-                      href="https://console.cloud.google.com/apis/credentials/consent?project=gen-lang-client-0509942846"
+                      href={consentUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="px-3 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-300 font-mono text-[11px] flex items-center gap-1"
@@ -238,7 +242,7 @@ export const OAuthTroubleshooterModal: React.FC<OAuthTroubleshooterModalProps> =
                     </a>
                   </div>
                   <p className="text-slate-400 text-xs">
-                    Navigate to <strong>APIs &amp; Services &gt; OAuth consent screen</strong> in project <code className="text-cyan-300">gen-lang-client-0509942846</code>.
+                    Navigate to <strong>APIs &amp; Services &gt; OAuth consent screen</strong> in project <code className="text-cyan-300">{projectId}</code>.
                   </p>
                 </div>
 
@@ -284,7 +288,7 @@ export const OAuthTroubleshooterModal: React.FC<OAuthTroubleshooterModalProps> =
                   </p>
                   <ol className="list-decimal list-inside space-y-1 text-slate-400 text-[11px] font-mono">
                     <li>Click <strong className="text-cyan-300">&quot;Advanced&quot;</strong> in the bottom left corner.</li>
-                    <li>Click <strong className="text-cyan-300">&quot;Go to gen-lang-client-0509942846 (unsafe)&quot;</strong>.</li>
+                    <li>Click <strong className="text-cyan-300">&quot;Go to {projectId} (unsafe)&quot;</strong>.</li>
                     <li>Check the permissions boxes and click <strong className="text-emerald-300">&quot;Continue&quot;</strong>.</li>
                   </ol>
                 </div>
@@ -314,7 +318,7 @@ export const OAuthTroubleshooterModal: React.FC<OAuthTroubleshooterModalProps> =
                     1. Open OAuth Consent Screen
                   </span>
                   <a
-                    href="https://console.cloud.google.com/apis/credentials/consent?project=gen-lang-client-0509942846"
+                    href={consentUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-cyan-400 hover:underline flex items-center gap-1 font-mono text-xs"

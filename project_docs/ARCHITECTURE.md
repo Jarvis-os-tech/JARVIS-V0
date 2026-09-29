@@ -28,7 +28,7 @@ jarvis/
 │   │   └── types.ts            # Frontend domain models
 │   ├── index.html              # HTML5 entry with Service Worker cache purger
 │   ├── vite.config.ts          # Vite build & Tailwind CSS v4 pipeline
-│   └── firebase-applet-config.json
+│   └── firebase-applet-config.example.json # Firebase config template (gitignored)
 │
 ├── backend/                    # Core Runtime, API & Systems Layer
 │   ├── server.ts               # Express API, /live WebSocket gateway, Vite dev middleware

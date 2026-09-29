@@ -8,8 +8,13 @@ coverage/
 .env*
 !.env.example
 __pycache__/
-*.pyc
 .venv/
+
+# Firebase configuration & credentials (sensitive API keys)
+frontend/firebase-applet-config.json
+**/firebase-applet-config.json
+!frontend/firebase-applet-config.example.json
+!**/firebase-applet-config.example.json
 
 # ==============================================================================
 # Real Memory & Sovereign Obsidian Vault
