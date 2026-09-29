@@ -15,6 +15,10 @@ import urllib.request
 import urllib.parse
 import urllib.error
 from pathlib import Path
+import datetime
+import re
+import html
+import sqlite3
 
 # Paths
 ROOT_DIR = Path(__file__).resolve().parent.parent
@@ -60,12 +64,12 @@ REGISTRY = [
             {"name": "create_draft", "description": "Create an email draft without sending", "parameters": {"type": "object", "properties": {"to": {"type": "string"}, "subject": {"type": "string"}, "body": {"type": "string"}}, "required": ["to", "subject", "body"]}},
             {"name": "list_labels", "description": "List all Gmail labels"},
             {"name": "list_events", "description": "List calendar events within a date range", "parameters": {"type": "object", "properties": {"timeMin": {"type": "string"}, "timeMax": {"type": "string"}}}},
-            {"name": "create_event", "description": "Create a new calendar event", "parameters": {"type": "object", "properties": {"summary": {"type": "string"}, "description": {"type": "string"}, "start": {"type": "string"}, "end": {"type": "string"}, "attendees": {"type": "array", "items": {"type": "string"}}}, "required": ["summary", "start", "end"]}},
+            {"name": "create_event", "description": "Create a new calendar event", "parameters": {"type": "object", "properties": {"summary": {"type": "string"}, "description": {"type": "string"}, "start": {"type": "string"}, "end": {"type": "string"}, "attendees": {"type": "array", "items": {"type": "string"}}}, "required": ["summary", "start"]}},
             {"name": "update_event", "description": "Update an existing calendar event", "parameters": {"type": "object", "properties": {"eventId": {"type": "string"}, "summary": {"type": "string"}, "description": {"type": "string"}, "start": {"type": "string"}, "end": {"type": "string"}, "attendees": {"type": "array", "items": {"type": "string"}}}, "required": ["eventId"]}},
             {"name": "delete_event", "description": "Delete a calendar event by ID", "parameters": {"type": "object", "properties": {"eventId": {"type": "string"}}, "required": ["eventId"]}},
             {"name": "find_free_time", "description": "Find available time slots in date range", "parameters": {"type": "object", "properties": {"timeMin": {"type": "string"}, "timeMax": {"type": "string"}}, "required": ["timeMin", "timeMax"]}},
             {"name": "list_tasks", "description": "List Google Tasks", "parameters": {"type": "object", "properties": {"tasklist": {"type": "string"}}}},
-            {"name": "create_task", "description": "Create a task in Google Tasks", "parameters": {"type": "object", "properties": {"title": {"type": "string"}, "notes": {"type": "string"}, "tasklist": {"type": "string"}}, "required": ["title"]}},
+            {"name": "create_task", "description": "Create a task in Google Tasks", "parameters": {"type": "object", "properties": {"title": {"type": "string"}, "notes": {"type": "string"}, "due": {"type": "string"}, "tasklist": {"type": "string"}}, "required": ["title"]}},
             {"name": "complete_google_task", "description": "Mark a Google Task as completed", "parameters": {"type": "object", "properties": {"taskId": {"type": "string"}, "tasklist": {"type": "string"}}, "required": ["taskId"]}},
             {"name": "create_document", "description": "Create a new Google Document", "parameters": {"type": "object", "properties": {"title": {"type": "string"}}, "required": ["title"]}},
             {"name": "get_document", "description": "Retrieve content from Google Document", "parameters": {"type": "object", "properties": {"documentId": {"type": "string"}}, "required": ["documentId"]}},
@@ -367,14 +371,185 @@ def _google_api(endpoint: str, token: str, method: str = "GET", body: any = None
     url = f"https://www.googleapis.com/{endpoint.lstrip('/')}"
     return _http(url, headers={"Authorization": f"Bearer {token}"}, method=method, body=body)
 
-def google_search_emails(token: str, query: str = "in:inbox") -> dict:
-    encoded = urllib.parse.quote_plus(query or "in:inbox")
-    url = f"https://gmail.googleapis.com/gmail/v1/users/me/messages?q={encoded}&maxResults=10"
-    return _http(url, headers={"Authorization": f"Bearer {token}"})
+def _clean_text(text: str) -> str:
+    if not text:
+        return ""
+    text = re.sub(r"[\u200b\u200c\u200d\ufeff\u034f\u00ad\xa0]+", " ", text)
+    text = re.sub(r"\s+", " ", text)
+    return text.strip()
 
-def google_read_email(token: str, message_id: str) -> dict:
-    url = f"https://gmail.googleapis.com/gmail/v1/users/me/messages/{message_id}?format=full"
-    return _http(url, headers={"Authorization": f"Bearer {token}"})
+def _extract_email_body(payload: dict) -> str:
+    if not payload:
+        return ""
+    mime_type = payload.get("mimeType", "")
+    body_data = payload.get("body", {}).get("data")
+    if body_data:
+        try:
+            decoded = base64.urlsafe_b64decode(body_data + "==").decode("utf-8", errors="replace")
+            if "html" in mime_type:
+                decoded = re.sub(r"<style[^>]*>.*?</style>", "", decoded, flags=re.DOTALL | re.IGNORECASE)
+                decoded = re.sub(r"<script[^>]*>.*?</script>", "", decoded, flags=re.DOTALL | re.IGNORECASE)
+                decoded = re.sub(r"<[^>]+>", " ", decoded)
+                decoded = html.unescape(decoded)
+            return _clean_text(decoded)
+        except Exception:
+            pass
+
+    parts = payload.get("parts", [])
+    for part in parts:
+        if part.get("mimeType") == "text/plain":
+            t = _extract_email_body(part)
+            if t:
+                return t
+    for part in parts:
+        if part.get("mimeType") == "text/html":
+            t = _extract_email_body(part)
+            if t:
+                return t
+    for part in parts:
+        t = _extract_email_body(part)
+        if t:
+            return t
+    return ""
+
+def _normalize_datetime(dt_str: str, default_hour: int = 9) -> str:
+    if not dt_str:
+        return ""
+    s = str(dt_str).strip()
+    now = datetime.datetime.now().astimezone()
+    tz = now.tzinfo
+
+    if re.match(r"^\d{4}-\d{2}-\d{2}$", s):
+        try:
+            d = datetime.date.fromisoformat(s)
+            return datetime.datetime.combine(d, datetime.time(default_hour, 0), tzinfo=tz).isoformat()
+        except Exception:
+            pass
+
+    if re.match(r"^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}", s):
+        clean_iso = s.replace(" ", "T")
+        try:
+            dt = datetime.datetime.fromisoformat(clean_iso)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=tz)
+            return dt.isoformat()
+        except Exception:
+            pass
+
+    s_lower = s.lower()
+    target_date = now.date()
+    if "tomorrow" in s_lower:
+        target_date = now.date() + datetime.timedelta(days=1)
+    elif "yesterday" in s_lower:
+        target_date = now.date() - datetime.timedelta(days=1)
+    elif "today" in s_lower:
+        target_date = now.date()
+    elif "next week" in s_lower:
+        target_date = now.date() + datetime.timedelta(days=7)
+
+    hour = default_hour
+    minute = 0
+    time_match = re.search(r"\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b", s_lower)
+    if time_match:
+        h = int(time_match.group(1))
+        m = int(time_match.group(2)) if time_match.group(2) else 0
+        meridiem = time_match.group(3)
+        if meridiem == "pm" and h < 12:
+            h += 12
+        elif meridiem == "am" and h == 12:
+            h = 0
+        if 0 <= h <= 23 and 0 <= m <= 59:
+            hour, minute = h, m
+
+    dt = datetime.datetime.combine(target_date, datetime.time(hour, minute), tzinfo=tz)
+    return dt.isoformat()
+
+def google_search_emails(token: str, query: str = "in:inbox", max_results: int = 8) -> dict:
+    q = (query or "in:inbox").strip()
+    limit = int(max_results) if max_results else 8
+    limit = max(1, min(limit, 20))
+    encoded = urllib.parse.quote_plus(q)
+    url = f"https://gmail.googleapis.com/gmail/v1/users/me/messages?q={encoded}&maxResults={limit}"
+    res = _http(url, headers={"Authorization": f"Bearer {token}"})
+    if "error" in res:
+        return res
+
+    messages = res.get("messages", [])
+    if not messages:
+        return {
+            "query": q,
+            "emails": [],
+            "message": f"No emails found matching query '{q}'"
+        }
+
+    emails = []
+    for m in messages[:limit]:
+        msg_id = m.get("id")
+        if not msg_id:
+            continue
+        meta_url = f"https://gmail.googleapis.com/gmail/v1/users/me/messages/{msg_id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=Date"
+        meta = _http(meta_url, headers={"Authorization": f"Bearer {token}"})
+        if "error" in meta:
+            continue
+        headers = {}
+        for h in meta.get("payload", {}).get("headers", []):
+            headers[h.get("name", "")] = h.get("value", "")
+
+        emails.append({
+            "id": msg_id,
+            "threadId": m.get("threadId"),
+            "subject": headers.get("Subject", "(No Subject)"),
+            "from": headers.get("From", "(Unknown Sender)"),
+            "date": headers.get("Date", ""),
+            "snippet": _clean_text(meta.get("snippet", ""))
+        })
+
+    return {
+        "query": q,
+        "count": len(emails),
+        "resultSizeEstimate": res.get("resultSizeEstimate", len(emails)),
+        "emails": emails
+    }
+
+def google_read_email(token: str, message_id: str = "") -> dict:
+    mid = str(message_id or "").strip()
+    if not mid or mid.lower() in ("latest", "recent", "newest", "last"):
+        search_res = _http(
+            "https://gmail.googleapis.com/gmail/v1/users/me/messages?q=in:inbox&maxResults=1",
+            headers={"Authorization": f"Bearer {token}"}
+        )
+        msgs = search_res.get("messages", [])
+        if not msgs:
+            return {"error": "No recent emails found in inbox"}
+        mid = msgs[0]["id"]
+
+    url = f"https://gmail.googleapis.com/gmail/v1/users/me/messages/{mid}?format=full"
+    res = _http(url, headers={"Authorization": f"Bearer {token}"})
+    if "error" in res:
+        return res
+
+    headers = {}
+    for h in res.get("payload", {}).get("headers", []):
+        headers[h.get("name", "")] = h.get("value", "")
+
+    snippet = _clean_text(res.get("snippet", ""))
+    body = _extract_email_body(res.get("payload", {}))
+    if not body and snippet:
+        body = snippet
+
+    if len(body) > 4000:
+        body = body[:4000] + "... [truncated for brevity]"
+
+    return {
+        "id": res.get("id", mid),
+        "threadId": res.get("threadId"),
+        "subject": headers.get("Subject", "(No Subject)"),
+        "from": headers.get("From", "(Unknown)"),
+        "to": headers.get("To", ""),
+        "date": headers.get("Date", ""),
+        "snippet": snippet,
+        "body": body
+    }
 
 def google_send_email(token: str, to: str, subject: str, body: str) -> dict:
     msg = email.message.EmailMessage()
@@ -398,31 +573,111 @@ def google_list_labels(token: str) -> dict:
     return _http("https://gmail.googleapis.com/gmail/v1/users/me/labels", headers={"Authorization": f"Bearer {token}"})
 
 def google_list_events(token: str, time_min: str = None, time_max: str = None) -> dict:
-    params = {"singleEvents": "true", "orderBy": "startTime"}
-    if time_min:
-        params["timeMin"] = time_min
+    now_iso = datetime.datetime.now().astimezone().isoformat()
+    t_min = _normalize_datetime(time_min, default_hour=0) if time_min else now_iso
+    params = {"singleEvents": "true", "orderBy": "startTime", "timeMin": t_min}
     if time_max:
-        params["timeMax"] = time_max
+        t_max = _normalize_datetime(time_max, default_hour=23)
+        if t_max:
+            params["timeMax"] = t_max
+
     url = f"https://www.googleapis.com/calendar/v3/calendars/primary/events?{urllib.parse.urlencode(params)}"
-    return _http(url, headers={"Authorization": f"Bearer {token}"})
+    res = _http(url, headers={"Authorization": f"Bearer {token}"})
+    if "error" in res:
+        return res
+
+    events = []
+    for item in res.get("items", []):
+        start_obj = item.get("start", {})
+        end_obj = item.get("end", {})
+        events.append({
+            "id": item.get("id"),
+            "summary": item.get("summary", "(No title)"),
+            "description": item.get("description", ""),
+            "start": start_obj.get("dateTime") or start_obj.get("date"),
+            "end": end_obj.get("dateTime") or end_obj.get("date"),
+            "location": item.get("location", ""),
+            "htmlLink": item.get("htmlLink", ""),
+            "attendees": [a.get("email") for a in item.get("attendees", []) if a.get("email")]
+        })
+
+    return {
+        "count": len(events),
+        "timeMin": t_min,
+        "timeMax": params.get("timeMax"),
+        "events": events
+    }
 
 def google_create_event(token: str, summary: str, description: str = "", start: str = None, end: str = None, attendees: list = None) -> dict:
+    if not summary:
+        return {"error": "Missing summary/title for event"}
+
+    now = datetime.datetime.now().astimezone()
+    if not start:
+        dt_start = now + datetime.timedelta(hours=1)
+        start_iso = dt_start.isoformat()
+    else:
+        start_iso = _normalize_datetime(start, default_hour=10)
+        try:
+            dt_start = datetime.datetime.fromisoformat(start_iso)
+        except Exception:
+            dt_start = now + datetime.timedelta(hours=1)
+            start_iso = dt_start.isoformat()
+
+    if end:
+        end_iso = _normalize_datetime(end, default_hour=11)
+        try:
+            dt_end = datetime.datetime.fromisoformat(end_iso)
+            if dt_end <= dt_start:
+                dt_end = dt_start + datetime.timedelta(hours=1)
+                end_iso = dt_end.isoformat()
+        except Exception:
+            dt_end = dt_start + datetime.timedelta(hours=1)
+            end_iso = dt_end.isoformat()
+    else:
+        dt_end = dt_start + datetime.timedelta(hours=1)
+        end_iso = dt_end.isoformat()
+
     body = {
         "summary": summary,
-        "description": description,
-        "start": {"dateTime": start} if start else {},
-        "end": {"dateTime": end} if end else {},
+        "description": description or "",
+        "start": {"dateTime": start_iso},
+        "end": {"dateTime": end_iso},
     }
     if attendees:
-        body["attendees"] = [{"email": a} for a in attendees]
-    return _http("https://www.googleapis.com/calendar/v3/calendars/primary/events", headers={"Authorization": f"Bearer {token}"}, method="POST", body=body)
+        body["attendees"] = [{"email": a} for a in (attendees if isinstance(attendees, list) else [str(attendees)])]
+
+    res = _http(
+        "https://www.googleapis.com/calendar/v3/calendars/primary/events",
+        headers={"Authorization": f"Bearer {token}"},
+        method="POST",
+        body=body
+    )
+    if "error" in res:
+        return res
+
+    return {
+        "success": True,
+        "event": {
+            "id": res.get("id"),
+            "summary": res.get("summary"),
+            "start": res.get("start"),
+            "end": res.get("end"),
+            "htmlLink": res.get("htmlLink"),
+            "description": res.get("description", "")
+        }
+    }
 
 def google_update_event(token: str, event_id: str, summary: str = None, description: str = None, start: str = None, end: str = None, attendees: list = None) -> dict:
     body = {}
     if summary: body["summary"] = summary
     if description: body["description"] = description
-    if start: body["start"] = {"dateTime": start}
-    if end: body["end"] = {"dateTime": end}
+    if start:
+        start_iso = _normalize_datetime(start)
+        body["start"] = {"dateTime": start_iso}
+    if end:
+        end_iso = _normalize_datetime(end)
+        body["end"] = {"dateTime": end_iso}
     if attendees: body["attendees"] = [{"email": a} for a in attendees]
     return _http(f"https://www.googleapis.com/calendar/v3/calendars/primary/events/{event_id}", headers={"Authorization": f"Bearer {token}"}, method="PATCH", body=body)
 
@@ -430,20 +685,95 @@ def google_delete_event(token: str, event_id: str) -> dict:
     return _http(f"https://www.googleapis.com/calendar/v3/calendars/primary/events/{event_id}", headers={"Authorization": f"Bearer {token}"}, method="DELETE")
 
 def google_find_free_time(token: str, time_min: str, time_max: str) -> dict:
-    body = {"timeMin": time_min, "timeMax": time_max, "items": [{"id": "primary"}]}
+    t_min = _normalize_datetime(time_min, default_hour=0)
+    t_max = _normalize_datetime(time_max, default_hour=23)
+    body = {"timeMin": t_min, "timeMax": t_max, "items": [{"id": "primary"}]}
     return _http("https://www.googleapis.com/calendar/v3/freeBusy", headers={"Authorization": f"Bearer {token}"}, method="POST", body=body)
 
 def google_list_tasks(token: str, tasklist: str = "@default") -> dict:
     url = f"https://tasks.googleapis.com/tasks/v1/lists/{tasklist or '@default'}/tasks?showCompleted=false"
-    return _http(url, headers={"Authorization": f"Bearer {token}"})
+    res = _http(url, headers={"Authorization": f"Bearer {token}"})
+    if "error" in res:
+        return res
+    tasks = []
+    for t in res.get("items", []):
+        tasks.append({
+            "id": t.get("id"),
+            "title": t.get("title", ""),
+            "notes": t.get("notes", ""),
+            "status": t.get("status", "needsAction"),
+            "due": t.get("due"),
+            "updated": t.get("updated")
+        })
+    return {"tasks": tasks, "count": len(tasks)}
 
-def google_create_task(token: str, title: str, notes: str = "", tasklist: str = "@default") -> dict:
+def google_create_task(token: str, title: str, notes: str = "", due: str = None, tasklist: str = "@default") -> dict:
+    if not title:
+        return {"error": "Missing title for task"}
     url = f"https://tasks.googleapis.com/tasks/v1/lists/{tasklist or '@default'}/tasks"
-    return _http(url, headers={"Authorization": f"Bearer {token}"}, method="POST", body={"title": title, "notes": notes})
+    body = {"title": title}
+    if notes:
+        body["notes"] = notes
+    due_date_str = None
+    if due:
+        normalized_dt = _normalize_datetime(due)
+        if normalized_dt:
+            try:
+                dt_due = datetime.datetime.fromisoformat(normalized_dt)
+                due_date_str = dt_due.date().isoformat()
+                body["due"] = f"{due_date_str}T00:00:00.000Z"
+            except Exception:
+                pass
+
+    res = _http(url, headers={"Authorization": f"Bearer {token}"}, method="POST", body=body)
+    if "error" in res:
+        return res
+
+    try:
+        db_path = DATA_DIR / "jarvis.db"
+        if db_path.exists():
+            conn = sqlite3.connect(db_path)
+            cur = conn.cursor()
+            cur.execute(
+                "INSERT INTO tasks (title, status, priority, created_date, due_date, details_markdown) VALUES (?, ?, ?, ?, ?, ?)",
+                (title, "scheduled", "Medium", datetime.date.today().isoformat(), due_date_str, notes or None)
+            )
+            conn.commit()
+            conn.close()
+    except Exception:
+        pass
+
+    return {
+        "success": True,
+        "task": {
+            "id": res.get("id"),
+            "title": res.get("title"),
+            "notes": res.get("notes", ""),
+            "status": res.get("status"),
+            "due": res.get("due")
+        }
+    }
 
 def google_complete_task(token: str, task_id: str, tasklist: str = "@default") -> dict:
     url = f"https://tasks.googleapis.com/tasks/v1/lists/{tasklist or '@default'}/tasks/{task_id}"
-    return _http(url, headers={"Authorization": f"Bearer {token}"}, method="PATCH", body={"status": "completed"})
+    res = _http(url, headers={"Authorization": f"Bearer {token}"}, method="PATCH", body={"status": "completed"})
+    if "error" in res:
+        return res
+
+    try:
+        db_path = DATA_DIR / "jarvis.db"
+        if db_path.exists():
+            conn = sqlite3.connect(db_path)
+            cur = conn.cursor()
+            task_title = res.get("title", "")
+            if task_title:
+                cur.execute("UPDATE tasks SET status = 'completed' WHERE title = ?", (task_title,))
+            conn.commit()
+            conn.close()
+    except Exception:
+        pass
+
+    return {"success": True, "task": res}
 
 def google_create_document(token: str, title: str) -> dict:
     return _http("https://docs.googleapis.com/v1/documents", headers={"Authorization": f"Bearer {token}"}, method="POST", body={"title": title})
@@ -485,7 +815,7 @@ def google_mcp_call(tool_name: str, args: dict, token: str) -> dict:
     if tool_name == "delete_event": return google_delete_event(token, args.get("eventId", ""))
     if tool_name == "find_free_time": return google_find_free_time(token, args.get("timeMin", ""), args.get("timeMax", ""))
     if tool_name == "list_tasks": return google_list_tasks(token, args.get("tasklist", "@default"))
-    if tool_name == "create_task": return google_create_task(token, args.get("title", ""), args.get("notes", ""), args.get("tasklist", "@default"))
+    if tool_name == "create_task": return google_create_task(token, args.get("title", ""), args.get("notes", ""), args.get("due"), args.get("tasklist", "@default"))
     if tool_name == "complete_google_task": return google_complete_task(token, args.get("taskId", ""), args.get("tasklist", "@default"))
     if tool_name == "create_document": return google_create_document(token, args.get("title", "Untitled Document"))
     if tool_name == "get_document": return google_get_document(token, args.get("documentId", ""))
@@ -528,9 +858,13 @@ def github_get_pull_request(token: str, owner: str, repo: str, pull_number: int)
     return _github_api(f"repos/{owner}/{repo}/pulls/{pull_number}", token)
 
 def github_create_issue(token: str, owner: str, repo: str, title: str, body: str = "", labels: list = None) -> dict:
-    if "/" in repo:
+    if "/" in repo and not owner:
         owner, repo = repo.split("/", 1)
-    data = {"title": title, "body": body}
+    if not owner:
+        user_res = _github_api("user", token)
+        if isinstance(user_res, dict) and user_res.get("login"):
+            owner = user_res["login"]
+    data = {"title": title, "body": body or ""}
     if labels:
         data["labels"] = labels if isinstance(labels, list) else [l.strip() for l in str(labels).split(",")]
     return _github_api(f"repos/{owner}/{repo}/issues", token, method="POST", body=data)

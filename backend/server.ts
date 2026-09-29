@@ -414,6 +414,27 @@ async function startServer() {
     throw lastError;
   }
 
+  function getTemporalAndConnectorDirectives(): string {
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+    const tzStr = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const isoStr = now.toISOString();
+
+    return `\n\n[CURRENT TEMPORAL CONTEXT]
+Today is ${dateStr}.
+Current local time is ${timeStr} (${tzStr}).
+Current ISO timestamp: ${isoStr}.
+Use this exact temporal anchor to accurately resolve relative date/time queries (e.g. "today", "tomorrow", "this afternoon", "next week", or "upcoming events").
+
+[GOOGLE WORKSPACE & GITHUB CONNECTORS DIRECTIVES]
+You have direct connected tools to Google Workspace (Gmail, Calendar, Tasks, Drive, Docs, Slides) and GitHub (Repos, Issues, PRs, Notifications).
+- When the user asks about emails (e.g. "check my emails", "any new messages", "read my latest email"), call \`search_emails\` or \`read_email\`. Do NOT call \`launch_application\` or open the browser unless explicitly told to open the Gmail app/website.
+- When the user asks about calendar, meetings, or schedule (e.g. "what do I have today?", "schedule a meeting tomorrow at 3pm"), call \`list_events\` or \`create_event\`. For \`create_event\`, always provide \`summary\` and ISO formatted \`start\` and \`end\` times.
+- When the user asks to manage tasks or todos (e.g. "add a task to finish the report", "list my tasks", "complete task"), call \`create_task\`, \`list_tasks\`, or \`complete_google_task\`.
+- When the user asks about code repositories, GitHub issues, or pull requests, call \`list_repos\`, \`search_issues\`, or \`get_pull_request\`.`;
+  }
+
   // Fallback REST endpoint for text chat
   app.post('/api/chat', async (req, res) => {
     try {
@@ -421,7 +442,8 @@ async function startServer() {
       const memRes = await runMemoryBridge(['context', 'jarvis-prime']);
       const dynamicMemContext = memRes?.context ? `\n\n${memRes.context}` : '';
       const skillsContext = getSkillsPromptContext();
-      const baseInstruction = (systemInstruction || 'You are J.A.R.V.I.S., an autonomous AI operating system with ultra-rapid response latency and a 4-tier cognitive memory matrix. Respond with calm British wit, rapid verbal shortcuts (e.g. "Right away, Sir", "On it, Sir"), and proactively state if a complex task will require extra computing time.') + dynamicMemContext + skillsContext;
+      const connectorDirectives = getTemporalAndConnectorDirectives();
+      const baseInstruction = (systemInstruction || 'You are J.A.R.V.I.S., an autonomous AI operating system with ultra-rapid response latency and a 4-tier cognitive memory matrix. Respond with calm British wit, rapid verbal shortcuts (e.g. "Right away, Sir", "On it, Sir"), and proactively state if a complex task will require extra computing time.') + dynamicMemContext + skillsContext + connectorDirectives;
 
       const ai = getAi();
       try {
@@ -523,7 +545,8 @@ When you need to look up personal data, preferences, or instructions:
 Respond to the user with crisp British wit confirming the action (e.g. "I've committed that to memory, Sir.", "I've rewritten that rule in my core matrix, Sir.", "Understood, Sir. Fact purged.").`;
 
         const skillsContext = getSkillsPromptContext();
-        const systemInstruction = (config.systemInstruction || 'You are J.A.R.V.I.S., a sophisticated and helpful AI companion. Respond with natural spoken warmth and empathy in the user language.') + memoryDirectives + dynamicMemContext + skillsContext;
+        const connectorDirectives = getTemporalAndConnectorDirectives();
+        const systemInstruction = (config.systemInstruction || 'You are J.A.R.V.I.S., a sophisticated and helpful AI companion. Respond with natural spoken warmth and empathy in the user language.') + memoryDirectives + dynamicMemContext + skillsContext + connectorDirectives;
 
         const functionDeclarations = [
           {

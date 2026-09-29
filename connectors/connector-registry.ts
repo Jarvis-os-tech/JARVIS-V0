@@ -97,7 +97,7 @@ export const CONNECTOR_REGISTRY: ConnectorDefinition[] = [
               description: "Email addresses of the invitees/attendees"
             }
           },
-          required: ["summary", "start", "end"]
+          required: ["summary", "start"]
         }
       },
       {
@@ -161,6 +161,7 @@ export const CONNECTOR_REGISTRY: ConnectorDefinition[] = [
           properties: {
             title: { type: "string", description: "The title of the task" },
             notes: { type: "string", description: "Optional description or notes for the task" },
+            due: { type: "string", description: "Optional due date or relative phrase (e.g. '2026-09-30' or 'tomorrow')" },
             tasklist: { type: "string", description: "The ID of the tasklist (defaults to '@default')" }
           },
           required: ["title"]

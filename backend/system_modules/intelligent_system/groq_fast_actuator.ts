@@ -7,6 +7,7 @@
  */
 
 import { dispatchSystemControl, getSystemControlDeclarations, isSystemControl } from './system_controls';
+import { isConnectorTool, dispatchConnectorTool, getConnectorToolDeclarations } from '../../../connectors/connector-agent';
 import { WebSocket } from 'ws';
 
 export interface SpeculativeExecutionResult {
@@ -66,6 +67,23 @@ export class GroqFastActuator {
         parameters: normalizeSchemaForGroq(d.parameters || { type: 'object', properties: {} })
       }
     }));
+
+    // Add Connector Tools (Google Workspace & GitHub MCP)
+    try {
+      const connectorDecls = getConnectorToolDeclarations();
+      for (const d of connectorDecls) {
+        formatted.push({
+          type: 'function',
+          function: {
+            name: d.name,
+            description: d.description,
+            parameters: normalizeSchemaForGroq(d.parameters || { type: 'object', properties: {} })
+          }
+        });
+      }
+    } catch (e: any) {
+      console.warn('[Groq Fast Actuator] Could not load connector tool declarations:', e.message);
+    }
 
     // Add Memory Tools
     formatted.push({
@@ -191,9 +209,48 @@ export class GroqFastActuator {
       selectedNames.add('get_pc_specs');
     }
 
-    // 4. App Launch & Management Domain
+    // 4. Email & Gmail Domain
+    if (/email|emails|mail|inbox|gmail|message|messages/i.test(text)) {
+      selectedNames.add('search_emails');
+      selectedNames.add('read_email');
+      selectedNames.add('send_email');
+      selectedNames.add('create_draft');
+      selectedNames.add('list_labels');
+    }
+
+    // 5. Calendar & Schedule Domain
+    if (/calendar|event|events|meeting|meetings|schedule|appointment|agenda/i.test(text)) {
+      selectedNames.add('list_events');
+      selectedNames.add('create_event');
+      selectedNames.add('find_free_time');
+      selectedNames.add('update_event');
+      selectedNames.add('delete_event');
+    }
+
+    // 6. Tasks & Todos Domain
+    if (/task|tasks|todo|to-do|todos|to-dos/i.test(text)) {
+      selectedNames.add('list_tasks');
+      selectedNames.add('create_task');
+      selectedNames.add('complete_google_task');
+    }
+
+    // 7. GitHub & Repositories Domain
+    if (/github|repo|repos|repository|repositories|pull request|pr\b|commit|issue|issues/i.test(text)) {
+      selectedNames.add('list_repos');
+      selectedNames.add('search_issues');
+      selectedNames.add('get_pull_request');
+      selectedNames.add('create_issue');
+      selectedNames.add('list_notifications');
+    }
+
+    // 8. App Launch & Management Domain
     if (/open|launch|start|run|app|application|browser|chrome|terminal|code|editor/i.test(text)) {
-      selectedNames.add('launch_application');
+      // Guard against hijacking connector requests (e.g. "open my emails", "open calendar") into launching browser apps
+      const isConnectorQuery = /email|emails|mail|inbox|gmail|calendar|event|meeting|schedule|task|tasks|todo|github|repo|issue/i.test(text);
+      const isExplicitAppLaunch = /open (the )?(app|application|browser|chrome|terminal|code|editor|slack|discord|spotify)/i.test(text);
+      if (!isConnectorQuery || isExplicitAppLaunch) {
+        selectedNames.add('launch_application');
+      }
     }
 
     // 5. Window & Tab Management Domain
@@ -428,6 +485,28 @@ export class GroqFastActuator {
   ): Promise<any> {
     if (isSystemControl(name)) {
       return await dispatchSystemControl(name, args);
+    }
+
+    if (isConnectorTool(name)) {
+      const mutatingTools = new Set([
+        'send_email',
+        'create_event',
+        'update_event',
+        'delete_event',
+        'create_task',
+        'complete_google_task',
+        'create_issue',
+        'create_draft',
+        'create_document',
+        'append_document_text',
+        'create_presentation',
+        'add_slide'
+      ]);
+      if (mutatingTools.has(name)) {
+        console.log(`[Groq Fast Actuator] Skipping speculative execution for mutating connector tool '${name}' (deferred to final turn)`);
+        return { deferredToLive: true, tool: name };
+      }
+      return await dispatchConnectorTool(name, args);
     }
 
     if (name === 'search_memory' && memoryBridgeRunner) {

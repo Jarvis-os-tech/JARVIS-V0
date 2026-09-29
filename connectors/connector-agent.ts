@@ -49,12 +49,29 @@ export function isConnectorTool(toolName: string): boolean {
   return CONNECTOR_TOOL_NAMES.includes(toolName);
 }
 
+function normalizeSchemaTypes(schema: any): any {
+  if (!schema || typeof schema !== "object") return schema;
+  if (Array.isArray(schema)) return schema.map(normalizeSchemaTypes);
+
+  const res: Record<string, any> = {};
+  for (const [key, value] of Object.entries(schema)) {
+    if (key === "type" && typeof value === "string") {
+      res[key] = value.toUpperCase();
+    } else if (typeof value === "object" && value !== null) {
+      res[key] = normalizeSchemaTypes(value);
+    } else {
+      res[key] = value;
+    }
+  }
+  return res;
+}
+
 export function getConnectorToolDeclarations(): any[] {
   return CONNECTOR_REGISTRY.flatMap((c) =>
     c.tools.map((t) => ({
       name: t.name,
       description: t.description,
-      parameters: t.parameters || { type: "object", properties: {} },
+      parameters: normalizeSchemaTypes(t.parameters || { type: "OBJECT", properties: {} }),
     }))
   );
 }
