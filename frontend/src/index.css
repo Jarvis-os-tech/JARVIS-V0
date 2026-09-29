@@ -1,8 +1,25 @@
 @import "tailwindcss";
 
 @layer base {
+  html, body, #root {
+    min-height: 100%;
+    min-height: 100dvh;
+    -webkit-tap-highlight-color: transparent;
+  }
+
   body {
-    @apply bg-zinc-950 text-zinc-100 font-sans antialiased selection:bg-rose-500/30 selection:text-rose-200 overflow-x-hidden;
+    @apply bg-zinc-950 text-zinc-100 font-sans antialiased selection:bg-cyan-500/30 selection:text-cyan-200 overflow-x-hidden;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
+  }
+}
+
+/* PWA Standalone Mode Optimization */
+@media all and (display-mode: standalone) {
+  body {
+    overscroll-behavior-y: none;
   }
 }
 
