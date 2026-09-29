@@ -572,17 +572,51 @@ export class GroqFastActuator {
 
     if (name === 'save_memory_fact' && memoryBridgeRunner) {
       const { key, value, category } = args || {};
-      return await memoryBridgeRunner(['save_fact', key || '', value || '', category || 'custom']);
+      const res = await memoryBridgeRunner(['save_fact', key || '', value || '', category || 'custom']);
+      if (clientWs && clientWs.readyState === WebSocket.OPEN) {
+        clientWs.send(JSON.stringify({
+          type: 'memory_fact_saved',
+          key,
+          value,
+          category: category || 'custom',
+          result: res
+        }));
+        clientWs.send(JSON.stringify({
+          type: 'memory_updated',
+          category: category || 'custom',
+          action: 'save_fact',
+          data: res
+        }));
+      }
+      return res;
     }
 
     if (name === 'remove_memory' && memoryBridgeRunner) {
       const { category = 'all', content = 'all' } = args || {};
-      return await memoryBridgeRunner(['remove_triad', category, content]);
+      const res = await memoryBridgeRunner(['remove_triad', category, content]);
+      if (clientWs && clientWs.readyState === WebSocket.OPEN) {
+        clientWs.send(JSON.stringify({
+          type: 'memory_updated',
+          category,
+          action: 'remove',
+          data: res
+        }));
+      }
+      return res;
     }
 
     if (name === 'clear_memory' && memoryBridgeRunner) {
       const { category = 'all', scope = 'all' } = args || {};
-      return await memoryBridgeRunner(['clear_memory', category, scope]);
+      const res = await memoryBridgeRunner(['clear_memory', category, scope]);
+      if (clientWs && clientWs.readyState === WebSocket.OPEN) {
+        clientWs.send(JSON.stringify({
+          type: 'memory_updated',
+          category,
+          action: 'clear',
+          data: res
+        }));
+      }
+      return res;
     }
 
     if (name === 'delete_text') {

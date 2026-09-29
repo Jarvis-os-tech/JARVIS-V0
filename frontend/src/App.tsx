@@ -682,8 +682,12 @@ export default function App() {
 
         if (msg.type === 'memory_updated') {
           console.log('[Live Memory Event] Memory updated on backend:', msg.category, msg.action, msg.data);
-          jarvisMemoryEngine.fetchTriadMemory();
-          refreshMemoryStats();
+          if (msg.action === 'clear') {
+            jarvisMemoryEngine.clearTriadMemory(msg.category);
+          }
+          jarvisMemoryEngine.fetchTriadMemory().then(() => {
+            refreshMemoryStats();
+          });
         }
 
         if (msg.type === 'memory_fact_saved') {
@@ -695,7 +699,20 @@ export default function App() {
             importance: 'high',
             isPinned: true
           });
-          refreshMemoryStats();
+          jarvisMemoryEngine.fetchTriadMemory().then(() => {
+            refreshMemoryStats();
+          });
+        }
+
+        if (msg.type === 'text_deleted') {
+          console.log(`⚡ [Desktop Event] Text deleted: mode=${msg.mode}, count=${msg.count}`);
+          setFastActuationAlert({
+            tool: `delete_text (${msg.mode}${msg.count > 1 ? ` x${msg.count}` : ''})`,
+            latencyMs: 15
+          });
+          setTimeout(() => {
+            setFastActuationAlert(null);
+          }, 2500);
         }
 
         if (msg.type === 'skills_updated') {

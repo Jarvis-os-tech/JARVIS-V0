@@ -724,24 +724,6 @@ Respond with crisp British wit confirming any memory, text, or file operation pe
             }
           },
           {
-            name: 'delete_text',
-            description: 'Deletes or clears text in the currently active/focused window, input field, document, or editor. Can delete single characters, words, entire lines, or clear all text.',
-            parameters: {
-              type: Type.OBJECT,
-              properties: {
-                count: {
-                  type: Type.INTEGER,
-                  description: 'Number of characters or words to delete (default: 1).'
-                },
-                mode: {
-                  type: Type.STRING,
-                  enum: ['backspace', 'delete', 'word', 'line', 'all'],
-                  description: 'Deletion mode: "backspace" (delete previous char), "delete" (delete forward char), "word" (delete previous word via ctrl+backspace), "line" (clear current line via ctrl+u), or "all" (clear all text via ctrl+a followed by backspace).'
-                }
-              }
-            }
-          },
-          {
             name: 'rewrite_memory',
             description: 'Autonomously rewrite, edit, or update an existing personal fact, preference, or instruction in J.A.R.V.I.S. memory core. Use when the user modifies, corrects, or updates existing information.',
             parameters: {
@@ -921,7 +903,15 @@ Respond with crisp British wit confirming any memory, text, or file operation pe
           ...fileFunctionDeclarations
         ];
 
-        const toolsList = [{ functionDeclarations }];
+        // Deduplicate function declarations by name to protect Gemini Live against duplicate declaration error (code 1007)
+        const declarationMap = new Map<string, any>();
+        for (const decl of functionDeclarations) {
+          if (decl && decl.name) {
+            declarationMap.set(decl.name, decl);
+          }
+        }
+        const dedupedFunctionDeclarations = Array.from(declarationMap.values());
+        const toolsList = [{ functionDeclarations: dedupedFunctionDeclarations }];
 
         let connected = false;
         let lastError: any = null;
@@ -1047,6 +1037,9 @@ Respond with crisp British wit confirming any memory, text, or file operation pe
                       const cachedResult = groqFastActuator.getCachedResult(name);
                       if (cachedResult !== undefined) {
                         console.log(`[Live WS] ⚡ Fast Actuator HIT! Reusing pre-executed result for '${name}' (0ms latency)`);
+                        if (name === 'remove_memory' || name === 'clear_memory' || name === 'save_memory_fact' || name === 'add_memory' || name === 'append_memory' || name === 'rewrite_memory') {
+                          broadcastMemoryUpdated(args?.category || 'all', name, cachedResult);
+                        }
                         const resPayload = (typeof cachedResult === 'object' && cachedResult !== null && ('output' in cachedResult || 'result' in cachedResult))
                           ? cachedResult
                           : (isSystemControl(name) ? { output: cachedResult } : { result: cachedResult });
@@ -1126,6 +1119,14 @@ Respond with crisp British wit confirming any memory, text, or file operation pe
                         const mode = String(args?.mode || 'backspace');
                         console.log(`[Live WS] J.A.R.V.I.S. deleting text: count=${count}, mode=${mode}`);
                         const delResult = await dispatchSystemControl('delete_text', { count, mode });
+                        if (clientWs.readyState === WebSocket.OPEN) {
+                          clientWs.send(JSON.stringify({
+                            type: 'text_deleted',
+                            count,
+                            mode,
+                            result: delResult
+                          }));
+                        }
                         return {
                           id: callId,
                           name,
@@ -1233,6 +1234,7 @@ Respond with crisp British wit confirming any memory, text, or file operation pe
                         const { key, value, category } = args || {};
                         console.log(`[Live WS] Gemini saving memory fact: [${category || 'custom'}] ${key}: ${value}`);
                         const saveResult = await runMemoryBridge(['save_fact', key || '', value || '', category || 'custom']);
+                        broadcastMemoryUpdated(category || 'custom', 'save_fact', saveResult);
                         if (clientWs.readyState === WebSocket.OPEN) {
                           clientWs.send(JSON.stringify({
                             type: 'memory_fact_saved',

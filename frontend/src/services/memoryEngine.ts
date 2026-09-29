@@ -241,15 +241,15 @@ class MemoryEngine {
       const data = await res.json();
       if (data && typeof data === 'object') {
         let changed = false;
-        if (Array.isArray(data.personal_data) && data.personal_data.length > 0) {
+        if (Array.isArray(data.personal_data)) {
           this.state.personalData = data.personal_data;
           changed = true;
         }
-        if (Array.isArray(data.preferences) && data.preferences.length > 0) {
+        if (Array.isArray(data.preferences)) {
           this.state.preferences = data.preferences;
           changed = true;
         }
-        if (Array.isArray(data.instructions) && data.instructions.length > 0) {
+        if (Array.isArray(data.instructions)) {
           this.state.instructions = data.instructions;
           changed = true;
         }
@@ -305,12 +305,12 @@ class MemoryEngine {
         const parsed = JSON.parse(stored);
         return {
           shortTerm: parsed.shortTerm || INITIAL_SHORT_TERM_MEMORY,
-          longTerm: parsed.longTerm?.length ? parsed.longTerm : INITIAL_LONG_TERM_MEMORIES,
-          semantic: parsed.semantic?.length ? parsed.semantic : INITIAL_SEMANTIC_MEMORIES,
-          episodic: parsed.episodic?.length ? parsed.episodic : INITIAL_EPISODIC_MEMORIES,
-          personalData: parsed.personalData?.length ? parsed.personalData : INITIAL_PERSONAL_DATA,
-          preferences: parsed.preferences?.length ? parsed.preferences : INITIAL_PREFERENCES,
-          instructions: parsed.instructions?.length ? parsed.instructions : INITIAL_INSTRUCTIONS,
+          longTerm: Array.isArray(parsed.longTerm) ? parsed.longTerm : INITIAL_LONG_TERM_MEMORIES,
+          semantic: Array.isArray(parsed.semantic) ? parsed.semantic : INITIAL_SEMANTIC_MEMORIES,
+          episodic: Array.isArray(parsed.episodic) ? parsed.episodic : INITIAL_EPISODIC_MEMORIES,
+          personalData: Array.isArray(parsed.personalData) ? parsed.personalData : INITIAL_PERSONAL_DATA,
+          preferences: Array.isArray(parsed.preferences) ? parsed.preferences : INITIAL_PREFERENCES,
+          instructions: Array.isArray(parsed.instructions) ? parsed.instructions : INITIAL_INSTRUCTIONS,
           memoryHealthIndex: parsed.memoryHealthIndex || 100,
           lastSyncTime: parsed.lastSyncTime || new Date().toISOString()
         };
@@ -359,7 +359,7 @@ class MemoryEngine {
   // Triad Memory Methods (Personal Data, Preferences, Instructions)
   // ----------------------------------------------------
   public getPersonalData(): TriadMemoryItem[] {
-    return this.state.personalData && this.state.personalData.length > 0 ? this.state.personalData : INITIAL_PERSONAL_DATA;
+    return Array.isArray(this.state.personalData) ? this.state.personalData : INITIAL_PERSONAL_DATA;
   }
 
   public addPersonalData(content: string): TriadMemoryItem {
@@ -371,7 +371,7 @@ class MemoryEngine {
   }
 
   public getPreferences(): TriadMemoryItem[] {
-    return this.state.preferences && this.state.preferences.length > 0 ? this.state.preferences : INITIAL_PREFERENCES;
+    return Array.isArray(this.state.preferences) ? this.state.preferences : INITIAL_PREFERENCES;
   }
 
   public addPreference(content: string): TriadMemoryItem {
@@ -383,7 +383,7 @@ class MemoryEngine {
   }
 
   public getInstructions(): TriadMemoryItem[] {
-    return this.state.instructions && this.state.instructions.length > 0 ? this.state.instructions : INITIAL_INSTRUCTIONS;
+    return Array.isArray(this.state.instructions) ? this.state.instructions : INITIAL_INSTRUCTIONS;
   }
 
   public addInstruction(content: string): TriadMemoryItem {
@@ -392,6 +392,22 @@ class MemoryEngine {
 
   public removeInstruction(idOrContent: string): void {
     this.removeTriadItem('instructions', idOrContent);
+  }
+
+  public clearTriadMemory(category?: TriadMemoryCategory | 'all'): void {
+    if (!category || category === 'all') {
+      this.state.personalData = [];
+      this.state.preferences = [];
+      this.state.instructions = [];
+    } else if (category === 'personal_data') {
+      this.state.personalData = [];
+    } else if (category === 'preferences') {
+      this.state.preferences = [];
+    } else if (category === 'instructions') {
+      this.state.instructions = [];
+    }
+    this.saveToStorage();
+    this.notifyListeners();
   }
 
   public addTriadItem(category: TriadMemoryCategory, content: string): TriadMemoryItem {
