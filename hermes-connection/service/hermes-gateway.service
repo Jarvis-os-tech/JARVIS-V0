@@ -1,0 +1,25 @@
+[Unit]
+Description=Hermes Sub-Agent Gateway Service
+After=network.target local-fs.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+EnvironmentFile=-%h/.config/hermes/hermes.env
+EnvironmentFile=-%h/Projects/Jarvis-OS/.env
+ExecStart=%h/.local/bin/hermes gateway --port 9119 --host 127.0.0.1
+Restart=always
+RestartSec=5s
+KillMode=process
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=hermes-gateway
+
+# Sandboxing & Hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=%h/.hermes %h/Projects/Jarvis-OS/memory/vault
+
+[Install]
+WantedBy=default.target
