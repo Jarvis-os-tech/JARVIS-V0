@@ -1,13 +1,52 @@
 node_modules/
 build/
 dist/
+target/
 coverage/
 .DS_Store
 *.log
 .env*
 !.env.example
-target/
 __pycache__/
-*.pyc
 .venv/
+
+# Firebase configuration & credentials (sensitive API keys)
+frontend/firebase-applet-config.json
+**/firebase-applet-config.json
+!frontend/firebase-applet-config.example.json
+!**/firebase-applet-config.example.json
+
+# ==============================================================================
+# Real Memory & Sovereign Obsidian Vault
+# Code in jarvis_memory_bundle (Rust, Python, bridges) is tracked, but
+# real memory markdown notes, SQLite databases, and personal session data NEVER go to GitHub.
+# ==============================================================================
+jarvis_memory_bundle/vault/**/*.md
+jarvis_memory_bundle/vault/*.md
+!jarvis_memory_bundle/vault/**/.gitkeep
+!jarvis_memory_bundle/vault/.obsidian/README.md
+
+# Real memory database files (SQLite WAL, shm, db)
+jarvis_memory_bundle/vault/**/*.db*
+jarvis_memory_bundle/vault/*.db*
+jarvis_memory_bundle/vault/**/*.sqlite*
+jarvis_memory_bundle/vault/*.sqlite*
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# Vault runtime caches, index caches, and personal Obsidian state
+jarvis_memory_bundle/vault/reminders.json
+jarvis_memory_bundle/vault/**/_index.json
+jarvis_memory_bundle/vault/.obsidian/workspace.json
+jarvis_memory_bundle/vault/agents/*
+!jarvis_memory_bundle/vault/agents/.gitkeep
+
+# Generic vault fallback
+**/vault/**/*.md
+**/vault/*.md
+!**/vault/**/.gitkeep
+project_docs/
 data/

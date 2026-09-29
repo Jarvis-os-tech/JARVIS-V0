@@ -38,7 +38,12 @@ function runConnectorPython(args: string[]): Promise<any> {
  */
 connectorRouter.get("/api/connectors", async (_req, res) => {
   const result = await runConnectorPython(["list"]);
-  res.json(result);
+  if (Array.isArray(result)) {
+    res.json(result);
+  } else {
+    console.warn("[connectors] python returned non-array:", result);
+    res.json([]);
+  }
 });
 
 /**
@@ -47,7 +52,11 @@ connectorRouter.get("/api/connectors", async (_req, res) => {
  */
 connectorRouter.get("/api/connectors/status/all", async (_req, res) => {
   const result = await runConnectorPython(["statuses"]);
-  res.json(result);
+  if (Array.isArray(result)) {
+    res.json(result);
+  } else {
+    res.json([]);
+  }
 });
 
 /**

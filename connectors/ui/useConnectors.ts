@@ -50,12 +50,13 @@ export function useConnectors(options: UseConnectorsOptions = {}): UseConnectors
       if (!res.ok) {
         throw new Error(`Failed to fetch connectors (${res.status})`);
       }
-      const data: ConnectorWithStatus[] = await res.json();
-      setConnectors(data);
+      const data = await res.json();
+      const safeList: ConnectorWithStatus[] = Array.isArray(data) ? data : [];
+      setConnectors(safeList);
 
       // Keep selected connector updated if open
-      if (selectedConnector) {
-        const updated = data.find((c) => c.id === selectedConnector.id);
+      if (selectedConnector && Array.isArray(data)) {
+        const updated = data.find((c: any) => c.id === selectedConnector.id);
         if (updated) setSelectedConnector(updated);
       }
     } catch (err: any) {
@@ -72,8 +73,9 @@ export function useConnectors(options: UseConnectorsOptions = {}): UseConnectors
     try {
       const res = await fetch("/api/connectors/status/all");
       if (!res.ok) return;
-      const statuses: ConnectorStatus[] = await res.json();
-      const statusMap = new Map(statuses.map((s) => [s.id, s]));
+      const statuses = await res.json();
+      if (!Array.isArray(statuses)) return;
+      const statusMap = new Map(statuses.map((s: ConnectorStatus) => [s.id, s]));
 
       setConnectors((prev) =>
         prev.map((conn) => {

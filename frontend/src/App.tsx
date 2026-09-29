@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { User } from 'firebase/auth';
 import { PERSONAS } from './data/personas';
-import { VoicePersona, ConnectionState, ConversationMessage, AgentConfig } from './types';
+import { VoicePersona, ConnectionState, ConversationMessage, AgentConfig, SkillItem } from './types';
 import { Header } from './components/Header';
 import { VoiceVisualizer } from './components/VoiceVisualizer';
 import { VisionPreviewModal } from './components/VisionPreviewModal';
@@ -12,7 +12,7 @@ import { jarvisMemoryEngine } from './services/memoryEngine';
 import { AudioQueuePlayer, float32ToInt16Base64, calculateVolume } from './utils/audio';
 import { demoVoiceInstance } from './services/demoVoiceService';
 import { initAuthListener } from './services/authService';
-import { AlertCircle, RefreshCw, Cpu } from 'lucide-react';
+import { AlertCircle, RefreshCw, Cpu, Zap } from 'lucide-react';
 
 export default function App() {
   const [selectedPersona, setSelectedPersona] = useState<VoicePersona>(PERSONAS[0]);
@@ -24,6 +24,7 @@ export default function App() {
   const [memoryCount, setMemoryCount] = useState<number>(jarvisMemoryEngine.getStats().totalItems);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [reminders, setReminders] = useState<{ id: string; title: string }[]>([]);
+  const [fastActuationAlert, setFastActuationAlert] = useState<{ tool: string; latencyMs: number } | null>(null);
 
   const [inputVolume, setInputVolume] = useState<number>(0);
   const [outputVolume, setOutputVolume] = useState<number>(0);
@@ -69,6 +70,14 @@ export default function App() {
     jarvisMemoryEngine.syncWithServer().then(() => {
       refreshMemoryStats();
     });
+
+    // Ingest installed skills & plugins matrix from J.A.R.V.I.S. backend
+    fetch('/api/skills')
+      .then(res => res.json())
+      .then(data => {
+        if (data.skills) setInstalledSkills(data.skills);
+      })
+      .catch(err => console.warn('[App] Failed to fetch installed skills on startup:', err));
 
     const unsubscribeAuth = initAuthListener((user) => {
       setCurrentUser(user);
@@ -205,6 +214,7 @@ export default function App() {
   };
 
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
+  const [installedSkills, setInstalledSkills] = useState<SkillItem[]>([]);
 
   const [agentConfig, setAgentConfig] = useState<AgentConfig>({
     selectedPersonaId: PERSONAS[0].id,
@@ -241,8 +251,11 @@ export default function App() {
     const userAuthContext = currentUser
       ? `AUTHENTICATED OPERATOR: User is signed in as ${currentUser.displayName || 'Sir'} (${currentUser.email}). Greet and address them accordingly.`
       : '';
+    const skillsContext = installedSkills.length > 0
+      ? `\n\nJ.A.R.V.I.S. SHARED SKILLS MATRIX:\nThe following specialized domain skills are active and available across all coworkers: ${installedSkills.map(s => s.name || s.slug).join(', ')}. Use load_skill(slug) to inspect full specifications.`
+      : '';
     
-    return `${selectedPersonaRef.current.systemInstruction}\n\n${userAuthContext}\n\n${memoryPrompt}\n\n${languageRule}\n${reminderToolRule}\n${visionToolRule}\n${rapidResponseRule}\n${agentConfig.customInstruction || ''}`;
+    return `${selectedPersonaRef.current.systemInstruction}\n\n${userAuthContext}\n\n${memoryPrompt}\n\n${languageRule}\n${reminderToolRule}\n${visionToolRule}\n${rapidResponseRule}\n${skillsContext}\n${agentConfig.customInstruction || ''}`;
   };
 
   const startLocalSpeechRecognition = () => {
@@ -601,6 +614,32 @@ export default function App() {
           setConnectionState('listening');
         }
 
+        if (msg.type === 'mid_sentence_tool_executed') {
+          console.log(`⚡ [Mid-Sentence Fast Execution] ${msg.tool} executed in ${msg.execLatencyMs || msg.totalLatencyMs}ms`);
+          setFastActuationAlert({
+            tool: msg.tool,
+            latencyMs: msg.totalLatencyMs || msg.execLatencyMs || 0
+          });
+          setTimeout(() => {
+            setFastActuationAlert(null);
+          }, 3500);
+
+          if (msg.tool === 'activate_camera') {
+            startVision('camera');
+            setIsLiveStreaming(true);
+          } else if (msg.tool === 'activate_screen_share') {
+            startVision('screen');
+            setIsLiveStreaming(true);
+          } else if (msg.tool === 'deactivate_vision') {
+            stopVision();
+          } else if (msg.tool === 'set_ui_reminder' && msg.args) {
+            const ms = (msg.args.minutes || 5) * 60 * 1000;
+            setTimeout(() => {
+              setReminders(prev => [...prev, { id: Date.now().toString(), title: msg.args.title || 'Reminder' }]);
+            }, ms);
+          }
+        }
+
         if (msg.type === 'set_ui_reminder') {
           console.log(`[WS Tool] Scheduling reminder for ${msg.minutes} minutes: ${msg.title}`);
           const ms = msg.minutes * 60 * 1000;
@@ -641,6 +680,12 @@ export default function App() {
           refreshMemoryStats();
         }
 
+        if (msg.type === 'memory_updated') {
+          console.log('[Live Memory Event] Memory updated on backend:', msg.category, msg.action, msg.data);
+          jarvisMemoryEngine.fetchTriadMemory();
+          refreshMemoryStats();
+        }
+
         if (msg.type === 'memory_fact_saved') {
           console.log('[Live Memory Event] Fact committed to sovereign vault:', msg.key, msg.value);
           jarvisMemoryEngine.addLongTermMemory({
@@ -651,6 +696,18 @@ export default function App() {
             isPinned: true
           });
           refreshMemoryStats();
+        }
+
+        if (msg.type === 'skills_updated') {
+          console.log('[Live Skills Event] Skills updated:', msg.action, msg.skills || msg.slug);
+          if (msg.skills) {
+            setInstalledSkills(msg.skills);
+          } else {
+            fetch('/api/skills')
+              .then(r => r.json())
+              .then(d => { if (d.skills) setInstalledSkills(d.skills); })
+              .catch(() => {});
+          }
         }
 
         if (msg.type === 'error') {
@@ -723,6 +780,164 @@ export default function App() {
 
   const handleSendPrompt = (promptText: string) => {
     audioQueuePlayerRef.current?.prewarm();
+
+    const trimmed = promptText.trim();
+    if (trimmed.startsWith('/skill') || trimmed.startsWith('/skills')) {
+      jarvisMemoryEngine.recordTurn('user', trimmed);
+      refreshMemoryStats();
+
+      setMessages(prev => [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          sender: 'user',
+          text: trimmed,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }
+      ]);
+
+      const parts = trimmed.split(/\s+/);
+      const sub = parts[1]?.toLowerCase();
+
+      // Subcommand: /skills list
+      if (sub === 'list' || sub === 'ls') {
+        fetch('/api/skills')
+          .then(res => res.json())
+          .then(data => {
+            const list = data.skills || [];
+            setInstalledSkills(list);
+            const report = list.length > 0
+              ? `⚡ [J.A.R.V.I.S. SKILLS INVENTORY]\nFound ${list.length} operational skills synchronized across all coworker personas:\n\n` +
+                list.map((s: any) => `• [${s.name || s.slug}]: ${s.description} (${s.source || 'project'})`).join('\n')
+              : `⚡ [J.A.R.V.I.S. SKILLS INVENTORY]\nNo additional skills installed yet. Use "/skills <repo_or_package>" to install.`;
+            setMessages(prev => [
+              ...prev,
+              {
+                id: (Date.now() + 1).toString(),
+                sender: 'agent',
+                personaId: selectedPersonaRef.current.id,
+                text: report,
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              }
+            ]);
+            handleAssistantSpeak(`We currently have ${list.length} operational skills shared across our coworker squad, Sir.`);
+          })
+          .catch(err => {
+            setMessages(prev => [
+              ...prev,
+              {
+                id: (Date.now() + 1).toString(),
+                sender: 'system',
+                text: `⚠ Error listing skills: ${err.message}`,
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              }
+            ]);
+          });
+        return;
+      }
+
+      // Subcommand: /skills remove <name>
+      if (sub === 'remove' || sub === 'rm') {
+        const target = parts[2];
+        if (!target) {
+          setMessages(prev => [
+            ...prev,
+            {
+              id: (Date.now() + 1).toString(),
+              sender: 'system',
+              text: `⚠ Please specify skill to remove: /skills remove <skill-slug>`,
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            }
+          ]);
+          return;
+        }
+
+        fetch(`/api/skills/${encodeURIComponent(target)}`, { method: 'DELETE' })
+          .then(res => res.json())
+          .then(data => {
+            setMessages(prev => [
+              ...prev,
+              {
+                id: (Date.now() + 1).toString(),
+                sender: 'agent',
+                personaId: selectedPersonaRef.current.id,
+                text: `⚡ [SKILLS SUBSYSTEM] ${data.message || (data.success ? 'Skill removed' : 'Failed to remove')}`,
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              }
+            ]);
+            fetch('/api/skills').then(r => r.json()).then(d => { if (d.skills) setInstalledSkills(d.skills); });
+            handleAssistantSpeak(`Skill removal protocol completed, Sir.`);
+          })
+          .catch(err => {
+            setMessages(prev => [
+              ...prev,
+              {
+                id: (Date.now() + 1).toString(),
+                sender: 'system',
+                text: `⚠ Failed to remove skill: ${err.message}`,
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              }
+            ]);
+          });
+        return;
+      }
+
+      // Universal installation directive: e.g. /skills npx skills add ... or /skills https://github.com/... or /skills add ...
+      const loadingMsgId = (Date.now() + 1).toString();
+      setMessages(prev => [
+        ...prev,
+        {
+          id: loadingMsgId,
+          sender: 'system',
+          text: `⚡ [SKILLS SUBSYSTEM] Initializing acquisition protocol: "${trimmed}"\nResolving repository, verifying SKILL.md specifications, and indexing tools across coworker squad...`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }
+      ]);
+
+      fetch('/api/skills/install', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ command: trimmed })
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            const updated = data.skills || [];
+            setInstalledSkills(updated);
+            const report = `⚡ [SKILLS ACQUISITION PROTOCOL SUCCESS]\n` +
+              `Directive: ${data.message || 'Installed successfully'}\n\n` +
+              `Operational Skills Matrix (${updated.length} skills synchronized across all Coworkers):\n` +
+              updated.map((s: any) => `✔ [${s.name || s.slug}]: ${s.description}`).join('\n') +
+              `\n\nAll Coworker Personas (J.A.R.V.I.S., F.R.I.D.A.Y., E.D.I.T.H., K.A.R.E.N., V.I.S.I.O.N., U.L.T.R.O.N.) are now equipped with these skills.`;
+
+            setMessages(prev => prev.map(m => m.id === loadingMsgId ? {
+              ...m,
+              sender: 'agent',
+              personaId: selectedPersonaRef.current.id,
+              text: report
+            } : m));
+            handleAssistantSpeak(`Skill package successfully ingested and synchronized across all coworker personas, Sir. All systems ready.`);
+          } else {
+            const errReport = `⚠ [SKILLS ACQUISITION ANOMALY]\n${data.message || 'Failed to install'}\n${data.error ? `Details: ${data.error}` : ''}`;
+            setMessages(prev => prev.map(m => m.id === loadingMsgId ? {
+              ...m,
+              sender: 'system',
+              text: errReport
+            } : m));
+            handleAssistantSpeak(`Skill acquisition encountered an anomaly, Sir.`);
+          }
+        })
+        .catch(err => {
+          setMessages(prev => prev.map(m => m.id === loadingMsgId ? {
+            ...m,
+            sender: 'system',
+            text: `⚠ [SKILLS CONNECTION ERROR] Failed to connect to skills manager: ${err.message}`
+          } : m));
+        });
+
+      return;
+    }
+
     jarvisMemoryEngine.recordTurn('user', promptText);
     jarvisMemoryEngine.extractAndMemorize(promptText, 'user');
     refreshMemoryStats();
@@ -918,6 +1133,17 @@ export default function App() {
         onToggleLiveStreaming={() => setIsLiveStreaming(!isLiveStreaming)}
         onLiveStreamFrame={handleLiveStreamFrame}
       />
+
+      {/* Mid-Sentence Fast Actuation Toast */}
+      {fastActuationAlert && (
+        <div className="fixed top-20 right-6 z-50 flex items-center gap-3 bg-amber-950/80 border border-amber-400/60 backdrop-blur-md px-4 py-2.5 rounded-xl shadow-[0_0_20px_rgba(245,158,11,0.3)] animate-fade-in pointer-events-auto">
+          <Zap className="w-4 h-4 text-amber-400 animate-pulse" />
+          <div className="flex flex-col">
+            <span className="text-[10px] font-mono tracking-widest text-amber-300 font-bold uppercase">⚡ Fast Actuator Triggered</span>
+            <span className="text-xs font-mono text-white">{fastActuationAlert.tool} ({fastActuationAlert.latencyMs}ms)</span>
+          </div>
+        </div>
+      )}
 
       {/* Reminders Notification Banner */}
       <div className="fixed bottom-6 right-6 flex flex-col gap-3 z-50 pointer-events-none">

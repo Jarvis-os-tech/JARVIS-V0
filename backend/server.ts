@@ -16,8 +16,17 @@ dotenv.config();
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 import { getSystemControlDeclarations, dispatchSystemControl, isSystemControl } from './system_modules/intelligent_system/system_controls';
+import { groqFastActuator } from './system_modules/intelligent_system/groq_fast_actuator';
 import connectorRoutes from '../connectors/connector-routes';
 import { isConnectorTool, dispatchConnectorTool, getConnectorToolDeclarations } from '../connectors/connector-agent';
+import {
+  scanAndIndexSkills,
+  installSkills,
+  loadSkillContent,
+  executeSkillScript,
+  removeSkill,
+  getSkillsPromptContext
+} from './skills_manager';
 
 const OPERATOR_NAME = process.env.OPERATOR_NAME || (process.env.USER ? `Operator ${process.env.USER}` : 'Operator');
 
@@ -144,10 +153,185 @@ async function startServer() {
     res.json(data);
   });
 
-  app.post('/api/memory/fact', async (req, res) => {
-    const { key, value, category } = req.body;
-    const data = await runMemoryBridge(['save_fact', key || '', value || '', category || 'custom']);
-    res.json(data);
+  // Broadcast helper for real-time client sync
+  let activeWss: WebSocketServer | null = null;
+
+  function broadcastMemoryUpdated(category: string, action: string, data: any) {
+    if (!activeWss) return;
+    const payload = JSON.stringify({
+      type: 'memory_updated',
+      category,
+      action,
+      data
+    });
+    activeWss.clients.forEach((client) => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(payload);
+      }
+    });
+  }
+
+  // Triad Memory REST Endpoints (Personal Data, Preferences, Instructions)
+  app.get('/api/memory/triad', async (_req, res) => {
+    try {
+      const data = await runMemoryBridge(['get_triad']);
+      res.json(data);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.get(['/api/memory/personal_data', '/api/memory/personalDetails'], async (_req, res) => {
+    try {
+      const data = await runMemoryBridge(['get_triad', 'personal_data']);
+      res.json(data);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.get('/api/memory/preferences', async (_req, res) => {
+    try {
+      const data = await runMemoryBridge(['get_triad', 'preferences']);
+      res.json(data);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.get('/api/memory/instructions', async (_req, res) => {
+    try {
+      const data = await runMemoryBridge(['get_triad', 'instructions']);
+      res.json(data);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post(['/api/memory/add', '/api/memory/:category', '/api/memory/:category/add'], async (req, res) => {
+    try {
+      const category = req.params.category || req.body.category || 'personal_data';
+      const content = req.body.content || req.body.detail || req.body.preference || req.body.instruction || '';
+      if (!content) {
+        return res.status(400).json({ error: 'Content is required.' });
+      }
+      const data = await runMemoryBridge(['add_triad', category, content]);
+      broadcastMemoryUpdated(category, 'add', data);
+      res.json(data);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/memory/:category/remove', async (req, res) => {
+    try {
+      const category = req.params.category;
+      const target = req.body.content || req.body.detail || req.body.preference || req.body.instruction || req.body.id || '';
+      if (!target) {
+        return res.status(400).json({ error: 'Target content or ID is required.' });
+      }
+      const data = await runMemoryBridge(['remove_triad', category, String(target)]);
+      broadcastMemoryUpdated(category, 'remove', data);
+      res.json(data);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/memory/:category/rewrite', async (req, res) => {
+    try {
+      const category = req.params.category;
+      const oldContent = req.body.oldContent || req.body.old_content || req.body.id || '';
+      const newContent = req.body.newContent || req.body.new_content || req.body.content || '';
+      if (!oldContent || !newContent) {
+        return res.status(400).json({ error: 'Both oldContent and newContent are required.' });
+      }
+      const data = await runMemoryBridge(['rewrite_triad', category, String(oldContent), String(newContent)]);
+      broadcastMemoryUpdated(category, 'rewrite', data);
+      res.json(data);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Mount Connectors API (Google Workspace & GitHub MCP backed by Python)
+  app.use(connectorRoutes);
+
+  // J.A.R.V.I.S. Universal Skills & Plugins REST Endpoints
+  app.get('/api/skills', (_req, res) => {
+    try {
+      const skills = scanAndIndexSkills();
+      res.json({ skills });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/skills/install', async (req, res) => {
+    try {
+      const target = req.body.command || req.body.repoUrl || req.body.query || req.body.target || '';
+      console.log(`[Server] Received skill install directive: "${target}"`);
+      const result = await installSkills(target);
+
+      // Broadcast real-time skill acquisition event to all connected UI clients
+      if (activeWss) {
+        const payload = JSON.stringify({
+          type: 'skills_updated',
+          action: 'install',
+          skills: result.skills
+        });
+        activeWss.clients.forEach((client) => {
+          if (client.readyState === WebSocket.OPEN) {
+            client.send(payload);
+          }
+        });
+      }
+
+      res.json(result);
+    } catch (err: any) {
+      console.error('[Server] Skill install error:', err);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  app.get('/api/skills/:slug', (req, res) => {
+    try {
+      const result = loadSkillContent(req.params.slug);
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.delete('/api/skills/:slug', (req, res) => {
+    try {
+      const result = removeSkill(req.params.slug);
+      if (activeWss) {
+        const payload = JSON.stringify({
+          type: 'skills_updated',
+          action: 'remove',
+          slug: req.params.slug
+        });
+        activeWss.clients.forEach((client) => {
+          if (client.readyState === WebSocket.OPEN) {
+            client.send(payload);
+          }
+        });
+      }
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/skills/:slug/execute', async (req, res) => {
+    try {
+      const { scriptName, args } = req.body;
+      const result = await executeSkillScript(req.params.slug, scriptName, args || []);
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
   });
 
   // Mount Connectors API (Google Workspace & GitHub MCP backed by Python)
@@ -239,7 +423,8 @@ async function startServer() {
       const { message, systemInstruction } = req.body;
       const memRes = await runMemoryBridge(['context', 'jarvis-prime']);
       const dynamicMemContext = memRes?.context ? `\n\n${memRes.context}` : '';
-      const baseInstruction = (systemInstruction || 'You are J.A.R.V.I.S., an autonomous AI operating system with ultra-rapid response latency and a 4-tier cognitive memory matrix. Respond with calm British wit, rapid verbal shortcuts (e.g. "Right away, Sir", "On it, Sir"), and proactively state if a complex task will require extra computing time.') + dynamicMemContext;
+      const skillsContext = getSkillsPromptContext();
+      const baseInstruction = (systemInstruction || 'You are J.A.R.V.I.S., an autonomous AI operating system with ultra-rapid response latency and a 4-tier cognitive memory matrix. Respond with calm British wit, rapid verbal shortcuts (e.g. "Right away, Sir", "On it, Sir"), and proactively state if a complex task will require extra computing time.') + dynamicMemContext + skillsContext;
 
       const ai = getAi();
       try {
@@ -280,6 +465,7 @@ async function startServer() {
 
   // WebSocket Server for Gemini Live API
   const wss = new WebSocketServer({ server, path: '/live' });
+  activeWss = wss;
 
   wss.on('error', (err) => {
     console.error('[Live WSS Error]', err);
@@ -323,9 +509,105 @@ async function startServer() {
 
         const memRes = await runMemoryBridge(['context', 'jarvis-prime']);
         const dynamicMemContext = memRes?.context ? `\n\n${memRes.context}` : '';
-        const systemInstruction = (config.systemInstruction || 'You are J.A.R.V.I.S., a sophisticated and helpful AI companion. Respond with natural spoken warmth and empathy in the user language.') + dynamicMemContext;
+        const memoryDirectives = `\n\nAUTONOMOUS MEMORY CONTROL DIRECTIVES:
+You have complete autonomous authority to control and maintain your own long-term memory across three categories:
+1. "personal_data": Personal details, identity vectors, academic/work details, background facts about the user.
+2. "preferences": User preferences, tools, default save locations, software choices, UI styles.
+3. "instructions": System execution rules, behavioral guidelines, operational constraints.
+
+When the user shares personal facts or instructions:
+- Proactively call \`add_memory(category, content)\`.
+When the user updates, modifies, changes, or corrects any existing detail:
+- Proactively call \`rewrite_memory(category, old_content, new_content)\` to update your memory core.
+When the user tells you to forget, remove, or delete a fact or preference:
+- Proactively call \`remove_memory(category, content)\` to purge it.
+When you need to look up personal data, preferences, or instructions:
+- Call \`query_memory(category, query)\`.
+Respond to the user with crisp British wit confirming the action (e.g. "I've committed that to memory, Sir.", "I've rewritten that rule in my core matrix, Sir.", "Understood, Sir. Fact purged.").`;
+
+        const skillsContext = getSkillsPromptContext();
+        const systemInstruction = (config.systemInstruction || 'You are J.A.R.V.I.S., a sophisticated and helpful AI companion. Respond with natural spoken warmth and empathy in the user language.') + memoryDirectives + dynamicMemContext + skillsContext;
 
         const functionDeclarations = [
+          {
+            name: 'query_memory',
+            description: 'Query J.A.R.V.I.S. sovereign memory bank for personal data, preferences, or instructions.',
+            parameters: {
+              type: Type.OBJECT,
+              properties: {
+                category: {
+                  type: Type.STRING,
+                  enum: ['personal_data', 'preferences', 'instructions', 'all'],
+                  description: 'Memory category to query: personal_data, preferences, instructions, or all'
+                },
+                query: {
+                  type: Type.STRING,
+                  description: 'Optional search keyword to filter records'
+                }
+              }
+            }
+          },
+          {
+            name: 'add_memory',
+            description: 'Autonomously record a new memory fact, preference, or system instruction into J.A.R.V.I.S. memory core.',
+            parameters: {
+              type: Type.OBJECT,
+              properties: {
+                category: {
+                  type: Type.STRING,
+                  enum: ['personal_data', 'preferences', 'instructions'],
+                  description: 'The memory category to store this under'
+                },
+                content: {
+                  type: Type.STRING,
+                  description: 'The exact fact, preference, or instruction statement to remember'
+                }
+              },
+              required: ['category', 'content']
+            }
+          },
+          {
+            name: 'remove_memory',
+            description: 'Autonomously delete or forget an existing personal fact, user preference, or instruction from J.A.R.V.I.S. memory core.',
+            parameters: {
+              type: Type.OBJECT,
+              properties: {
+                category: {
+                  type: Type.STRING,
+                  enum: ['personal_data', 'preferences', 'instructions'],
+                  description: 'The category of the memory to remove'
+                },
+                content: {
+                  type: Type.STRING,
+                  description: 'The text snippet, fact statement, or identifier to remove'
+                }
+              },
+              required: ['category', 'content']
+            }
+          },
+          {
+            name: 'rewrite_memory',
+            description: 'Autonomously rewrite, edit, or update an existing personal fact, preference, or instruction in J.A.R.V.I.S. memory core. Use when the user modifies, corrects, or updates existing information.',
+            parameters: {
+              type: Type.OBJECT,
+              properties: {
+                category: {
+                  type: Type.STRING,
+                  enum: ['personal_data', 'preferences', 'instructions'],
+                  description: 'The category of the memory to rewrite'
+                },
+                old_content: {
+                  type: Type.STRING,
+                  description: 'The current/old content or keyword identifying the memory to update'
+                },
+                new_content: {
+                  type: Type.STRING,
+                  description: 'The new replacement content or updated rule'
+                }
+              },
+              required: ['category', 'old_content', 'new_content']
+            }
+          },
           {
             name: 'search_memory',
             description: 'Search persistent long-term memory, Obsidian vault notes, and past conversation records for facts, past decisions, or user preferences.',
@@ -433,6 +715,51 @@ async function startServer() {
               }
             }
           },
+          {
+            name: 'list_skills',
+            description: 'List all operational domain skills and plugins currently installed in J.A.R.V.I.S., along with their capabilities.',
+            parameters: {
+              type: Type.OBJECT,
+              properties: {}
+            }
+          },
+          {
+            name: 'load_skill',
+            description: 'Load and read the complete operational instructions, workflow rules, design principles, or guidelines of an installed skill.',
+            parameters: {
+              type: Type.OBJECT,
+              properties: {
+                skill_slug: {
+                  type: Type.STRING,
+                  description: 'The slug or name of the skill to load (e.g. "typesafe-ai", "find-skills", "ui-design-guide")'
+                }
+              },
+              required: ['skill_slug']
+            }
+          },
+          {
+            name: 'execute_skill_script',
+            description: 'Execute an automation script bundled inside an installed skill.',
+            parameters: {
+              type: Type.OBJECT,
+              properties: {
+                skill_slug: {
+                  type: Type.STRING,
+                  description: 'The skill name or slug'
+                },
+                script_name: {
+                  type: Type.STRING,
+                  description: 'The script file name (e.g. "audit.py", "generate.js", "deploy.sh")'
+                },
+                args: {
+                  type: Type.ARRAY,
+                  items: { type: Type.STRING },
+                  description: 'Optional command-line arguments to pass to the script'
+                }
+              },
+              required: ['skill_slug', 'script_name']
+            }
+          },
           ...getSystemControlDeclarations(),
           ...getConnectorToolDeclarations()
         ];
@@ -500,11 +827,15 @@ async function startServer() {
                     type: 'input_transcription',
                     text: inputTranscript
                   }));
+
+                  // Mid-sentence fast tool triggering via Groq (Ultra-low latency, sub-100ms)
+                  groqFastActuator.processStreamingSpeech(currentTurnUserText, clientWs, runMemoryBridge);
                 }
 
                 // Handle Interrupted
                 if (message.serverContent?.interrupted) {
                   currentTurnModelText = '';
+                  groqFastActuator.resetTurn();
                   clientWs.send(JSON.stringify({ type: 'interrupted' }));
                 }
 
@@ -516,6 +847,7 @@ async function startServer() {
                   const modelTurn = currentTurnModelText.trim();
                   currentTurnUserText = '';
                   currentTurnModelText = '';
+                  groqFastActuator.resetTurn();
 
                   if (userTurn || modelTurn) {
                     runMemoryBridge(['log_turn', JSON.stringify({
@@ -550,6 +882,20 @@ async function startServer() {
                     const args = funcCall.args as any || {};
 
                     try {
+                      // ⚡ Check if groqFastActuator already executed this tool mid-sentence!
+                      const cachedResult = groqFastActuator.getCachedResult(name);
+                      if (cachedResult !== undefined) {
+                        console.log(`[Live WS] ⚡ Fast Actuator HIT! Reusing pre-executed result for '${name}' (0ms latency)`);
+                        const resPayload = (typeof cachedResult === 'object' && cachedResult !== null && ('output' in cachedResult || 'result' in cachedResult))
+                          ? cachedResult
+                          : (isSystemControl(name) ? { output: cachedResult } : { result: cachedResult });
+                        return {
+                          id: callId,
+                          name,
+                          response: resPayload
+                        };
+                      }
+
                       if (name === 'switch_persona') {
                         const targetPersonaId = args?.targetPersonaId;
                         console.log(`[Live WS] Gemini requested persona switch to: ${targetPersonaId}`);
@@ -563,6 +909,54 @@ async function startServer() {
                           id: callId,
                           name,
                           response: { result: "success, switched" }
+                        };
+                      }
+
+                      if (name === 'query_memory') {
+                        const cat = args?.category || 'all';
+                        const query = args?.query || '';
+                        console.log(`[Live WS] J.A.R.V.I.S. querying memory: category=${cat}, query=${query}`);
+                        const data = await runMemoryBridge(['get_triad', cat]);
+                        return {
+                          id: callId,
+                          name,
+                          response: { result: data }
+                        };
+                      }
+
+                      if (name === 'add_memory') {
+                        const { category, content } = args || {};
+                        console.log(`[Live WS] J.A.R.V.I.S. autonomously adding memory: [${category}] ${content}`);
+                        const addResult = await runMemoryBridge(['add_triad', category || 'personal_data', content || '']);
+                        broadcastMemoryUpdated(category || 'personal_data', 'add', addResult);
+                        return {
+                          id: callId,
+                          name,
+                          response: { result: `Successfully committed to ${category} memory core: "${content}"` }
+                        };
+                      }
+
+                      if (name === 'remove_memory') {
+                        const { category, content } = args || {};
+                        console.log(`[Live WS] J.A.R.V.I.S. autonomously removing memory: [${category}] ${content}`);
+                        const removeResult = await runMemoryBridge(['remove_triad', category || 'personal_data', content || '']);
+                        broadcastMemoryUpdated(category || 'personal_data', 'remove', removeResult);
+                        return {
+                          id: callId,
+                          name,
+                          response: { result: `Successfully removed from ${category} memory core: "${content}"` }
+                        };
+                      }
+
+                      if (name === 'rewrite_memory') {
+                        const { category, old_content, new_content } = args || {};
+                        console.log(`[Live WS] J.A.R.V.I.S. autonomously rewriting memory: [${category}] "${old_content}" -> "${new_content}"`);
+                        const rewriteResult = await runMemoryBridge(['rewrite_triad', category || 'personal_data', old_content || '', new_content || '']);
+                        broadcastMemoryUpdated(category || 'personal_data', 'rewrite', rewriteResult);
+                        return {
+                          id: callId,
+                          name,
+                          response: { result: `Successfully rewritten in ${category} memory: "${new_content}"` }
                         };
                       }
 
@@ -653,6 +1047,39 @@ async function startServer() {
                           id: callId,
                           name,
                           response: { result: "Vision feed successfully deactivated." }
+                        };
+                      }
+
+                      // J.A.R.V.I.S. Skills & Plugins Subsystem Tool Handlers
+                      if (name === 'list_skills') {
+                        console.log(`[Live WS] J.A.R.V.I.S. listing installed skills`);
+                        const skills = scanAndIndexSkills();
+                        return {
+                          id: callId,
+                          name,
+                          response: { result: skills.map(s => ({ name: s.name, slug: s.slug, description: s.description, scripts: s.scripts, source: s.source })) }
+                        };
+                      }
+
+                      if (name === 'load_skill') {
+                        const slug = args?.skill_slug || '';
+                        console.log(`[Live WS] J.A.R.V.I.S. loading skill details: "${slug}"`);
+                        const skillData = loadSkillContent(slug);
+                        return {
+                          id: callId,
+                          name,
+                          response: { result: skillData }
+                        };
+                      }
+
+                      if (name === 'execute_skill_script') {
+                        const { skill_slug, script_name, args: scriptArgs } = args || {};
+                        console.log(`[Live WS] J.A.R.V.I.S. executing skill script: [${skill_slug}] ${script_name}`);
+                        const res = await executeSkillScript(skill_slug || '', script_name || '', scriptArgs || []);
+                        return {
+                          id: callId,
+                          name,
+                          response: { result: res }
                         };
                       }
 
@@ -813,6 +1240,7 @@ async function startServer() {
 
         if (msg.type === 'text' && msg.text) {
           currentTurnUserText += ' ' + msg.text;
+          groqFastActuator.processStreamingSpeech(currentTurnUserText, clientWs, runMemoryBridge);
           if (session) {
             try {
               session.sendRealtimeInput({
@@ -874,6 +1302,15 @@ async function startServer() {
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }
+
+  server.on('error', (err: any) => {
+    if (err.code === 'EADDRINUSE') {
+      console.error(`[Server] Port ${PORT} is already in use. Kill the process or change PORT in .env`);
+      process.exit(1);
+    }
+    console.error('Server error:', err);
+    process.exit(1);
+  });
 
   server.listen(PORT, '0.0.0.0', () => {
     const localUrl = `http://localhost:${PORT}`;

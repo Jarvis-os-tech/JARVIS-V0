@@ -110,12 +110,33 @@ export interface EpisodicMemoryItem {
   createdAt: string;
 }
 
+export type TriadMemoryCategory = 'personal_data' | 'preferences' | 'instructions';
+
+export interface TriadMemoryItem {
+  id: string;
+  category: TriadMemoryCategory;
+  content: string;
+  learnedDate: string;
+}
+
 export interface JarvisMemoryState {
   shortTerm: ShortTermMemory;
   longTerm: LongTermMemoryItem[];
   semantic: SemanticMemoryItem[];
   episodic: EpisodicMemoryItem[];
+  personalData?: TriadMemoryItem[];
+  preferences?: TriadMemoryItem[];
+  instructions?: TriadMemoryItem[];
   memoryHealthIndex: number; // 0-100
   lastSyncTime: string;
 }
 
+export interface SkillItem {
+  name: string;
+  slug: string;
+  description: string;
+  source?: string;
+  path?: string;
+  scripts?: string[];
+  installedAt?: string;
+}

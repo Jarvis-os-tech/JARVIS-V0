@@ -8,6 +8,7 @@ import os
 import re
 import glob
 import time
+import fcntl
 from typing import List, Dict, Any, Optional
 
 from .config import (
@@ -143,12 +144,19 @@ created_at: "{iso_time}"
         entry_daily = f"### [{now_time}] [{speaker}]\n{text.strip()}\n\n"
         self._append_file(path, entry_daily)
 
-    def get_continuous_transcript(self, max_turns: int = 25) -> str:
-        """Read recent turns from the continuous conversation log."""
+    def get_continuous_transcript(self, max_turns: int = 25, max_bytes: int = 65536) -> str:
+        """Read recent turns from the continuous conversation log using fast tail-seeking."""
         continuous_path = os.path.join(CONVERSATIONS_DIR, "conversation.md")
         if not os.path.exists(continuous_path):
             return ""
-        content = self._read_file(continuous_path)
+        try:
+            with open(continuous_path, "rb") as f:
+                f.seek(0, os.SEEK_END)
+                size = f.tell()
+                f.seek(max(0, size - max_bytes), os.SEEK_SET)
+                content = f.read().decode("utf-8", errors="ignore")
+        except Exception:
+            return ""
         blocks = re.split(r"\n(?=### \[)", content)
         turn_blocks = [b.strip() for b in blocks if b.strip().startswith("### [")]
         return "\n\n".join(turn_blocks[-max_turns:])
@@ -347,12 +355,23 @@ tags: [{tag_str}]
 """
         self._write_file(abs_path, note_text)
 
-        # Link in index.md if index exists and not already linked
+        # Link in index.md under corresponding section if not already linked
         if os.path.exists(INDEX_MD):
             index_content = self._read_file(INDEX_MD)
             wikilink = f"[[{rel_path}|{clean_title}]]"
             if wikilink not in index_content:
-                self._append_file(INDEX_MD, f"\n- {wikilink}")
+                target_marker = f"[[{folder}/"
+                lines = index_content.splitlines()
+                inserted = False
+                for idx, line in enumerate(lines):
+                    if target_marker in line:
+                        lines.insert(idx + 1, f"  - {wikilink}")
+                        inserted = True
+                        break
+                if inserted:
+                    self._write_file(INDEX_MD, "\n".join(lines) + "\n")
+                else:
+                    self._append_file(INDEX_MD, f"\n- {wikilink}")
 
         return {
             "success": True,
@@ -446,15 +465,23 @@ tags: [{tag_str}]
     def _write_file(path: str, content: str):
         try:
             os.makedirs(os.path.dirname(path), exist_ok=True)
-            with open(path, "w", encoding="utf-8") as f:
+            tmp_path = f"{path}.tmp.{os.getpid()}_{time.time()}"
+            with open(tmp_path, "w", encoding="utf-8") as f:
                 f.write(content)
+            os.replace(tmp_path, path)
         except Exception as e:
             print(f"[Vault] Write error {path}: {e}")
 
     @staticmethod
     def _append_file(path: str, content: str):
         try:
+            os.makedirs(os.path.dirname(path), exist_ok=True)
             with open(path, "a", encoding="utf-8") as f:
-                f.write(content)
+                fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+                try:
+                    f.write(content)
+                    f.flush()
+                finally:
+                    fcntl.flock(f.fileno(), fcntl.LOCK_UN)
         except Exception as e:
             print(f"[Vault] Append error {path}: {e}")
