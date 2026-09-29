@@ -224,9 +224,16 @@ async def dispatch_tool(tool_name: str, args: Optional[Dict[str, Any]] = None) -
             return await desktop_automation.type_text(str(args.get("text", "")))
         elif action == "hotkey":
             return await desktop_automation.send_hotkey(str(args.get("combo", "")))
+        elif action in ["delete_text", "clear_text", "backspace"]:
+            mode = args.get("mode") or ("all" if action == "clear_text" else "backspace")
+            return await desktop_automation.delete_text(int(args.get("count", 1)), str(mode))
         elif action == "screenshot":
             return await desktop_automation.take_screenshot(args.get("path"))
         return {"success": False, "error": f"Unknown desktop action: {action}"}
+
+    elif tool in ["delete_text", "clear_text", "erase_text", "backspace"]:
+        mode = args.get("mode") or ("all" if tool == "clear_text" else "backspace")
+        return await desktop_automation.delete_text(int(args.get("count", 1)), str(mode))
 
     elif tool in ["take_screenshot"]:
         return await desktop_automation.take_screenshot(args.get("outputPath") or args.get("path"))

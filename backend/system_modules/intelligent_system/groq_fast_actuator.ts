@@ -118,6 +118,52 @@ export class GroqFastActuator {
       }
     });
 
+    formatted.push({
+      type: 'function',
+      function: {
+        name: 'remove_memory',
+        description: 'Delete or forget an existing personal fact, user preference, or instruction from memory core',
+        parameters: {
+          type: 'object',
+          properties: {
+            category: { type: 'string', enum: ['all', 'personal_data', 'preferences', 'instructions'], description: 'Memory category or all' },
+            content: { type: 'string', description: 'The fact or detail to remove, or all' }
+          },
+          required: ['category', 'content']
+        }
+      }
+    });
+
+    formatted.push({
+      type: 'function',
+      function: {
+        name: 'clear_memory',
+        description: 'Completely wipe or clear stored memory facts, user preferences, instructions, or all memory cores',
+        parameters: {
+          type: 'object',
+          properties: {
+            category: { type: 'string', enum: ['all', 'personal_data', 'preferences', 'instructions'], description: 'Category to clear or all' },
+            scope: { type: 'string', enum: ['all', 'database', 'vault', 'buffer'], description: 'Wipe scope' }
+          }
+        }
+      }
+    });
+
+    formatted.push({
+      type: 'function',
+      function: {
+        name: 'delete_text',
+        description: 'Deletes or clears text in currently focused window, input field, or editor (backspace, word, line, or all)',
+        parameters: {
+          type: 'object',
+          properties: {
+            count: { type: 'number', description: 'Number of characters or words to delete' },
+            mode: { type: 'string', enum: ['backspace', 'delete', 'word', 'line', 'all'], description: 'Deletion mode' }
+          }
+        }
+      }
+    });
+
     // Add UI & Vision Tools
     formatted.push({
       type: 'function',
@@ -274,6 +320,16 @@ export class GroqFastActuator {
     if (/remember|save|fact|memory|recall|search memory|note/i.test(text)) {
       selectedNames.add('save_memory_fact');
       selectedNames.add('search_memory');
+    }
+    if (/clear memory|wipe memory|erase memory|forget|delete memory|reset memory|purge memory/i.test(text)) {
+      selectedNames.add('clear_memory');
+      selectedNames.add('remove_memory');
+    }
+
+    // 8b. Text Deletion & Input Automation Domain
+    if (/delete|erase|backspace|clear text|remove text|undo text|clear line|delete word/i.test(text)) {
+      selectedNames.add('delete_text');
+      selectedNames.add('desktop_control');
     }
 
     // 9. Vision & Optical Streaming Domain
@@ -517,6 +573,22 @@ export class GroqFastActuator {
     if (name === 'save_memory_fact' && memoryBridgeRunner) {
       const { key, value, category } = args || {};
       return await memoryBridgeRunner(['save_fact', key || '', value || '', category || 'custom']);
+    }
+
+    if (name === 'remove_memory' && memoryBridgeRunner) {
+      const { category = 'all', content = 'all' } = args || {};
+      return await memoryBridgeRunner(['remove_triad', category, content]);
+    }
+
+    if (name === 'clear_memory' && memoryBridgeRunner) {
+      const { category = 'all', scope = 'all' } = args || {};
+      return await memoryBridgeRunner(['clear_memory', category, scope]);
+    }
+
+    if (name === 'delete_text') {
+      const count = Number(args?.count || 1);
+      const mode = String(args?.mode || 'backspace');
+      return await dispatchSystemControl('delete_text', { count, mode });
     }
 
     if (name === 'switch_persona' && clientWs && clientWs.readyState === WebSocket.OPEN) {

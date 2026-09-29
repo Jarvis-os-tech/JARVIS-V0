@@ -144,17 +144,32 @@ def _sync_vault_file_add(category: str, content: str, learned_date: str):
         sys.stderr.write(f"[VaultSync] Failed to append: {e}\n")
 
 
+def _sync_vault_file_clear(category: str):
+    targets = ["personal_data", "preferences", "instructions"] if category in ("all", "*", "everything", "") else [category]
+    for cat in targets:
+        vf = _get_vault_file(cat)
+        if not vf:
+            continue
+        try:
+            title = "Personal Details" if "personal" in cat else ("User Preferences" if "pref" in cat else "System Instructions")
+            vf.write_text(f"# {title}\n\n", encoding="utf-8")
+        except Exception as e:
+            sys.stderr.write(f"[VaultSync] Failed to clear {cat}: {e}\n")
+
+
 def _sync_vault_file_remove(category: str, content: str):
-    vf = _get_vault_file(category)
-    if not vf:
-        return
-    try:
-        lines = vf.read_text(encoding="utf-8").splitlines()
-        clean_target = content.lower().strip()
-        new_lines = [l for l in lines if clean_target not in l.lower()]
-        vf.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
-    except Exception as e:
-        sys.stderr.write(f"[VaultSync] Failed to remove: {e}\n")
+    targets = ["personal_data", "preferences", "instructions"] if category in ("all", "*", "everything", "") else [category]
+    for cat in targets:
+        vf = _get_vault_file(cat)
+        if not vf:
+            continue
+        try:
+            lines = vf.read_text(encoding="utf-8").splitlines()
+            clean_target = content.lower().strip()
+            new_lines = [l for l in lines if clean_target not in l.lower()]
+            vf.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
+        except Exception as e:
+            sys.stderr.write(f"[VaultSync] Failed to remove from {cat}: {e}\n")
 
 
 def _sync_vault_file_rewrite(category: str, old_content: str, new_content: str):
@@ -230,17 +245,47 @@ def handle_add_triad(category: str, content: str, learned_date: str = None):
         import datetime
         learned_date = f"[[{datetime.date.today().isoformat()}]]"
 
+    clean_content = content.strip()
     conn = get_db_connection()
     c = conn.cursor()
+
+    # Dynamic Upsert: If this entry updates a recognized key or topic phrase, update the existing row
+    import re
+    key_prefix = None
+    m = re.match(r"^(\*\*[^*]+\*\*|[^:]+):", clean_content)
+    if m:
+        key_prefix = m.group(1).strip()
+    else:
+        for phrase in ["Default save path", "Always use"]:
+            if clean_content.lower().startswith(phrase.lower()):
+                key_prefix = phrase
+                break
+
+    if key_prefix:
+        c.execute(f"SELECT id FROM {tbl} WHERE content LIKE ? LIMIT 1", (f"%{key_prefix}%",))
+        row = c.fetchone()
+        if row:
+            c.execute(f"UPDATE {tbl} SET content = ?, learned_date = ? WHERE id = ?", (clean_content, learned_date, row["id"]))
+            conn.commit()
+            conn.close()
+            _sync_vault_file_rewrite(category, key_prefix, clean_content)
+            return {
+                "status": "updated",
+                "id": str(row["id"]),
+                "category": category,
+                "content": clean_content,
+                "learnedDate": learned_date
+            }
+
     c.execute(
         f"INSERT OR REPLACE INTO {tbl} (content, learned_date) VALUES (?, ?)",
-        (content.strip(), learned_date)
+        (clean_content, learned_date)
     )
     conn.commit()
     new_id = c.lastrowid
     conn.close()
 
-    _sync_vault_file_add(category, content, learned_date)
+    _sync_vault_file_add(category, clean_content, learned_date)
 
     return {
         "status": "added",
@@ -251,34 +296,144 @@ def handle_add_triad(category: str, content: str, learned_date: str = None):
     }
 
 
-def handle_remove_triad(category: str, content_or_id: str):
-    tbl = TABLE_MAP.get(category, "personal_details")
+def handle_clear_memory(category: str = "all", scope: str = "all"):
+    """
+    Completely wipes or clears memory across personal_details, preferences, instructions,
+    and conversational memory buffer. Resets SQLite auto-increment IDs and syncs Obsidian vault notes.
+    """
     conn = get_db_connection()
     c = conn.cursor()
 
-    deleted = 0
-    # Try as integer ID first
-    if str(content_or_id).isdigit():
-        c.execute(f"DELETE FROM {tbl} WHERE id = ?", (int(content_or_id),))
-        deleted = c.rowcount
+    cat_lower = (category or "all").lower().strip()
+    scope_lower = (scope or "all").lower().strip()
+
+    tables = []
+    if cat_lower in ("all", "*", "everything", ""):
+        tables = [
+            ("personal_data", "personal_details"),
+            ("preferences", "preferences"),
+            ("instructions", "instructions")
+        ]
+        if scope_lower in ("all", "buffer", "full"):
+            tables.append(("memory_buffer", "memory_buffer"))
     else:
-        # Match exact content
-        c.execute(f"DELETE FROM {tbl} WHERE LOWER(TRIM(content)) = LOWER(TRIM(?))", (content_or_id,))
-        deleted = c.rowcount
-        if deleted == 0:
-            # Substring match
-            c.execute(f"DELETE FROM {tbl} WHERE content LIKE ?", (f"%{content_or_id.strip()}%",))
-            deleted = c.rowcount
+        tbl = TABLE_MAP.get(cat_lower, cat_lower)
+        tables = [(cat_lower, tbl)]
+
+    cleared_counts = {}
+    for cat_key, tbl in tables:
+        try:
+            c.execute(f"SELECT count(*) FROM {tbl}")
+            count = c.fetchone()[0]
+            c.execute(f"DELETE FROM {tbl}")
+            try:
+                c.execute("DELETE FROM sqlite_sequence WHERE name = ?", (tbl,))
+            except Exception:
+                pass
+            cleared_counts[cat_key] = count
+            _sync_vault_file_clear(cat_key)
+        except Exception as e:
+            cleared_counts[cat_key] = f"error: {str(e)}"
 
     conn.commit()
     conn.close()
 
-    _sync_vault_file_remove(category, str(content_or_id))
+    # Clear bundle memory engine & vault notes if full wipe requested
+    bundle_cleared = 0
+    if cat_lower in ("all", "*", "everything", "") and scope_lower in ("all", "vault", "full"):
+        try:
+            eng_conn = memory_engine.engine._conn
+            if eng_conn:
+                for b_tbl in ["memory_nodes", "conversation_turns", "knowledge_nodes", "knowledge_triples", "diary_entries"]:
+                    try:
+                        eng_conn.execute(f"DELETE FROM {b_tbl}")
+                    except Exception:
+                        pass
+                eng_conn.commit()
+
+            from python.config import MEMORY_MD, FACTS_DIR
+            if os.path.exists(MEMORY_MD):
+                with open(MEMORY_MD, "w", encoding="utf-8") as f:
+                    f.write("# 🧠 J.A.R.V.I.S. Core Sovereign Memory Matrix\n\n*Memory core reset.*\n")
+            if os.path.exists(FACTS_DIR):
+                for f_name in os.listdir(FACTS_DIR):
+                    f_path = os.path.join(FACTS_DIR, f_name)
+                    if os.path.isfile(f_path) and f_name.endswith(".md"):
+                        try:
+                            os.remove(f_path)
+                            bundle_cleared += 1
+                        except Exception:
+                            pass
+        except Exception as e:
+            sys.stderr.write(f"[BundleClear] Error during bundle memory wipe: {e}\n")
 
     return {
-        "status": "removed" if deleted > 0 else "not_found",
+        "status": "cleared",
         "category": category,
-        "deletedCount": deleted
+        "scope": scope,
+        "clearedCounts": cleared_counts,
+        "vaultFactsCleared": bundle_cleared,
+        "totalRecordsCleared": sum([v for v in cleared_counts.values() if isinstance(v, int)]) + bundle_cleared
+    }
+
+
+def handle_remove_triad(category: str, content_or_id: str):
+    """
+    Deletes or forgets an existing memory fact, preference, or instruction.
+    Supports single item delete by ID or content, and detects bulk clear keywords.
+    When category is 'all', searches across all three triad tables.
+    """
+    clean_target = str(content_or_id).lower().strip() if content_or_id is not None else ""
+
+    # If content_or_id is a wipe/clear keyword or empty with 'all' category, delegate to handle_clear_memory
+    if clean_target in ("all", "everything", "*", "clear", "wipe", "all memory", "clear memory") or (not clean_target and category in ("all", "*")):
+        return handle_clear_memory(category=category or "all", scope="all")
+
+    conn = get_db_connection()
+    c = conn.cursor()
+
+    tables_to_search = (
+        [("personal_data", "personal_details"), ("preferences", "preferences"), ("instructions", "instructions")]
+        if (not category or category in ("all", "*", "everything"))
+        else [(category, TABLE_MAP.get(category, "personal_details"))]
+    )
+
+    total_deleted = 0
+    deleted_categories = []
+
+    for cat_name, tbl in tables_to_search:
+        deleted = 0
+        if str(content_or_id).isdigit():
+            c.execute(f"DELETE FROM {tbl} WHERE id = ?", (int(content_or_id),))
+            deleted = c.rowcount
+        else:
+            # 1. Exact match (case-insensitive & trimmed)
+            c.execute(f"DELETE FROM {tbl} WHERE LOWER(TRIM(content)) = LOWER(TRIM(?))", (content_or_id,))
+            deleted = c.rowcount
+            if deleted == 0:
+                # 2. Substring match
+                c.execute(f"DELETE FROM {tbl} WHERE LOWER(content) LIKE LOWER(?)", (f"%{str(content_or_id).strip()}%",))
+                deleted = c.rowcount
+            if deleted == 0:
+                # 3. Strip formatting markdown symbols (** or bullet) and try matching
+                stripped_query = str(content_or_id).replace("**", "").replace("-", "").strip()
+                if stripped_query:
+                    c.execute(f"DELETE FROM {tbl} WHERE LOWER(content) LIKE LOWER(?)", (f"%{stripped_query}%",))
+                    deleted = c.rowcount
+
+        if deleted > 0:
+            total_deleted += deleted
+            deleted_categories.append(cat_name)
+            _sync_vault_file_remove(cat_name, str(content_or_id))
+
+    conn.commit()
+    conn.close()
+
+    return {
+        "status": "removed" if total_deleted > 0 else "not_found",
+        "category": category,
+        "deletedCount": total_deleted,
+        "affectedCategories": deleted_categories
     }
 
 
@@ -364,9 +519,13 @@ def main():
             date = sys.argv[4] if len(sys.argv) > 4 else None
             res = handle_add_triad(category, content, date)
         elif cmd == "remove_triad":
-            category = sys.argv[2]
-            content_or_id = sys.argv[3]
+            category = sys.argv[2] if len(sys.argv) > 2 else "all"
+            content_or_id = sys.argv[3] if len(sys.argv) > 3 else "all"
             res = handle_remove_triad(category, content_or_id)
+        elif cmd in ("clear_memory", "clear_triad"):
+            category = sys.argv[2] if len(sys.argv) > 2 else "all"
+            scope = sys.argv[3] if len(sys.argv) > 3 else "all"
+            res = handle_clear_memory(category, scope)
         elif cmd == "rewrite_triad":
             category = sys.argv[2]
             old_content = sys.argv[3]

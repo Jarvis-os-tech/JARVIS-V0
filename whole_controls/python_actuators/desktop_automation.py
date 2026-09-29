@@ -70,6 +70,82 @@ async def send_hotkey(combo: str) -> Dict[str, Any]:
     """Dispatches a key combo shortcut (e.g. 'ctrl+c', 'ctrl+w', 'alt+F4', 'super')."""
     return await _exec_desktop(["hotkey", combo])
 
+async def delete_text(count: int = 1, mode: str = "backspace") -> Dict[str, Any]:
+    """
+    Deletes or clears text in the currently active/focused window, input field, or editor.
+    Modes:
+      - 'backspace': Deletes preceding character(s) (repeatable via count).
+      - 'delete': Deletes forward character(s) (repeatable via count).
+      - 'word': Deletes preceding word(s) via Ctrl+BackSpace (repeatable via count).
+      - 'line': Clears current line (Ctrl+u, or Shift+Home then BackSpace).
+      - 'all': Clears all text in active document/input field (Ctrl+a then BackSpace).
+    """
+    clean_mode = (mode or "backspace").lower().strip()
+    c = max(1, int(count or 1))
+
+    if clean_mode in ("all", "clear_all", "entire"):
+        res1 = await send_hotkey("ctrl+a")
+        await asyncio.sleep(0.02)
+        res2 = await send_hotkey("BackSpace")
+        return {
+            "success": res1.get("status") == "ok" or res2.get("status") == "ok",
+            "action": "delete_text",
+            "mode": "all",
+            "message": "Cleared all text in active field."
+        }
+
+    elif clean_mode in ("line", "clear_line"):
+        # Ctrl+U clears line in readline/terminals; Shift+Home + BackSpace clears line in text editors/browsers
+        await send_hotkey("ctrl+u")
+        await send_hotkey("shift+Home")
+        await asyncio.sleep(0.01)
+        await send_hotkey("BackSpace")
+        return {
+            "success": True,
+            "action": "delete_text",
+            "mode": "line",
+            "message": "Cleared current line."
+        }
+
+    elif clean_mode in ("word", "words"):
+        for _ in range(c):
+            await send_hotkey("ctrl+BackSpace")
+            if c > 1:
+                await asyncio.sleep(0.01)
+        return {
+            "success": True,
+            "action": "delete_text",
+            "mode": "word",
+            "count": c,
+            "message": f"Deleted {c} word(s)."
+        }
+
+    elif clean_mode in ("delete", "forward"):
+        for _ in range(c):
+            await send_hotkey("Delete")
+            if c > 1:
+                await asyncio.sleep(0.01)
+        return {
+            "success": True,
+            "action": "delete_text",
+            "mode": "delete",
+            "count": c,
+            "message": f"Deleted {c} forward character(s)."
+        }
+
+    else:  # default 'backspace'
+        for _ in range(c):
+            await send_hotkey("BackSpace")
+            if c > 1:
+                await asyncio.sleep(0.01)
+        return {
+            "success": True,
+            "action": "delete_text",
+            "mode": "backspace",
+            "count": c,
+            "message": f"Deleted {c} character(s) via backspace."
+        }
+
 async def take_screenshot(output_path: Optional[str] = None) -> Dict[str, Any]:
     """Takes a full-resolution screenshot and saves it to output_path."""
     path = output_path or f"/tmp/jarvis_screenshot_{int(time.time())}.png"

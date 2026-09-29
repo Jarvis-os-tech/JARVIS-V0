@@ -187,22 +187,42 @@
         },
         {
           "name": "desktop_control",
-          "description": "Deterministic computer use input automation (mouse clicks, movement, typing text, hotkeys).",
+          "description": "Deterministic computer use input automation (mouse clicks, movement, typing text, deleting text, hotkeys).",
           "parameters": {
             "type": "OBJECT",
             "properties": {
               "action": {
                 "type": "STRING",
-                "description": "Desktop action: 'click', 'move', 'scroll', 'type_text', 'hotkey', 'screenshot'.",
-                "enum": ["click", "move", "scroll", "type_text", "hotkey", "screenshot"]
+                "description": "Desktop action: 'click', 'move', 'scroll', 'type_text', 'delete_text', 'clear_text', 'hotkey', 'screenshot'.",
+                "enum": ["click", "move", "scroll", "type_text", "delete_text", "clear_text", "hotkey", "screenshot"]
               },
               "x": { "type": "INTEGER", "description": "X coordinate for mouse click or move." },
               "y": { "type": "INTEGER", "description": "Y coordinate for mouse click or move." },
               "button": { "type": "STRING", "description": "Mouse button: 'left', 'right', 'middle'." },
               "text": { "type": "STRING", "description": "Text to type for 'type_text'." },
+              "count": { "type": "INTEGER", "description": "Count for 'delete_text' (characters or words)." },
+              "mode": { "type": "STRING", "description": "Mode for 'delete_text': 'backspace', 'delete', 'word', 'line', 'all'." },
               "combo": { "type": "STRING", "description": "Key combo for 'hotkey', e.g. 'ctrl+c', 'alt+F4'." }
             },
             "required": ["action"]
+          }
+        },
+        {
+          "name": "delete_text",
+          "description": "Deletes or clears text in the currently active/focused window, input field, document, or editor. Can delete single characters, words, entire lines, or clear all text.",
+          "parameters": {
+            "type": "OBJECT",
+            "properties": {
+              "count": {
+                "type": "INTEGER",
+                "description": "Number of characters or words to delete (default: 1)."
+              },
+              "mode": {
+                "type": "STRING",
+                "enum": ["backspace", "delete", "word", "line", "all"],
+                "description": "Deletion mode: 'backspace' (delete previous char), 'delete' (delete forward char), 'word' (delete previous word via ctrl+backspace), 'line' (clear current line via ctrl+u), or 'all' (clear all text via ctrl+a followed by backspace)."
+              }
+            }
           }
         },
         {

@@ -17,6 +17,18 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 import { getSystemControlDeclarations, dispatchSystemControl, isSystemControl } from './system_modules/intelligent_system/system_controls';
 import { groqFastActuator } from './system_modules/intelligent_system/groq_fast_actuator';
+import { dualPathOrchestrator } from './system_modules/intelligent_system/dual_path_orchestrator';
+import { autonomousEngine } from './system_modules/intelligent_system/autonomous_engine';
+import { formatSystemEnvironmentPrompt } from './system_modules/intelligent_system/system_environment';
+import {
+  fileFunctionDeclarations,
+  handleWriteFile,
+  handleAppendFile,
+  handleRewriteFile,
+  handleRemoveFile,
+  handleReadFile,
+  handleListDirectory
+} from './system_modules/intelligent_system/file_controls';
 import connectorRoutes from '../connectors/connector-routes';
 import { isConnectorTool, dispatchConnectorTool, getConnectorToolDeclarations } from '../connectors/connector-agent';
 import {
@@ -153,6 +165,21 @@ async function startServer() {
     res.json(data);
   });
 
+  // J.A.R.V.I.S. Multi-Agent Dual-Path Status Endpoint
+  app.get('/api/orchestrator/status', (_req, res) => {
+    res.json({
+      status: 'nominal',
+      timestamp: new Date().toISOString(),
+      orchestrator: 'active',
+      activeProviders: {
+        googleGemini: !!process.env.GEMINI_API_KEY,
+        groq: !!process.env.GROQ_API_KEY,
+        nvidiaNim: !!process.env.NVIDIA_API_KEY,
+        omniRoute: !!process.env.OMNIROUTE_BASE_URL
+      }
+    });
+  });
+
   // Broadcast helper for real-time client sync
   let activeWss: WebSocketServer | null = null;
 
@@ -248,6 +275,46 @@ async function startServer() {
       }
       const data = await runMemoryBridge(['rewrite_triad', category, String(oldContent), String(newContent)]);
       broadcastMemoryUpdated(category, 'rewrite', data);
+      res.json(data);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post(['/api/memory/clear', '/api/memory/:category/clear'], async (req, res) => {
+    try {
+      const category = req.params.category || req.body.category || 'all';
+      const scope = req.body.scope || 'all';
+      const data = await runMemoryBridge(['clear_memory', category, scope]);
+      broadcastMemoryUpdated(category, 'clear', data);
+      res.json(data);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.delete(['/api/memory', '/api/memory/:category', '/api/memory/:category/:id'], async (req, res) => {
+    try {
+      const category = req.params.category || 'all';
+      const id = req.params.id;
+      if (id) {
+        const data = await runMemoryBridge(['remove_triad', category, id]);
+        broadcastMemoryUpdated(category, 'remove', data);
+        return res.json(data);
+      }
+      const data = await runMemoryBridge(['clear_memory', category, 'all']);
+      broadcastMemoryUpdated(category, 'clear', data);
+      res.json(data);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/desktop/delete-text', async (req, res) => {
+    try {
+      const count = Number(req.body.count || 1);
+      const mode = String(req.body.mode || 'backspace');
+      const data = await dispatchSystemControl('delete_text', { count, mode });
       res.json(data);
     } catch (err: any) {
       res.status(500).json({ error: err.message });
@@ -446,7 +513,8 @@ You have direct connected tools to Google Workspace (Gmail, Calendar, Tasks, Dri
       const dynamicMemContext = memRes?.context ? `\n\n${memRes.context}` : '';
       const skillsContext = getSkillsPromptContext();
       const connectorDirectives = getTemporalAndConnectorDirectives();
-      const baseInstruction = (systemInstruction || 'You are J.A.R.V.I.S., an autonomous AI operating system with ultra-rapid response latency and a 4-tier cognitive memory matrix. Respond with calm British wit, rapid verbal shortcuts (e.g. "Right away, Sir", "On it, Sir"), and proactively state if a complex task will require extra computing time.') + dynamicMemContext + skillsContext + connectorDirectives;
+      const liveEnvContext = formatSystemEnvironmentPrompt();
+      const baseInstruction = (systemInstruction || 'You are J.A.R.V.I.S., an autonomous AI operating system with ultra-rapid response latency and a 4-tier cognitive memory matrix. Respond with calm British wit, rapid verbal shortcuts (e.g. "Right away, Sir", "On it, Sir"), and proactively state if a complex task will require extra computing time.') + liveEnvContext + dynamicMemContext + skillsContext + connectorDirectives;
 
       const ai = getAi();
       try {
@@ -521,6 +589,7 @@ You have direct connected tools to Google Workspace (Gmail, Calendar, Tasks, Dri
 
         const ai = getAi();
         const voiceName = config.voiceName || 'Puck';
+        dualPathOrchestrator.setVoiceName(voiceName);
         const candidateModels = [
           config.model,
           'gemini-8-flash-live',
@@ -531,25 +600,33 @@ You have direct connected tools to Google Workspace (Gmail, Calendar, Tasks, Dri
 
         const memRes = await runMemoryBridge(['context', 'jarvis-prime']);
         const dynamicMemContext = memRes?.context ? `\n\n${memRes.context}` : '';
-        const memoryDirectives = `\n\nAUTONOMOUS MEMORY CONTROL DIRECTIVES:
-You have complete autonomous authority to control and maintain your own long-term memory across three categories:
-1. "personal_data": Personal details, identity vectors, academic/work details, background facts about the user.
-2. "preferences": User preferences, tools, default save locations, software choices, UI styles.
-3. "instructions": System execution rules, behavioral guidelines, operational constraints.
+        const memoryDirectives = `\n\nAUTONOMOUS MEMORY & FILE OPERATIONS DIRECTIVES:
+You have complete autonomous authority to control and maintain memory and host filesystem files:
+1. Memory Core:
+   - "personal_data": Personal details, identity vectors, academic/work details, background facts about the user.
+   - "preferences": User preferences, tools, default save locations, software choices, UI styles.
+   - "instructions": System execution rules, behavioral guidelines, operational constraints.
+   - When user shares personal facts or preferences: call \`add_memory(category, content)\` or \`append_memory(category, content)\`.
+   - When user corrects or modifies details: call \`rewrite_memory(category, old_content, new_content)\`.
+   - When user wants to wipe, reset, or clear memory or forget everything: call \`clear_memory(category, scope)\`.
+   - When user wants to forget or delete a specific memory item: call \`remove_memory(category, content)\`.
+   - When user asks to delete, clear, or backspace text on screen, active field, or document: call \`delete_text(count, mode)\`.
+   - When looking up memory: call \`query_memory(category, query)\`.
 
-When the user shares personal facts or instructions:
-- Proactively call \`add_memory(category, content)\`.
-When the user updates, modifies, changes, or corrects any existing detail:
-- Proactively call \`rewrite_memory(category, old_content, new_content)\` to update your memory core.
-When the user tells you to forget, remove, or delete a fact or preference:
-- Proactively call \`remove_memory(category, content)\` to purge it.
-When you need to look up personal data, preferences, or instructions:
-- Call \`query_memory(category, query)\`.
-Respond to the user with crisp British wit confirming the action (e.g. "I've committed that to memory, Sir.", "I've rewritten that rule in my core matrix, Sir.", "Understood, Sir. Fact purged.").`;
+2. File System Operations:
+   - To create or write files: call \`write_file(filePath, content, overwrite)\`.
+   - To append text or logs to existing files: call \`append_file(filePath, content)\`.
+   - To edit or rewrite existing file content: call \`rewrite_file(filePath, targetContent, replacementContent)\`.
+   - To delete or remove files: call \`remove_file(filePath, recursive)\`.
+   - To read file content: call \`read_file(filePath, startLine, endLine)\`.
+   - To list directory contents: call \`list_directory(dirPath)\`.
+   - Always resolve user paths properly (e.g. ~/Desktop/..., ~/Downloads/..., or ./...).
+Respond with crisp British wit confirming any memory, text, or file operation performed (e.g. "Memory core purged, Sir.", "Text deleted, Sir.", "File created, Sir.", "Appended to your notes, Sir.", "I've rewritten that rule in my core matrix, Sir.").`;
 
         const skillsContext = getSkillsPromptContext();
         const connectorDirectives = getTemporalAndConnectorDirectives();
-        const systemInstruction = (config.systemInstruction || 'You are J.A.R.V.I.S., a sophisticated and helpful AI companion. Respond with natural spoken warmth and empathy in the user language.') + memoryDirectives + dynamicMemContext + skillsContext + connectorDirectives;
+        const liveEnvContext = formatSystemEnvironmentPrompt();
+        const systemInstruction = (config.systemInstruction || 'You are J.A.R.V.I.S., a sophisticated and helpful AI companion. Respond with natural spoken warmth and empathy in the user language.') + liveEnvContext + memoryDirectives + dynamicMemContext + skillsContext + connectorDirectives;
 
         const functionDeclarations = [
           {
@@ -590,6 +667,25 @@ Respond to the user with crisp British wit confirming the action (e.g. "I've com
             }
           },
           {
+            name: 'append_memory',
+            description: 'Autonomously append additional details, directives, or notes to an existing memory category or preference.',
+            parameters: {
+              type: Type.OBJECT,
+              properties: {
+                category: {
+                  type: Type.STRING,
+                  enum: ['personal_data', 'preferences', 'instructions'],
+                  description: 'The memory category to append to'
+                },
+                content: {
+                  type: Type.STRING,
+                  description: 'The exact fact, preference, or directive statement to append'
+                }
+              },
+              required: ['category', 'content']
+            }
+          },
+          {
             name: 'remove_memory',
             description: 'Autonomously delete or forget an existing personal fact, user preference, or instruction from J.A.R.V.I.S. memory core.',
             parameters: {
@@ -597,15 +693,52 @@ Respond to the user with crisp British wit confirming the action (e.g. "I've com
               properties: {
                 category: {
                   type: Type.STRING,
-                  enum: ['personal_data', 'preferences', 'instructions'],
-                  description: 'The category of the memory to remove'
+                  enum: ['all', 'personal_data', 'preferences', 'instructions'],
+                  description: 'The category of the memory to remove ("all" to search all categories)'
                 },
                 content: {
                   type: Type.STRING,
-                  description: 'The text snippet, fact statement, or identifier to remove'
+                  description: 'The text snippet, fact statement, or identifier to remove ("all" to wipe the category)'
                 }
               },
               required: ['category', 'content']
+            }
+          },
+          {
+            name: 'clear_memory',
+            description: 'Completely wipe or clear stored memory facts, user preferences, system instructions, or all memory cores.',
+            parameters: {
+              type: Type.OBJECT,
+              properties: {
+                category: {
+                  type: Type.STRING,
+                  enum: ['all', 'personal_data', 'preferences', 'instructions'],
+                  description: 'Memory category to clear: "all" for full memory wipe, or a specific category'
+                },
+                scope: {
+                  type: Type.STRING,
+                  enum: ['all', 'database', 'vault', 'buffer'],
+                  description: 'Scope to wipe: "all" (default) wipes SQLite tables, Obsidian vault notes, and conversational memory buffer'
+                }
+              }
+            }
+          },
+          {
+            name: 'delete_text',
+            description: 'Deletes or clears text in the currently active/focused window, input field, document, or editor. Can delete single characters, words, entire lines, or clear all text.',
+            parameters: {
+              type: Type.OBJECT,
+              properties: {
+                count: {
+                  type: Type.INTEGER,
+                  description: 'Number of characters or words to delete (default: 1).'
+                },
+                mode: {
+                  type: Type.STRING,
+                  enum: ['backspace', 'delete', 'word', 'line', 'all'],
+                  description: 'Deletion mode: "backspace" (delete previous char), "delete" (delete forward char), "word" (delete previous word via ctrl+backspace), "line" (clear current line via ctrl+u), or "all" (clear all text via ctrl+a followed by backspace).'
+                }
+              }
             }
           },
           {
@@ -784,7 +917,8 @@ Respond to the user with crisp British wit confirming the action (e.g. "I've com
             }
           },
           ...getSystemControlDeclarations(),
-          ...getConnectorToolDeclarations()
+          ...getConnectorToolDeclarations(),
+          ...fileFunctionDeclarations
         ];
 
         const toolsList = [{ functionDeclarations }];
@@ -853,12 +987,16 @@ Respond to the user with crisp British wit confirming the action (e.g. "I've com
 
                   // Mid-sentence fast tool triggering via Groq (Ultra-low latency, sub-100ms)
                   groqFastActuator.processStreamingSpeech(currentTurnUserText, clientWs, runMemoryBridge);
+
+                  // J.A.R.V.I.S. Dual-Path Execution Engine (<100ms routing, sub-300ms instant vocal filler, and async agent handoff)
+                  dualPathOrchestrator.processUtterance(currentTurnUserText, clientWs, { runMemoryBridge });
                 }
 
                 // Handle Interrupted
                 if (message.serverContent?.interrupted) {
                   currentTurnModelText = '';
                   groqFastActuator.resetTurn();
+                  dualPathOrchestrator.handleInterruption(clientWs);
                   clientWs.send(JSON.stringify({ type: 'interrupted' }));
                 }
 
@@ -947,9 +1085,9 @@ Respond to the user with crisp British wit confirming the action (e.g. "I've com
                         };
                       }
 
-                      if (name === 'add_memory') {
+                      if (name === 'add_memory' || name === 'append_memory') {
                         const { category, content } = args || {};
-                        console.log(`[Live WS] J.A.R.V.I.S. autonomously adding memory: [${category}] ${content}`);
+                        console.log(`[Live WS] J.A.R.V.I.S. autonomously storing memory: [${category}] ${content}`);
                         const addResult = await runMemoryBridge(['add_triad', category || 'personal_data', content || '']);
                         broadcastMemoryUpdated(category || 'personal_data', 'add', addResult);
                         return {
@@ -960,14 +1098,38 @@ Respond to the user with crisp British wit confirming the action (e.g. "I've com
                       }
 
                       if (name === 'remove_memory') {
-                        const { category, content } = args || {};
+                        const { category = 'all', content = 'all' } = args || {};
                         console.log(`[Live WS] J.A.R.V.I.S. autonomously removing memory: [${category}] ${content}`);
-                        const removeResult = await runMemoryBridge(['remove_triad', category || 'personal_data', content || '']);
-                        broadcastMemoryUpdated(category || 'personal_data', 'remove', removeResult);
+                        const removeResult = await runMemoryBridge(['remove_triad', category, content]);
+                        broadcastMemoryUpdated(category, 'remove', removeResult);
                         return {
                           id: callId,
                           name,
-                          response: { result: `Successfully removed from ${category} memory core: "${content}"` }
+                          response: { result: `Successfully processed removal for ${category} memory: "${content}"` }
+                        };
+                      }
+
+                      if (name === 'clear_memory') {
+                        const { category = 'all', scope = 'all' } = args || {};
+                        console.log(`[Live WS] J.A.R.V.I.S. autonomously clearing memory: [${category}] scope=${scope}`);
+                        const clearResult = await runMemoryBridge(['clear_memory', category, scope]);
+                        broadcastMemoryUpdated(category, 'clear', clearResult);
+                        return {
+                          id: callId,
+                          name,
+                          response: { result: `Successfully cleared ${category} memory core.` }
+                        };
+                      }
+
+                      if (name === 'delete_text') {
+                        const count = Number(args?.count || 1);
+                        const mode = String(args?.mode || 'backspace');
+                        console.log(`[Live WS] J.A.R.V.I.S. deleting text: count=${count}, mode=${mode}`);
+                        const delResult = await dispatchSystemControl('delete_text', { count, mode });
+                        return {
+                          id: callId,
+                          name,
+                          response: { result: delResult?.message || `Successfully executed text deletion (${mode}, count: ${count}).` }
                         };
                       }
 
@@ -981,6 +1143,72 @@ Respond to the user with crisp British wit confirming the action (e.g. "I've com
                           name,
                           response: { result: `Successfully rewritten in ${category} memory: "${new_content}"` }
                         };
+                      }
+
+                      if (name === 'write_file') {
+                        const { filePath, content, overwrite } = args || {};
+                        console.log(`[Live WS] J.A.R.V.I.S. writing file: ${filePath}`);
+                        try {
+                          const res = handleWriteFile(filePath, content, overwrite ?? true);
+                          return { id: callId, name, response: { result: res } };
+                        } catch (err: any) {
+                          return { id: callId, name, response: { error: err.message } };
+                        }
+                      }
+
+                      if (name === 'append_file') {
+                        const { filePath, content } = args || {};
+                        console.log(`[Live WS] J.A.R.V.I.S. appending to file: ${filePath}`);
+                        try {
+                          const res = handleAppendFile(filePath, content);
+                          return { id: callId, name, response: { result: res } };
+                        } catch (err: any) {
+                          return { id: callId, name, response: { error: err.message } };
+                        }
+                      }
+
+                      if (name === 'rewrite_file') {
+                        const { filePath, targetContent, replacementContent } = args || {};
+                        console.log(`[Live WS] J.A.R.V.I.S. rewriting file: ${filePath}`);
+                        try {
+                          const res = handleRewriteFile(filePath, targetContent, replacementContent);
+                          return { id: callId, name, response: { result: res } };
+                        } catch (err: any) {
+                          return { id: callId, name, response: { error: err.message } };
+                        }
+                      }
+
+                      if (name === 'remove_file' || name === 'delete_file') {
+                        const { filePath, recursive } = args || {};
+                        console.log(`[Live WS] J.A.R.V.I.S. removing file: ${filePath}`);
+                        try {
+                          const res = handleRemoveFile(filePath, recursive ?? false);
+                          return { id: callId, name, response: { result: res } };
+                        } catch (err: any) {
+                          return { id: callId, name, response: { error: err.message } };
+                        }
+                      }
+
+                      if (name === 'read_file') {
+                        const { filePath, startLine, endLine } = args || {};
+                        console.log(`[Live WS] J.A.R.V.I.S. reading file: ${filePath}`);
+                        try {
+                          const res = handleReadFile(filePath, startLine, endLine);
+                          return { id: callId, name, response: { result: res } };
+                        } catch (err: any) {
+                          return { id: callId, name, response: { error: err.message } };
+                        }
+                      }
+
+                      if (name === 'list_directory') {
+                        const { dirPath } = args || {};
+                        console.log(`[Live WS] J.A.R.V.I.S. listing directory: ${dirPath || '.'}`);
+                        try {
+                          const res = handleListDirectory(dirPath || '.');
+                          return { id: callId, name, response: { result: res } };
+                        } catch (err: any) {
+                          return { id: callId, name, response: { error: err.message } };
+                        }
                       }
 
                       if (name === 'search_memory') {
@@ -1264,6 +1492,7 @@ Respond to the user with crisp British wit confirming the action (e.g. "I've com
         if (msg.type === 'text' && msg.text) {
           currentTurnUserText += ' ' + msg.text;
           groqFastActuator.processStreamingSpeech(currentTurnUserText, clientWs, runMemoryBridge);
+          dualPathOrchestrator.processUtterance(msg.text, clientWs, { runMemoryBridge });
           if (session) {
             try {
               session.sendRealtimeInput({
@@ -1296,6 +1525,7 @@ Respond to the user with crisp British wit confirming the action (e.g. "I've com
 
     clientWs.on('close', () => {
       console.log('[Live WS] Client disconnected');
+      dualPathOrchestrator.handleInterruption(clientWs);
       if (session) {
         try { session.close(); } catch (e) {}
         session = null;
@@ -1339,6 +1569,23 @@ Respond to the user with crisp British wit confirming the action (e.g. "I've com
     const localUrl = `http://localhost:${PORT}`;
     console.log(`Server running on ${localUrl} (also accessible on http://0.0.0.0:${PORT})`);
     autoLaunchBrowser(localUrl);
+
+    // Start zero-overhead autonomous background pulse
+    autonomousEngine.start(10000, (alert) => {
+      console.log(`[Autonomous Alert] ${alert}`);
+      if (activeWss) {
+        const payload = JSON.stringify({
+          type: 'proactive_notification',
+          text: alert,
+          timestamp: Date.now()
+        });
+        activeWss.clients.forEach((client) => {
+          if (client.readyState === WebSocket.OPEN) {
+            client.send(payload);
+          }
+        });
+      }
+    });
   });
 }
 
