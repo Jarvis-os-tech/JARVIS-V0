@@ -2,28 +2,28 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>J.A.R.V.I.S. - Autonomous AI Voice & Memory System</title>
     <meta name="description" content="Next-generation J.A.R.V.I.S. AI voice assistant powered by Gemini Live with real-time multi-tiered memory (Short-Term, Episodic, Semantic, Long-Term), holographic arc-reactor visualizer, and low-latency audio." />
+    
+    <!-- PWA & Mobile Web Capabilities -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="alternate icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
+    <meta name="theme-color" content="#030814" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="J.A.R.V.I.S." />
+    <meta name="application-name" content="J.A.R.V.I.S." />
+    <meta name="msapplication-TileColor" content="#030814" />
+    <meta name="msapplication-TileImage" content="/icons/icon-192.png" />
+
     <meta property="og:title" content="J.A.R.V.I.S. - Autonomous AI Voice & Memory System" />
     <meta property="og:description" content="Next-generation J.A.R.V.I.S. AI voice assistant powered by Gemini Live with real-time multi-tiered memory (Short-Term, Episodic, Semantic, Long-Term), holographic arc-reactor visualizer, and low-latency audio." />
+    <meta property="og:image" content="/icons/icon-512.png" />
     <script src="https://accounts.google.com/gsi/client" async defer></script>
-    <script>
-      // Clear legacy Service Workers and caches from other projects (e.g. LearnIQ) on port 3000
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then(function(registrations) {
-          for (var i = 0; i < registrations.length; i++) {
-            registrations[i].unregister();
-            console.log('[JARVIS] Purged stale service worker:', registrations[i]);
-          }
-        });
-      }
-      if ('caches' in window) {
-        caches.keys().then(function(keys) {
-          keys.forEach(function(key) { caches.delete(key); });
-        });
-      }
-    </script>
   </head>
   <body>
     <div id="root"></div>

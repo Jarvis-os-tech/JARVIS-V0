@@ -83,6 +83,17 @@ async function startServer() {
   const app = express();
   app.use(express.json({ limit: '10mb' }));
 
+  // PWA Support: Headers for Service Worker and Manifest
+  app.use((req, res, next) => {
+    if (req.path === '/sw.js') {
+      res.setHeader('Content-Type', 'application/javascript');
+      res.setHeader('Service-Worker-Allowed', '/');
+    } else if (req.path === '/manifest.webmanifest' || req.path === '/manifest.json') {
+      res.setHeader('Content-Type', 'application/manifest+json');
+    }
+    next();
+  });
+
   const server = http.createServer(app);
 
   const getAi = () => {

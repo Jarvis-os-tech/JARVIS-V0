@@ -3,6 +3,7 @@ import { User } from 'firebase/auth';
 import { ConnectionState } from '../types';
 import { Mic, Volume2, Globe, Play, Cpu, Brain } from 'lucide-react';
 import { ConnectorButton } from '@connectors/ui';
+import { PwaInstallButton } from './PwaInstallButton';
 
 interface HeaderProps {
   connectionState: ConnectionState;
@@ -26,9 +27,10 @@ export const Header: React.FC<HeaderProps> = ({
   const getStatusBadge = () => {
     if (isDemoMode) {
       return (
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-300 border border-amber-500/30 font-mono">
+        <span className="inline-flex items-center gap-1.5 px-2 sm:px-3 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-300 border border-amber-500/30 font-mono">
           <Play className="w-3 h-3 text-amber-400 fill-current" />
-          Demo Voice Mode
+          <span className="hidden sm:inline">Demo Voice Mode</span>
+          <span className="sm:hidden">Demo</span>
         </span>
       );
     }
@@ -36,41 +38,46 @@ export const Header: React.FC<HeaderProps> = ({
     switch (connectionState) {
       case 'connected':
         return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-cyan-500/15 text-cyan-300 border border-cyan-400/40 shadow-[0_0_12px_rgba(6,182,212,0.25)] font-mono">
+          <span className="inline-flex items-center gap-1.5 px-2 sm:px-3 py-1 rounded-full text-xs font-semibold bg-cyan-500/15 text-cyan-300 border border-cyan-400/40 shadow-[0_0_12px_rgba(6,182,212,0.25)] font-mono">
             <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_8px_#00f0ff]" />
-            LIVE LINK ACTIVE
+            <span className="hidden md:inline">LIVE LINK ACTIVE</span>
+            <span className="md:hidden">LIVE</span>
           </span>
         );
       case 'speaking':
         return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-500/20 text-blue-300 border border-blue-400/50 shadow-[0_0_12px_rgba(59,130,246,0.3)] font-mono">
+          <span className="inline-flex items-center gap-1.5 px-2 sm:px-3 py-1 rounded-full text-xs font-semibold bg-blue-500/20 text-blue-300 border border-blue-400/50 shadow-[0_0_12px_rgba(59,130,246,0.3)] font-mono">
             <Volume2 className="w-3.5 h-3.5 text-blue-400 animate-bounce" />
-            J.A.R.V.I.S. VOCALIZING
+            <span className="hidden md:inline">J.A.R.V.I.S. VOCALIZING</span>
+            <span className="md:hidden">SPEAKING</span>
           </span>
         );
       case 'listening':
         return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-sky-500/20 text-sky-300 border border-sky-400/50 shadow-[0_0_12px_rgba(14,165,233,0.3)] font-mono">
+          <span className="inline-flex items-center gap-1.5 px-2 sm:px-3 py-1 rounded-full text-xs font-semibold bg-sky-500/20 text-sky-300 border border-sky-400/50 shadow-[0_0_12px_rgba(14,165,233,0.3)] font-mono">
             <Mic className="w-3.5 h-3.5 text-sky-400 animate-pulse" />
-            AUDIO SENSORS ACTIVE
+            <span className="hidden md:inline">AUDIO SENSORS ACTIVE</span>
+            <span className="md:hidden">LISTENING</span>
           </span>
         );
       case 'connecting':
         return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 font-mono">
+          <span className="inline-flex items-center gap-1.5 px-2 sm:px-3 py-1 rounded-full text-xs font-medium bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 font-mono">
             <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
-            SYNCHRONIZING...
+            <span className="hidden sm:inline">SYNCHRONIZING...</span>
+            <span className="sm:hidden">SYNC</span>
           </span>
         );
       case 'error':
         return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-red-500/10 text-red-400 border border-red-500/20 font-mono">
-            LINK OFFLINE
+          <span className="inline-flex items-center gap-1.5 px-2 sm:px-3 py-1 rounded-full text-xs font-medium bg-red-500/10 text-red-400 border border-red-500/20 font-mono">
+            <span className="hidden sm:inline">LINK OFFLINE</span>
+            <span className="sm:hidden">OFFLINE</span>
           </span>
         );
       default:
         return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-slate-800 text-slate-300 border border-slate-700 font-mono">
+          <span className="inline-flex items-center gap-1.5 px-2 sm:px-3 py-1 rounded-full text-xs font-medium bg-slate-800 text-slate-300 border border-slate-700 font-mono">
             STANDBY
           </span>
         );
@@ -110,6 +117,9 @@ export const Header: React.FC<HeaderProps> = ({
       {/* Right Action Controls */}
       <div className="flex items-center gap-2.5 sm:gap-3">
         {getStatusBadge()}
+
+        {/* PWA Install Button for Mobile & Linux */}
+        <PwaInstallButton />
 
         {/* Connectors Button & Quick-Access Menu */}
         <ConnectorButton onOpenDirectory={onOpenConnectors} />
