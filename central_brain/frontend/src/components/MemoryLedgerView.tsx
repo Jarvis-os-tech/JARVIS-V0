@@ -1,13 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import { 
   Search, 
-  Filter, 
   Trash2, 
   Edit3, 
   FileText, 
   ArrowUpDown, 
   Calendar, 
-  Layers, 
   CheckCircle2, 
   X,
   ChevronLeft,
@@ -17,7 +15,9 @@ import {
   Cpu,
   Code,
   Globe,
-  Bot
+  Bot,
+  FileCode2,
+  ExternalLink
 } from 'lucide-react';
 
 interface LedgerRecord {
@@ -50,7 +50,7 @@ export const MemoryLedgerView: React.FC<MemoryLedgerViewProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [sortOrder, setSortOrder] = useState<'NEWEST' | 'OLDEST' | 'SAVINGS'>('NEWEST');
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 15;
+  const itemsPerPage = 12;
 
   // Sync prop changes
   React.useEffect(() => {
@@ -103,79 +103,62 @@ export const MemoryLedgerView: React.FC<MemoryLedgerViewProps> = ({
   }, [filteredRecords, currentPage, itemsPerPage]);
 
   const getAgentVisual = (id: string) => {
-    switch (id.toLowerCase()) {
-      case 'hermes':
-        return { icon: Terminal, color: 'text-amber-400', badge: 'bg-amber-950/80 text-amber-300 border-amber-800' };
-      case 'claude':
-        return { icon: Cpu, color: 'text-purple-400', badge: 'bg-purple-950/80 text-purple-300 border-purple-800' };
-      case 'codex':
-        return { icon: Code, color: 'text-emerald-400', badge: 'bg-emerald-950/80 text-emerald-300 border-emerald-800' };
-      case 'antigravity':
-        return { icon: Sparkles, color: 'text-cyan-400', badge: 'bg-cyan-950/80 text-cyan-300 border-cyan-800' };
-      case 'browser':
-        return { icon: Globe, color: 'text-blue-400', badge: 'bg-blue-950/80 text-blue-300 border-blue-800' };
-      default:
-        return { icon: Bot, color: 'text-slate-300', badge: 'bg-slate-800 text-slate-300 border-slate-700' };
-    }
+    const lower = id.toLowerCase();
+    if (lower.includes('opencode')) return { icon: Terminal, badge: 'bg-amber-950/80 text-amber-300 border-amber-800' };
+    if (lower.includes('hermes')) return { icon: Terminal, badge: 'bg-amber-950/80 text-amber-300 border-amber-800' };
+    if (lower.includes('antigravity ide')) return { icon: Sparkles, badge: 'bg-cyan-950/80 text-cyan-300 border-cyan-800' };
+    if (lower.includes('antigravity')) return { icon: Sparkles, badge: 'bg-sky-950/80 text-sky-300 border-sky-800' };
+    if (lower.includes('claude')) return { icon: Cpu, badge: 'bg-purple-950/80 text-purple-300 border-purple-800' };
+    if (lower.includes('codex')) return { icon: Code, badge: 'bg-emerald-950/80 text-emerald-300 border-emerald-800' };
+    if (lower.includes('cursor')) return { icon: Code, badge: 'bg-blue-950/80 text-blue-300 border-blue-800' };
+    if (lower.includes('browser')) return { icon: Globe, badge: 'bg-cyan-950/80 text-cyan-300 border-cyan-800' };
+    if (lower.includes('orca')) return { icon: Bot, badge: 'bg-indigo-950/80 text-indigo-300 border-indigo-800' };
+    return { icon: Bot, badge: 'bg-slate-800 text-slate-300 border-slate-700' };
   };
 
   return (
     <div className="space-y-5">
-      {/* Search, Filter & Sort Toolbar */}
-      <div className="bg-[#0a0f1d] border border-[#162342] rounded-2xl p-4 shadow-lg flex flex-col md:flex-row items-center justify-between gap-4">
-        {/* Search Bar */}
-        <div className="relative w-full md:w-80">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => {
-              setSearchTerm(e.target.value);
-              setCurrentPage(1);
-            }}
-            placeholder="Search decisions, files, or sessions..."
-            className="w-full bg-[#060a14] border border-[#1a2c4e] focus:border-cyan-500 rounded-xl pl-9 pr-8 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none transition-colors"
-          />
-          {searchTerm && (
-            <button
-              onClick={() => setSearchTerm('')}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          )}
+      {/* Header Info */}
+      <div className="bg-[#0a0f1d] border border-[#162342] rounded-2xl p-5 shadow-lg flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-sm font-bold text-slate-100 uppercase tracking-wide font-display flex items-center gap-2">
+            <FileText className="w-4 h-4 text-cyan-400" />
+            Structured Memory Ledger
+          </h2>
+          <p className="text-xs text-slate-400 mt-1">
+            Condensed, fact-rich summaries of tasks and decisions logged across all your AI tools
+          </p>
         </div>
 
-        {/* Filter by Agent Pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto pb-1 md:pb-0 scrollbar-none">
-          {uniqueAgents.map((agent) => (
-            <button
-              key={agent}
-              onClick={() => {
-                setFilterAgent(agent);
+        <div className="flex items-center gap-3">
+          {/* Search Bar */}
+          <div className="relative w-full md:w-64">
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
                 setCurrentPage(1);
               }}
-              className={`px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap transition-all flex items-center gap-1.5 ${
-                filterAgent === agent
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/60 shadow-sm'
-                  : 'bg-[#060a14] text-slate-400 border border-[#162342] hover:text-slate-200 hover:border-slate-700'
-              }`}
-            >
-              <span>{agent}</span>
-              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-[#0a0f1d] border border-[#162342] text-slate-400">
-                {agentCounts[agent] || 0}
-              </span>
-            </button>
-          ))}
-        </div>
+              placeholder="Search topics or files..."
+              className="w-full bg-[#060a14] border border-[#1a2c4e] focus:border-cyan-500 rounded-xl pl-8 pr-7 py-1.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none transition-colors"
+            />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            )}
+          </div>
 
-        {/* Sort Order Selector */}
-        <div className="flex items-center gap-2 shrink-0 w-full md:w-auto justify-end">
-          <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
+          {/* Sort Selector */}
           <select
             value={sortOrder}
             onChange={(e) => setSortOrder(e.target.value as any)}
-            className="bg-[#060a14] border border-[#1a2c4e] rounded-xl px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-cyan-500 font-medium"
+            className="bg-[#060a14] border border-[#1a2c4e] rounded-xl px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-cyan-500 font-medium shrink-0"
           >
             <option value="NEWEST">Newest First</option>
             <option value="OLDEST">Oldest First</option>
@@ -184,7 +167,30 @@ export const MemoryLedgerView: React.FC<MemoryLedgerViewProps> = ({
         </div>
       </div>
 
-      {/* Memory Cards Feed */}
+      {/* Filter by Agent Pills */}
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+        {uniqueAgents.map((agent) => (
+          <button
+            key={agent}
+            onClick={() => {
+              setFilterAgent(agent);
+              setCurrentPage(1);
+            }}
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 ${
+              filterAgent === agent
+                ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/60 shadow-sm'
+                : 'bg-[#060a14] text-slate-400 border border-[#162342] hover:text-slate-200 hover:border-slate-700'
+            }`}
+          >
+            <span>{agent}</span>
+            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-[#0a0f1d] border border-[#162342] text-slate-400 font-mono">
+              {agentCounts[agent] || 0}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {/* Memory Cards Grid */}
       <div className="space-y-3.5">
         {filteredRecords.length === 0 ? (
           <div className="bg-[#0a0f1d] border border-[#162342] rounded-2xl p-16 text-center shadow-lg">
@@ -219,10 +225,10 @@ export const MemoryLedgerView: React.FC<MemoryLedgerViewProps> = ({
             return (
               <div
                 key={record.id}
-                className="bg-[#0a0f1d] border border-[#162342] hover:border-cyan-500/40 rounded-2xl p-4.5 transition-all shadow-md group"
+                className="bg-[#0a0f1d] border border-[#162342] hover:border-cyan-500/40 rounded-2xl p-5 transition-all shadow-md group"
               >
                 {/* Card Top Line */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3 pb-2.5 border-b border-[#141e36]">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3 pb-3 border-b border-[#141e36]">
                   <div className="flex items-center gap-2.5 flex-wrap">
                     {/* Agent Pill */}
                     <div className={`px-2.5 py-1 rounded-lg border text-xs font-semibold flex items-center gap-1.5 ${visual.badge}`}>
@@ -237,7 +243,7 @@ export const MemoryLedgerView: React.FC<MemoryLedgerViewProps> = ({
 
                     {/* Timestamp */}
                     <span className="text-xs text-slate-400 flex items-center gap-1 font-mono">
-                      <Calendar className="w-3 h-3 text-slate-400" />
+                      <Calendar className="w-3 h-3 text-slate-500" />
                       {new Date(record.timestamp).toLocaleString([], {
                         month: 'short',
                         day: 'numeric',
@@ -263,7 +269,7 @@ export const MemoryLedgerView: React.FC<MemoryLedgerViewProps> = ({
                       title="Inspect & Edit Summary"
                     >
                       <Edit3 className="w-3 h-3" />
-                      <span className="hidden sm:inline">Edit</span>
+                      <span>Edit</span>
                     </button>
 
                     <button
@@ -272,28 +278,34 @@ export const MemoryLedgerView: React.FC<MemoryLedgerViewProps> = ({
                       title="Cascade Purge: Drops record and wipes dedup hash"
                     >
                       <Trash2 className="w-3 h-3" />
-                      <span className="hidden sm:inline">Purge</span>
+                      <span>Purge</span>
                     </button>
                   </div>
                 </div>
 
                 {/* Distilled Summary Text */}
-                <p className="text-sm text-slate-200 leading-relaxed mb-3 font-sans">
-                  {record.summary}
-                </p>
+                <div className="mb-3">
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                    Summary of Activity:
+                  </span>
+                  <p className="text-sm text-slate-100 leading-relaxed font-sans">
+                    {record.summary}
+                  </p>
+                </div>
 
                 {/* Deliverables / Artifacts */}
                 {artifactsList.length > 0 && (
-                  <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-[#121c32]/50 text-xs">
-                    <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mr-1">
-                      Deliverables:
+                  <div className="flex flex-wrap items-center gap-1.5 pt-3 border-t border-[#121c32]/50 text-xs">
+                    <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mr-1 flex items-center gap-1">
+                      <FileCode2 className="w-3 h-3 text-cyan-400" /> Deliverables:
                     </span>
                     {artifactsList.map((art, idx) => (
                       <span
                         key={idx}
-                        className="px-2 py-0.5 rounded-md bg-[#060a14] border border-[#162342] text-[11px] font-mono text-cyan-300"
+                        className="px-2 py-0.5 rounded-md bg-[#060a14] border border-[#162342] text-[11px] font-mono text-cyan-300 flex items-center gap-1"
                       >
-                        {art}
+                        {art.startsWith('http') ? <ExternalLink className="w-2.5 h-2.5" /> : null}
+                        <span>{art}</span>
                       </span>
                     ))}
                   </div>

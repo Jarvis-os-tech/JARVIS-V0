@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   Terminal, 
   Cpu, 
@@ -13,11 +13,14 @@ import {
   Pause, 
   Play, 
   ArrowRight, 
-  ShieldCheck, 
+  CheckCircle2,
   Copy, 
   Check, 
-  FileCheck2,
-  Trash2
+  Search,
+  Filter,
+  CheckCheck,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 
 interface Agent {
@@ -43,7 +46,7 @@ export const LivePipelineView: React.FC<LivePipelineViewProps> = ({
   onManualIngest,
   onSelectAgentFilter,
 }) => {
-  const [testAgent, setTestAgent] = useState('Browser');
+  const [testAgent, setTestAgent] = useState('OpenCode');
   const [testPayload, setTestPayload] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
@@ -51,22 +54,26 @@ export const LivePipelineView: React.FC<LivePipelineViewProps> = ({
   const [copiedBookmarklet, setCopiedBookmarklet] = useState(false);
   const [eventFilter, setEventFilter] = useState<'ALL' | 'INGESTED' | 'DISTILLED' | 'PURGED'>('ALL');
   const [autoScroll, setAutoScroll] = useState(true);
+  const [agentSearch, setAgentSearch] = useState('');
+  const [showAllAgents, setShowAllAgents] = useState(false);
+
+  // Core agents Gopi specifically uses
+  const coreAgentNames = ['OpenCode', 'Antigravity IDE', 'Antigravity CLI', 'Hermes', 'Claude', 'Codex', 'Cursor', 'Browser'];
 
   const getAgentVisual = (id: string) => {
-    switch (id.toLowerCase()) {
-      case 'hermes':
-        return { icon: Terminal, color: 'text-amber-400', border: 'border-amber-500/30', bg: 'bg-amber-950/20' };
-      case 'claude':
-        return { icon: Cpu, color: 'text-purple-400', border: 'border-purple-500/30', bg: 'bg-purple-950/20' };
-      case 'codex':
-        return { icon: Code, color: 'text-emerald-400', border: 'border-emerald-500/30', bg: 'bg-emerald-950/20' };
-      case 'antigravity':
-        return { icon: Sparkles, color: 'text-cyan-400', border: 'border-cyan-500/30', bg: 'bg-cyan-950/20' };
-      case 'browser':
-        return { icon: Globe, color: 'text-blue-400', border: 'border-blue-500/30', bg: 'bg-blue-950/20' };
-      default:
-        return { icon: Bot, color: 'text-slate-300', border: 'border-slate-700/50', bg: 'bg-slate-900/50' };
-    }
+    const lower = id.toLowerCase();
+    if (lower.includes('opencode')) return { icon: Terminal, color: 'text-amber-400', border: 'border-amber-500/40', bg: 'bg-amber-950/20' };
+    if (lower.includes('hermes')) return { icon: Terminal, color: 'text-amber-400', border: 'border-amber-500/40', bg: 'bg-amber-950/20' };
+    if (lower.includes('antigravity ide')) return { icon: Sparkles, color: 'text-cyan-400', border: 'border-cyan-500/40', bg: 'bg-cyan-950/20' };
+    if (lower.includes('antigravity')) return { icon: Sparkles, color: 'text-sky-400', border: 'border-sky-500/40', bg: 'bg-sky-950/20' };
+    if (lower.includes('claude')) return { icon: Cpu, color: 'text-purple-400', border: 'border-purple-500/40', bg: 'bg-purple-950/20' };
+    if (lower.includes('codex')) return { icon: Code, color: 'text-emerald-400', border: 'border-emerald-500/40', bg: 'bg-emerald-950/20' };
+    if (lower.includes('cursor')) return { icon: Code, color: 'text-blue-400', border: 'border-blue-500/40', bg: 'bg-blue-950/20' };
+    if (lower.includes('browser')) return { icon: Globe, color: 'text-cyan-400', border: 'border-cyan-500/40', bg: 'bg-cyan-950/20' };
+    if (lower.includes('copilot')) return { icon: Bot, color: 'text-slate-300', border: 'border-slate-600/40', bg: 'bg-slate-900/50' };
+    if (lower.includes('grok')) return { icon: Sparkles, color: 'text-red-400', border: 'border-red-500/40', bg: 'bg-red-950/20' };
+    if (lower.includes('orca')) return { icon: Bot, color: 'text-indigo-400', border: 'border-indigo-500/40', bg: 'bg-indigo-950/20' };
+    return { icon: Bot, color: 'text-slate-300', border: 'border-slate-700/50', bg: 'bg-slate-900/50' };
   };
 
   const handleScan = async () => {
@@ -83,7 +90,7 @@ export const LivePipelineView: React.FC<LivePipelineViewProps> = ({
     await onManualIngest(testAgent, testPayload);
     setTestPayload('');
     setIsSubmitting(false);
-    setToastMsg('Ingested into Central Brain! Watch it distill live in the feed below.');
+    setToastMsg('Event piped to Central Brain! Check the Live Stream below.');
     setTimeout(() => setToastMsg(''), 4000);
   };
 
@@ -95,6 +102,25 @@ export const LivePipelineView: React.FC<LivePipelineViewProps> = ({
     setTimeout(() => setCopiedBookmarklet(false), 2500);
   };
 
+  // Agent filtering
+  const visibleAgents = useMemo(() => {
+    let list = agents;
+    if (agentSearch.trim()) {
+      list = list.filter(a => 
+        a.agentId.toLowerCase().includes(agentSearch.toLowerCase()) ||
+        a.role.toLowerCase().includes(agentSearch.toLowerCase()) ||
+        a.runtimePath.toLowerCase().includes(agentSearch.toLowerCase())
+      );
+      return list;
+    }
+
+    if (!showAllAgents) {
+      // Prioritize core agents first
+      return list.filter(a => coreAgentNames.some(c => a.agentId.toLowerCase() === c.toLowerCase()));
+    }
+    return list;
+  }, [agents, agentSearch, showAllAgents]);
+
   const filteredEvents = events.filter(ev => {
     if (eventFilter === 'ALL') return true;
     if (eventFilter === 'INGESTED') return ev.type === 'EVENT_INGESTED';
@@ -105,67 +131,77 @@ export const LivePipelineView: React.FC<LivePipelineViewProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* SECTION 1: Auto-Discovered Runtimes Grid */}
+      {/* SECTION 1: Connected Agent Runtimes */}
       <div className="bg-[#0a0f1d] border border-[#162342] rounded-2xl p-5 shadow-lg">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 pb-4 border-b border-[#162342]">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-[#162342]">
           <div>
             <div className="flex items-center gap-2.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse"></span>
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
               <h2 className="text-sm font-bold tracking-wide text-slate-100 uppercase font-display">
-                Discovered Agent Runtimes
+                Connected Agent Runtimes on Your Machine
               </h2>
-              <span className="text-xs px-2.5 py-0.5 rounded-full bg-cyan-950/80 text-cyan-300 border border-cyan-800 font-semibold">
-                {agents.length} Active Runtimes
+              <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-800 font-semibold font-mono">
+                {agents.length} Detected
               </span>
             </div>
             <p className="text-xs text-slate-400 mt-1">
-              Continuously monitors local runtimes and automatically binds ingestion adapters
+              Central Brain automatically monitors these local tools and ingests their activity into your unified memory bank
             </p>
           </div>
 
-          <button
-            onClick={handleScan}
-            disabled={isScanning}
-            className="px-3.5 py-2 rounded-xl bg-cyan-950/60 border border-cyan-700/60 hover:border-cyan-500 text-cyan-300 text-xs font-semibold flex items-center gap-2 transition-all shrink-0 disabled:opacity-50"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${isScanning ? 'animate-spin' : ''}`} />
-            <span>{isScanning ? 'Scanning...' : 'Re-Scan Runtimes'}</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowAllAgents(!showAllAgents)}
+              className="px-3 py-1.5 rounded-xl bg-[#060a14] border border-[#162342] hover:border-slate-600 text-xs text-slate-300 flex items-center gap-1.5 transition-colors"
+            >
+              <span>{showAllAgents ? 'Show Core Only (8)' : `Show All (${agents.length})`}</span>
+              {showAllAgents ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            </button>
+
+            <button
+              onClick={handleScan}
+              disabled={isScanning}
+              className="px-3 py-1.5 rounded-xl bg-cyan-950/60 border border-cyan-700/60 hover:border-cyan-500 text-cyan-300 text-xs font-semibold flex items-center gap-1.5 transition-all disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isScanning ? 'animate-spin' : ''}`} />
+              <span>{isScanning ? 'Scanning...' : 'Re-Scan'}</span>
+            </button>
+          </div>
         </div>
 
         {/* Agent Cards Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-          {agents.map((agent) => {
+          {visibleAgents.map((agent) => {
             const visual = getAgentVisual(agent.agentId);
             const Icon = visual.icon;
 
             return (
               <div
                 key={agent.agentId}
-                className={`bg-[#060a14] border ${visual.border} rounded-xl p-4 hover:border-cyan-400/50 transition-all flex flex-col justify-between group`}
+                className={`bg-[#060a14] border ${visual.border} rounded-xl p-4 hover:border-cyan-400/60 transition-all flex flex-col justify-between group shadow-sm`}
               >
                 <div>
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <div className="flex items-center gap-2">
-                      <div className={`w-7 h-7 rounded-lg ${visual.bg} flex items-center justify-center ${visual.color}`}>
+                      <div className={`w-8 h-8 rounded-lg ${visual.bg} border ${visual.border} flex items-center justify-center ${visual.color}`}>
                         <Icon className="w-4 h-4" />
                       </div>
                       <div>
                         <span className="font-bold text-sm text-slate-100 block group-hover:text-cyan-300 transition-colors">
                           {agent.agentId}
                         </span>
-                        <span className="text-[10px] text-slate-400 block truncate max-w-[120px]">
+                        <span className="text-[11px] text-slate-400 block truncate max-w-[130px]" title={agent.role}>
                           {agent.role}
                         </span>
                       </div>
                     </div>
 
                     <span
-                      className={`text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wider ${
+                      className={`text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wider font-mono ${
                         agent.status === 'AUTO_CONNECTED'
                           ? 'bg-emerald-950/80 text-emerald-400 border border-emerald-800'
                           : agent.status === 'LISTENING'
-                          ? 'bg-blue-950/80 text-blue-400 border border-blue-800'
+                          ? 'bg-cyan-950/80 text-cyan-300 border border-cyan-800'
                           : 'bg-slate-800 text-slate-400'
                       }`}
                     >
@@ -178,16 +214,16 @@ export const LivePipelineView: React.FC<LivePipelineViewProps> = ({
                   </p>
                 </div>
 
-                <div className="flex items-center justify-between pt-2 border-t border-[#121c32] text-xs">
+                <div className="flex items-center justify-between pt-2 border-t border-[#141e36] text-xs">
                   <span className="text-slate-400 font-mono text-[11px]">
-                    <strong className="text-slate-200">{agent.totalEvents || 0}</strong> events
+                    <strong className="text-slate-200">{agent.totalEvents || 0}</strong> memories
                   </span>
                   {onSelectAgentFilter && (
                     <button
                       onClick={() => onSelectAgentFilter(agent.agentId)}
-                      className="text-cyan-400 hover:text-cyan-300 text-[11px] font-medium flex items-center gap-1 transition-colors"
+                      className="text-cyan-400 hover:text-cyan-300 text-xs font-semibold flex items-center gap-1 transition-colors"
                     >
-                      <span>Ledger</span>
+                      <span>View Ledger</span>
                       <ArrowRight className="w-3 h-3" />
                     </button>
                   )}
@@ -200,17 +236,19 @@ export const LivePipelineView: React.FC<LivePipelineViewProps> = ({
 
       {/* SECTION 2: Split View (Live Feed + Quick Capture & Sandbox) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left 2 Cols: Live Telemetry Stream */}
+        {/* Left 2 Cols: Live Activity Stream */}
         <div className="lg:col-span-2 bg-[#0a0f1d] border border-[#162342] rounded-2xl p-5 shadow-lg flex flex-col">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-[#162342]">
-            <div className="flex items-center gap-2.5">
-              <Activity className="w-4 h-4 text-emerald-400" />
-              <h3 className="text-sm font-bold text-slate-100 uppercase tracking-wide font-display">
-                Live LangGraph Pipeline Stream
-              </h3>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-300 font-mono">
-                {filteredEvents.length} events
-              </span>
+            <div>
+              <div className="flex items-center gap-2">
+                <Activity className="w-4 h-4 text-emerald-400" />
+                <h3 className="text-sm font-bold text-slate-100 uppercase tracking-wide font-display">
+                  Live Activity & Ingestion Stream
+                </h3>
+              </div>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Shows incoming events being cleaned, deduplicated, and compressed in real time
+              </p>
             </div>
 
             <div className="flex items-center gap-2">
@@ -251,9 +289,9 @@ export const LivePipelineView: React.FC<LivePipelineViewProps> = ({
             {filteredEvents.length === 0 ? (
               <div className="text-center py-16 text-slate-400">
                 <Activity className="w-8 h-8 text-slate-600 mx-auto mb-2 opacity-50" />
-                <p className="font-medium text-slate-300">Listening for incoming agent activity...</p>
-                <p className="text-xs text-slate-400 mt-1">
-                  Transcripts from Hermes, Claude, Codex, Antigravity, or Browser will appear here live.
+                <p className="font-semibold text-slate-200">Autonomous Ingestion Sentinel Active</p>
+                <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
+                  When OpenCode, Hermes, Claude, Codex, or your browser executes actions, the raw activity will stream and compress right here.
                 </p>
               </div>
             ) : (
@@ -283,7 +321,7 @@ export const LivePipelineView: React.FC<LivePipelineViewProps> = ({
                       <span className="px-1.5 py-0.5 rounded bg-amber-950/60 text-amber-300 font-semibold text-[10px] shrink-0 font-mono">
                         RAW INGEST
                       </span>
-                      <p className="text-slate-300 text-xs line-clamp-2 leading-relaxed font-mono">
+                      <p className="text-slate-300 text-xs line-clamp-2 leading-relaxed font-sans">
                         {ev.data?.preview}
                       </p>
                     </div>
@@ -307,9 +345,8 @@ export const LivePipelineView: React.FC<LivePipelineViewProps> = ({
 
                   {ev.type === 'RECORD_PURGED' && (
                     <div className="text-red-300 flex items-center gap-2">
-                      <Trash2 className="w-3.5 h-3.5 text-red-400" />
                       <span className="text-xs font-semibold">
-                        Cascade Purged memory record: <code className="text-red-200">{ev.data?.id}</code>
+                        🗑️ Cascade Purged memory record: <code className="text-red-200 font-mono">{ev.data?.id}</code>
                       </span>
                     </div>
                   )}
@@ -319,57 +356,52 @@ export const LivePipelineView: React.FC<LivePipelineViewProps> = ({
           </div>
         </div>
 
-        {/* Right Col: Browser Capture Helper & Manual Ingestion Tester */}
+        {/* Right Col: Browser Helper & Ingestion Sandbox */}
         <div className="space-y-6">
           {/* Quick-Capture Bookmarklet Card */}
-          <div className="bg-[#0a0f1d] border border-emerald-500/30 rounded-2xl p-5 shadow-lg cyber-glow-emerald">
+          <div className="bg-[#0a0f1d] border border-cyan-500/30 rounded-2xl p-5 shadow-lg cyber-glow">
             <div className="flex items-center gap-2.5 mb-2">
-              <div className="w-7 h-7 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400">
-                <Zap className="w-4 h-4" />
+              <div className="w-8 h-8 rounded-lg bg-cyan-500/10 flex items-center justify-center text-cyan-400">
+                <Globe className="w-4 h-4" />
               </div>
-              <h3 className="text-sm font-bold text-emerald-400 font-display">
-                Browser Quick-Capture
-              </h3>
+              <div>
+                <h3 className="text-sm font-bold text-slate-100 font-display">
+                  Browser Quick-Capture
+                </h3>
+                <span className="text-[11px] text-cyan-400 font-medium">Zero-Install 1-Click Bookmarklet</span>
+              </div>
             </div>
-            <p className="text-xs text-slate-300 leading-relaxed mb-4">
-              Capture web research, ChatGPT conversations, Claude web sessions, or Colab logs straight to Central Brain with 1 click.
+            <p className="text-xs text-slate-300 leading-relaxed mb-3.5">
+              Highlight any text in ChatGPT, Claude web, or documentation and click your bookmark to save it to Central Brain.
             </p>
 
-            <div className="space-y-2.5">
-              <button
-                type="button"
-                onClick={copyBookmarklet}
-                className="w-full py-2.5 px-3.5 rounded-xl bg-emerald-950/80 hover:bg-emerald-900/90 border border-emerald-600/80 text-emerald-200 text-xs font-semibold flex items-center justify-center gap-2 transition-all shadow-md"
-              >
-                {copiedBookmarklet ? (
-                  <>
-                    <Check className="w-4 h-4 text-emerald-400" />
-                    <span>✓ Copied to Clipboard!</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-4 h-4 text-emerald-400" />
-                    <span>Copy 1-Click Bookmarklet</span>
-                  </>
-                )}
-              </button>
-
-              <div className="bg-[#060a14] p-3 rounded-xl border border-[#162342] text-[11px] text-slate-400 space-y-1">
-                <div className="font-semibold text-slate-300 mb-1">Easy 2-Step Setup:</div>
-                <div>1. Create a new bookmark in your browser.</div>
-                <div>2. Paste the copied code as the bookmark URL!</div>
-              </div>
-            </div>
+            <button
+              type="button"
+              onClick={copyBookmarklet}
+              className="w-full py-2.5 px-3.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-md shadow-cyan-500/20"
+            >
+              {copiedBookmarklet ? (
+                <>
+                  <Check className="w-4 h-4 text-slate-950" />
+                  <span>✓ Bookmarklet Script Copied!</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-4 h-4" />
+                  <span>Copy 1-Click Bookmarklet</span>
+                </>
+              )}
+            </button>
           </div>
 
           {/* Manual Ingestion Sandbox */}
           <div className="bg-[#0a0f1d] border border-[#162342] rounded-2xl p-5 shadow-lg">
             <h3 className="text-sm font-bold text-slate-100 font-display mb-1 flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-cyan-400" />
+              <Sparkles className="w-4 h-4 text-emerald-400" />
               Manual Ingestion Tester
             </h3>
             <p className="text-xs text-slate-400 mb-3">
-              Test how the Two-Tier engine distills raw text
+              Test how Central Brain shrinks text into structured memory
             </p>
 
             <form onSubmit={handleTestSubmit} className="space-y-3">
@@ -380,21 +412,23 @@ export const LivePipelineView: React.FC<LivePipelineViewProps> = ({
                   onChange={(e) => setTestAgent(e.target.value)}
                   className="w-full bg-[#060a14] border border-[#1a2c4e] rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-cyan-500 font-medium"
                 >
-                  <option value="Browser">🌐 Browser Research</option>
-                  <option value="Hermes">🪽 Hermes CLI</option>
-                  <option value="Claude">🟣 Claude Code</option>
-                  <option value="Codex">🟢 OpenAI Codex</option>
-                  <option value="Antigravity">🚀 Antigravity IDE</option>
+                  <option value="OpenCode">OpenCode (Terminal Coding Agent)</option>
+                  <option value="Antigravity IDE">Antigravity IDE</option>
+                  <option value="Antigravity CLI">Antigravity CLI</option>
+                  <option value="Hermes">Hermes (Lead Software Engineer)</option>
+                  <option value="Claude">Claude Code</option>
+                  <option value="Codex">OpenAI Codex</option>
+                  <option value="Browser">Browser Research</option>
                 </select>
               </div>
 
               <div>
-                <label className="text-xs text-slate-300 font-medium block mb-1">Activity Log / Decision</label>
+                <label className="text-xs text-slate-300 font-medium block mb-1">Activity Payload / Task</label>
                 <textarea
                   rows={3}
                   value={testPayload}
                   onChange={(e) => setTestPayload(e.target.value)}
-                  placeholder="Paste a conversation snippet, design decision, or error log to compress..."
+                  placeholder="e.g. Implemented automated database migration script for user sessions and tested rollback..."
                   className="w-full bg-[#060a14] border border-[#1a2c4e] focus:border-cyan-500 rounded-xl p-3 text-xs text-slate-100 placeholder-slate-600 focus:outline-none transition-colors"
                 />
               </div>
@@ -402,10 +436,10 @@ export const LivePipelineView: React.FC<LivePipelineViewProps> = ({
               <button
                 type="submit"
                 disabled={isSubmitting || !testPayload.trim()}
-                className="w-full py-2.5 px-4 rounded-xl bg-cyan-500 hover:bg-cyan-400 disabled:opacity-50 text-slate-950 font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md shadow-cyan-500/10"
+                className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md shadow-emerald-600/10"
               >
                 <Send className="w-3.5 h-3.5" />
-                <span>{isSubmitting ? 'Compressing via LangGraph...' : 'Pipeline to Central Brain'}</span>
+                <span>{isSubmitting ? 'Compressing via LangGraph...' : 'Ingest & Distill Event'}</span>
               </button>
 
               {toastMsg && (

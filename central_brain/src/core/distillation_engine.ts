@@ -199,6 +199,12 @@ Respond strictly in valid JSON format:
       summaryText = `Activity recorded from ${agentId}.`;
     }
 
+    // Strip unprintable control characters and normalize whitespace
+    summaryText = summaryText.replace(/[\x00-\x1F\x7F-\x9F]/g, ' ').replace(/\s+/g, ' ').trim();
+    if (summaryText.length < 5 || /^[^\w\s]+$/.test(summaryText)) {
+      summaryText = `${agentId} completed task execution and logged session activity.`;
+    }
+
     if (artifacts.size > 0) {
       decisions.push(`Identified ${artifacts.size} target resources/artifacts.`);
     }
@@ -207,7 +213,7 @@ Respond strictly in valid JSON format:
     const ratio = rawTokens > 0 ? (rawTokens - distilledTokens) / rawTokens : 0;
 
     return {
-      summary: `[Distilled] ${summaryText}`,
+      summary: summaryText,
       keyDecisions: decisions,
       artifacts: Array.from(artifacts).slice(0, 8),
       metrics: {

@@ -56,7 +56,12 @@ export class HermesAdapter {
     try {
       const stat = fs.statSync(fullPath);
       const ext = path.extname(filename).toLowerCase();
-      if (/(?:\.db|\.db-shm|\.db-wal|\.sqlite|\.sqlite3|\.bin|\.lock|\.sock|\.pyc)$/i.test(filename)) {
+      const validExtensions = ['.json', '.jsonl', '.txt', '.md', '.log', '.yaml', '.yml', '.sh'];
+      if (!validExtensions.includes(ext)) {
+        return;
+      }
+
+      if (filename.includes('cache') || filename.includes('audio') || filename.includes('gateway_state') || filename.includes('pycache')) {
         return;
       }
 

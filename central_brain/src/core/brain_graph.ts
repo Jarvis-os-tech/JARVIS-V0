@@ -38,10 +38,10 @@ export const BrainStateAnnotation = Annotation.Root({
  */
 async function discoveryNode(state: typeof BrainStateAnnotation.State) {
   const raw = state.rawEvent;
-  if (!raw || !raw.payload) {
+  if (!raw || !raw.payload || raw.payload.includes('\0')) {
     return {
       auditPassed: false,
-      errors: ['Invalid or empty raw event payload']
+      errors: ['Invalid, empty, or binary raw event payload rejected']
     };
   }
 
