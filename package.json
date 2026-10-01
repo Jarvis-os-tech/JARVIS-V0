@@ -8,13 +8,22 @@
     "dev": "tsx backend/server.ts",
     "build": "vite build frontend",
     "clean": "rm -rf dist",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "brain": "tsx central_brain/src/server.ts",
+    "brain:build": "vite build central_brain/frontend",
+    "brain:test": "tsx central_brain/src/test_harness.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
+    "@langchain/core": "^1.2.14",
+    "@langchain/langgraph": "^1.4.18",
     "@react-oauth/google": "^0.13.5",
     "@tailwindcss/vite": "^4.1.14",
+    "@types/better-sqlite3": "^9.6.0",
+    "@types/cors": "^2.8.19",
     "@vitejs/plugin-react": "^5.0.4",
+    "better-sqlite3": "^13.0.3",
+    "cors": "^2.8.6",
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
     "firebase": "^12.19.0",

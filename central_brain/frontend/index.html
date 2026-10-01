@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>J.A.R.V.I.S. — Central Brain Command Console</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              mono: ['"JetBrains Mono"', 'monospace'],
+              display: ['Orbitron', 'sans-serif'],
+            },
+            colors: {
+              cyber: {
+                bg: '#05070d',
+                card: '#0a0f1d',
+                border: '#15233e',
+                cyan: '#00f0ff',
+                emerald: '#10b981',
+                amber: '#f59e0b',
+                red: '#ef4444',
+                purple: '#a855f7'
+              }
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      body {
+        background-color: #05070d;
+        color: #e2e8f0;
+        font-family: 'JetBrains Mono', monospace;
+      }
+      .cyber-glow {
+        box-shadow: 0 0 20px rgba(0, 240, 255, 0.15);
+      }
+      .cyber-glow-emerald {
+        box-shadow: 0 0 20px rgba(16, 185, 129, 0.2);
+      }
+    </style>
+  </head>
+  <body class="min-h-screen bg-[#05070d] text-slate-200">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
