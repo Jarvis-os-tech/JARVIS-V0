@@ -6,6 +6,7 @@ import { omarchyQuattro } from './omarchy_quattro_core';
 import { resolveFolderNavigation, resolveWallpaperPath } from './dynamic_resolver';
 import { selfRepairEngine } from './self_repair';
 import { experienceLearner } from './experience_learner';
+import { getSelectionContext, actOnSelection, describeSelection } from './selection_awareness';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -67,7 +68,9 @@ export function isSystemControl(toolName: string): boolean {
     'open_folder',
     'navigate_file_manager',
     'omarchy_quattro_command',
-    'run_system_diagnostics'
+    'run_system_diagnostics',
+    'get_current_selection',
+    'act_on_selection'
   ]);
   if (builtInControls.has(toolName)) return true;
 
@@ -164,6 +167,19 @@ export async function dispatchSystemControl(name: string, args: Record<string, a
           });
         });
       }
+    } else if (name === 'get_current_selection') {
+      const useKeySim = args.use_key_simulation === true;
+      const ctx = await getSelectionContext(useKeySim, false);
+      rawResult = {
+        success: true,
+        selection: ctx,
+        description: describeSelection(ctx),
+      };
+    } else if (name === 'act_on_selection') {
+      const action = args.action || 'info';
+      const destination = args.destination;
+      const newName = args.new_name;
+      rawResult = await actOnSelection(action, destination, newName);
     }
 
     // 2. Direct Native C++ Fast Path (~2-8ms execution)

@@ -323,6 +323,12 @@ export class GroqFastActuator {
       selectedNames.add('get_system_telemetry');
     }
 
+    // 6d. Selection Awareness Domain
+    if (/select|selected|clipboard|what.*(is|did|have).*(this|that|it|select|pick|chose)|tell me about this|what('s| is) (this|that|on my clipboard)|open this|set this|move this|delete this|rename this|compress this|copy this|trash this|share this/i.test(text)) {
+      selectedNames.add('get_current_selection');
+      selectedNames.add('act_on_selection');
+    }
+
     // 7. Network & WiFi Domain
     if (/wifi|network|socket|port|connection|ssid|internet/i.test(text)) {
       selectedNames.add('scan_wifi_networks');

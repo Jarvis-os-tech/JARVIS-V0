@@ -66,6 +66,10 @@ class SelfRepairEngine {
     else if (tool === 'omarchy_control') {
       repairResult = await this.repairOmarchyControl(args, errorMsg);
     }
+    // ── Strategy 5: Desktop Selection Fallback ───────────────────────────────
+    else if (tool === 'get_current_selection' || tool === 'act_on_selection') {
+      repairResult = await this.repairSelectionAwareness(tool, args, errorMsg);
+    }
 
     const durationMs = Date.now() - t0;
     if (this.telemetryCallback) {
@@ -249,6 +253,69 @@ class SelfRepairEngine {
     return {
       repaired: false,
       strategy: 'omarchy_control_unrepaired',
+      originalError
+    };
+  }
+
+  /**
+   * Repairs selection awareness failures by trying key simulation, active window heuristics,
+   * or falling back to wallpaper/directory resolvers.
+   */
+  private async repairSelectionAwareness(tool: string, args: Record<string, any>, originalError: string): Promise<RepairAttemptResult> {
+    console.log(`[Self-Repair] Diagnosing selection awareness failure: tool=${tool}, error=${originalError}`);
+    try {
+      const { getSelectionContext, actOnSelection, describeSelection } = await import('./selection_awareness');
+
+      // Attempt with key simulation enabled
+      const ctx = await getSelectionContext(true, false);
+      if (ctx.type !== 'unknown' && ctx.content) {
+        if (tool === 'get_current_selection') {
+          return {
+            repaired: true,
+            strategy: 'key_simulation_retry',
+            originalError,
+            result: {
+              success: true,
+              selection: ctx,
+              description: describeSelection(ctx)
+            },
+            lesson: 'Recovered selection context via active window key simulation.'
+          };
+        } else if (tool === 'act_on_selection') {
+          const action = args.action || 'info';
+          const actRes = await actOnSelection(action, args.destination, args.new_name);
+          if (actRes.success) {
+            return {
+              repaired: true,
+              strategy: 'key_simulation_action_retry',
+              originalError,
+              result: actRes,
+              lesson: `Executed '${action}' on newly acquired selection context via key simulation.`
+            };
+          }
+        }
+      }
+
+      // If action is set_wallpaper and still no selection, fallback to downloads wallpaper resolution
+      if (tool === 'act_on_selection' && args.action === 'set_wallpaper') {
+        const wpRes = await this.repairWallpaperSetting({ path: 'downloads' }, originalError);
+        if (wpRes.repaired) {
+          return {
+            repaired: true,
+            strategy: 'wallpaper_auto_discovery_fallback',
+            originalError,
+            result: wpRes.result,
+            lesson: 'Fell back to auto-discovering newest image in Downloads when no wallpaper was selected.'
+          };
+        }
+      }
+    } catch (e: any) {
+      console.warn('[Self-Repair] Selection repair exception:', e.message);
+    }
+
+    return {
+      repaired: false,
+      strategy: 'selection_awareness_exhausted',
       originalError
     };
   }

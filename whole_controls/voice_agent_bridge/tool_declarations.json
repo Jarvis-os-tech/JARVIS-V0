@@ -390,6 +390,42 @@
             "type": "OBJECT",
             "properties": {}
           }
+        },
+        {
+          "name": "get_current_selection",
+          "description": "Detects what the user currently has selected on their desktop — files in Nautilus file manager, text copied to clipboard, images, URLs, or the active window context. Use when the user asks 'what did I select?', 'what's on my clipboard?', 'tell me about this file', 'what is this?', or refers to something with 'this', 'that', 'it', 'selected', 'picked'.",
+          "parameters": {
+            "type": "OBJECT",
+            "properties": {
+              "use_key_simulation": {
+                "type": "BOOLEAN",
+                "description": "If true, simulates Ctrl+C to capture the current selection when clipboard is empty. Only used when the file manager is focused. Default false."
+              }
+            }
+          }
+        },
+        {
+          "name": "act_on_selection",
+          "description": "Performs an action on whatever the user currently has selected on their desktop (file, folder, image, text). Use when the user says 'open this', 'set this as wallpaper', 'move this to Documents', 'delete this', 'compress this', 'rename this to X', or any action referencing their current selection.",
+          "parameters": {
+            "type": "OBJECT",
+            "properties": {
+              "action": {
+                "type": "STRING",
+                "description": "Action to perform on the selection.",
+                "enum": ["open", "copy", "move", "delete", "trash", "rename", "set_wallpaper", "share", "info", "compress"]
+              },
+              "destination": {
+                "type": "STRING",
+                "description": "Destination path for copy/move actions (e.g. '~/Documents', '/home/user/Desktop')."
+              },
+              "new_name": {
+                "type": "STRING",
+                "description": "New filename for rename action."
+              }
+            },
+            "required": ["action"]
+          }
         }
       ]
     }

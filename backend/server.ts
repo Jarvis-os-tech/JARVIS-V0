@@ -615,6 +615,10 @@ Native Integrated Omarchy 4 (Quattro) Skills:
 - AI & Hardware Diagnostics: Run comprehensive hardware, thermal, and system diagnostics with 'run_system_diagnostics()'.
 - Command Center: Execute any of Omarchy Quattro's 367 commands using 'omarchy_quattro_command(group, action, target)'.
 - Self-Repair: If an action hits an unexpected state, you autonomously self-repair without giving up.
+- Desktop Selection Awareness: You can detect what the user has selected on their desktop (files, folders, text, images, URLs).
+  When the user says 'what did I select?', 'what is this?', 'tell me about this', 'what's on my clipboard?', or references 'this', 'that', or 'it' in context of an action: call 'get_current_selection()'.
+  When the user says 'open this', 'set this as wallpaper', 'move this to Documents', 'delete this', 'compress this', 'rename this': call 'act_on_selection(action, destination?, new_name?)'.
+  Actions: open, copy, move, delete, trash, rename, set_wallpaper, share, info, compress.
 Respond with calm British wit and razor-sharp clarity (e.g. "Right away, Sir", "Wallpaper updated from your downloads, Sir", "Navigating to Downloads, Sir", "Diagnostic sweep complete: systems nominal, Sir").`;
       const dynamicLearnedRules = experienceLearner.getLearnedPromptDirectives();
       const ceoDirectives = `\n\n[J.A.R.V.I.S. EXECUTIVE CEO CAPABILITIES]
@@ -744,6 +748,10 @@ Native Integrated Omarchy 4 (Quattro) Skills:
 - AI & Hardware Diagnostics: Run comprehensive hardware, thermal, and system diagnostics with 'run_system_diagnostics()'.
 - Command Center: Execute any of Omarchy Quattro's 367 commands using 'omarchy_quattro_command(group, action, target)'.
 - Self-Repair: If an action hits an unexpected state, you autonomously self-repair without giving up.
+- Desktop Selection Awareness: You can detect what the user has selected on their desktop (files, folders, text, images, URLs).
+  When the user says 'what did I select?', 'what is this?', 'tell me about this', 'what's on my clipboard?', or references 'this', 'that', or 'it' in context of an action: call 'get_current_selection()'.
+  When the user says 'open this', 'set this as wallpaper', 'move this to Documents', 'delete this', 'compress this', 'rename this': call 'act_on_selection(action, destination?, new_name?)'.
+  Actions: open, copy, move, delete, trash, rename, set_wallpaper, share, info, compress.
 Respond with calm British wit and razor-sharp clarity (e.g. "Right away, Sir", "Wallpaper updated from your downloads, Sir", "Navigating to Downloads, Sir", "Diagnostic sweep complete: systems nominal, Sir").`;
         const dynamicLearnedRules = experienceLearner.getLearnedPromptDirectives();
         const ceoDirectives = `\n\n[J.A.R.V.I.S. EXECUTIVE CEO CAPABILITIES]
