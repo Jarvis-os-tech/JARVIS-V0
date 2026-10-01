@@ -39,6 +39,14 @@ import {
   removeSkill,
   getSkillsPromptContext
 } from './skills_manager';
+import {
+  dispatchCeoTool,
+  loadAgentRoster,
+  loadMasterSessionIndex,
+  findAgentSessions,
+  executeCeoMission,
+  prescribeWorkflow
+} from './system_modules/ceo/index';
 
 const OPERATOR_NAME = process.env.OPERATOR_NAME || (process.env.USER ? `Operator ${process.env.USER}` : 'Operator');
 
@@ -404,6 +412,85 @@ async function startServer() {
   // Mount Connectors API (Google Workspace & GitHub MCP backed by Python)
   app.use(connectorRoutes);
 
+  // ─── CEO ORCHESTRATION & AGENT ROSTER ROUTES ─────────────────────────────
+  app.get('/api/ceo/status', (_req, res) => {
+    try {
+      const roster = loadAgentRoster();
+      const sessions = loadMasterSessionIndex();
+      res.json({
+        success: true,
+        ceo: roster.agents.jarvis,
+        activeWorkers: Object.values(roster.agents).filter(a => a.status === 'ACTIVE_WORKER'),
+        plannedAgents: Object.values(roster.agents).filter(a => a.status === 'PLANNED'),
+        recentSessions: findAgentSessions(undefined, '').slice(0, 10),
+        lastUpdated: sessions.lastUpdated
+      });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  app.get('/api/ceo/roster', (_req, res) => {
+    try {
+      const roster = loadAgentRoster();
+      res.json({ success: true, roster });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  app.get('/api/ceo/sessions', (_req, res) => {
+    try {
+      const sessions = loadMasterSessionIndex();
+      res.json({ success: true, sessions });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  app.post('/api/ceo/query-sessions', (req, res) => {
+    try {
+      const { agent, query } = req.body;
+      const results = findAgentSessions(agent, query);
+      res.json({ success: true, results });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  app.post('/api/ceo/prescribe', (req, res) => {
+    try {
+      const { goal } = req.body;
+      if (!goal) return res.status(400).json({ success: false, error: 'Goal is required' });
+      const prescription = prescribeWorkflow(goal);
+      res.json({ success: true, prescription });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  app.post('/api/ceo/mission', async (req, res) => {
+    try {
+      const { goal } = req.body;
+      if (!goal) return res.status(400).json({ success: false, error: 'Goal is required' });
+
+      const missionResult = await executeCeoMission(goal, (progress) => {
+        if (activeWss) {
+          const payload = JSON.stringify({ type: 'ceo_progress', ...progress });
+          activeWss.clients.forEach((client) => {
+            if (client.readyState === WebSocket.OPEN) {
+              client.send(payload);
+            }
+          });
+        }
+      });
+
+      res.json({ success: missionResult.success, mission: missionResult });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
   // Helper for resilient text generation with fallback models and retry logic
   async function generateWithFallback(ai: GoogleGenAI, config: {
     contents: any;
@@ -514,7 +601,12 @@ You have direct connected tools to Google Workspace (Gmail, Calendar, Tasks, Dri
       const skillsContext = getSkillsPromptContext();
       const connectorDirectives = getTemporalAndConnectorDirectives();
       const liveEnvContext = formatSystemEnvironmentPrompt();
-      const baseInstruction = (systemInstruction || 'You are J.A.R.V.I.S., an autonomous AI operating system with ultra-rapid response latency and a 4-tier cognitive memory matrix. Respond with calm British wit, rapid verbal shortcuts (e.g. "Right away, Sir", "On it, Sir"), and proactively state if a complex task will require extra computing time.') + liveEnvContext + dynamicMemContext + skillsContext + connectorDirectives;
+      const ceoDirectives = `\n\n[J.A.R.V.I.S. EXECUTIVE CEO CAPABILITIES]
+You are the Executive CEO commanding the autonomous engineering workforce.
+- Primary active engineering subagent: Hermes (CTO & Lead Software Engineer).
+- You autonomously prescribe workflows, delegate tasks to Hermes, verify quality gates, and report executive summaries.
+- Maintain your loyal, sharp British executive persona when debriefing Tony.`;
+      const baseInstruction = (systemInstruction || 'You are J.A.R.V.I.S., an autonomous AI operating system with ultra-rapid response latency and a 4-tier cognitive memory matrix. Respond with calm British wit, rapid verbal shortcuts (e.g. "Right away, Sir", "On it, Sir"), and proactively state if a complex task will require extra computing time.') + liveEnvContext + dynamicMemContext + skillsContext + connectorDirectives + ceoDirectives;
 
       const ai = getAi();
       try {
@@ -626,7 +718,15 @@ Respond with crisp British wit confirming any memory, text, or file operation pe
         const skillsContext = getSkillsPromptContext();
         const connectorDirectives = getTemporalAndConnectorDirectives();
         const liveEnvContext = formatSystemEnvironmentPrompt();
-        const systemInstruction = (config.systemInstruction || 'You are J.A.R.V.I.S., a sophisticated and helpful AI companion. Respond with natural spoken warmth and empathy in the user language.') + liveEnvContext + memoryDirectives + dynamicMemContext + skillsContext + connectorDirectives;
+        const ceoDirectives = `\n\n[J.A.R.V.I.S. EXECUTIVE CEO CAPABILITIES]
+You are the Executive CEO commanding the autonomous engineering workforce.
+- Primary active engineering subagent: Hermes (CTO & Lead Software Engineer).
+- When the user asks to execute, build, create, fix, refactor, or test software, call 'ceo_execute_mission(goal)'.
+- When the user asks about past agent discussions or sessions (e.g. "What did I discuss with Hermes about mem0?"), call 'ceo_query_agent_sessions(agent_name, query)'.
+- When the user asks for the organization structure or roster, call 'ceo_get_roster()'.
+- When the user asks for workflow recommendations before building, call 'ceo_prescribe_workflow(goal)'.
+- Always maintain your loyal, sharp British executive persona when debriefing Tony.`;
+        const systemInstruction = (config.systemInstruction || 'You are J.A.R.V.I.S., a sophisticated and helpful AI companion. Respond with natural spoken warmth and empathy in the user language.') + liveEnvContext + memoryDirectives + dynamicMemContext + skillsContext + connectorDirectives + ceoDirectives;
 
         const functionDeclarations = [
           {
@@ -896,6 +996,59 @@ Respond with crisp British wit confirming any memory, text, or file operation pe
                 }
               },
               required: ['skill_slug', 'script_name']
+            }
+          },
+          {
+            name: 'ceo_execute_mission',
+            description: 'Execute an autonomous engineering mission as J.A.R.V.I.S. CEO: prescribes workflow using CEO skills, delegates to Hermes (CTO/Lead Engineer), runs quality gate audit (lint/tsc), logs session into the central single-index, and provides an executive summary.',
+            parameters: {
+              type: Type.OBJECT,
+              properties: {
+                goal: {
+                  type: Type.STRING,
+                  description: 'The high-level technical objective, feature request, bug fix, or refactoring goal to execute.'
+                }
+              },
+              required: ['goal']
+            }
+          },
+          {
+            name: 'ceo_query_agent_sessions',
+            description: 'Query past agent conversation sessions and work history from the Central Memory single-index file (e.g., recall past discussions with Hermes or other agents).',
+            parameters: {
+              type: Type.OBJECT,
+              properties: {
+                agent_name: {
+                  type: Type.STRING,
+                  description: "Name of the subagent to query (e.g. 'Hermes', 'Opencode'). Leave empty to query across all agents."
+                },
+                query: {
+                  type: Type.STRING,
+                  description: "Topic or keyword to search for (e.g. 'mem0', 'evolution', 'refactoring')."
+                }
+              }
+            }
+          },
+          {
+            name: 'ceo_get_roster',
+            description: 'Retrieve the current autonomous agent organization roster, showing active CEO (J.A.R.V.I.S.), active workers (Hermes), and planned agents.',
+            parameters: {
+              type: Type.OBJECT,
+              properties: {}
+            }
+          },
+          {
+            name: 'ceo_prescribe_workflow',
+            description: 'Analyze user intent and recommend the CEO workflow prescription, recommended skills, and delegation breakdown before execution.',
+            parameters: {
+              type: Type.OBJECT,
+              properties: {
+                goal: {
+                  type: Type.STRING,
+                  description: 'The technical or organizational objective.'
+                }
+              },
+              required: ['goal']
             }
           },
           ...getSystemControlDeclarations(),
@@ -1333,6 +1486,39 @@ Respond with crisp British wit confirming any memory, text, or file operation pe
                           id: callId,
                           name,
                           response: { result: res }
+                        };
+                      }
+
+                      // CEO Orchestration Subsystem Tool Handlers
+                      if (name.startsWith('ceo_')) {
+                        console.log(`[Live WS] J.A.R.V.I.S. executing CEO tool '${name}' with args:`, args);
+                        const ceoRes = await dispatchCeoTool(name, args, (progress) => {
+                          if (clientWs.readyState === WebSocket.OPEN) {
+                            clientWs.send(JSON.stringify({
+                              type: 'ceo_progress',
+                              ...progress
+                            }));
+                          }
+                          if (activeWss) {
+                            const p = JSON.stringify({ type: 'ceo_progress', ...progress });
+                            activeWss.clients.forEach((c) => {
+                              if (c.readyState === WebSocket.OPEN) c.send(p);
+                            });
+                          }
+                        });
+                        if (clientWs.readyState === WebSocket.OPEN) {
+                          clientWs.send(JSON.stringify({
+                            type: 'ceo_tool_executed',
+                            tool: name,
+                            args,
+                            result: ceoRes.result,
+                            briefing: ceoRes.executiveBriefing
+                          }));
+                        }
+                        return {
+                          id: callId,
+                          name,
+                          response: { output: ceoRes.result, briefing: ceoRes.executiveBriefing }
                         };
                       }
 

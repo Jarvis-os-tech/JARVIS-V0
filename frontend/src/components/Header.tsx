@@ -1,7 +1,7 @@
 import React from 'react';
 import { User } from 'firebase/auth';
 import { ConnectionState } from '../types';
-import { Mic, Volume2, Globe, Play, Cpu, Brain } from 'lucide-react';
+import { Mic, Volume2, Globe, Play, Cpu, Brain, Shield } from 'lucide-react';
 import { ConnectorButton } from '@connectors/ui';
 import { PwaInstallButton } from './PwaInstallButton';
 
@@ -13,6 +13,7 @@ interface HeaderProps {
   memoryCount: number;
   currentUser: User | null;
   onOpenConnectors: () => void;
+  onOpenCeoHUD?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -22,7 +23,8 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenMemoryHUD,
   memoryCount,
   currentUser,
-  onOpenConnectors
+  onOpenConnectors,
+  onOpenCeoHUD
 }) => {
   const getStatusBadge = () => {
     if (isDemoMode) {
@@ -123,6 +125,18 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Connectors Button & Quick-Access Menu */}
         <ConnectorButton onOpenDirectory={onOpenConnectors} />
+
+        {/* J.A.R.V.I.S. CEO Executive HUD Button */}
+        {onOpenCeoHUD && (
+          <button
+            onClick={onOpenCeoHUD}
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold text-cyan-300 bg-blue-950/40 hover:bg-blue-900/40 border border-cyan-500/30 hover:border-cyan-400 transition-all shadow-[0_0_15px_rgba(6,182,212,0.15)] group"
+            title="Open J.A.R.V.I.S. CEO Executive Orchestration HUD"
+          >
+            <Shield className="w-4 h-4 text-cyan-400 group-hover:scale-110 transition-transform" />
+            <span className="hidden sm:inline font-mono">CEO HUD</span>
+          </button>
+        )}
 
         {/* J.A.R.V.I.S. Memory Matrix Button */}
         <button

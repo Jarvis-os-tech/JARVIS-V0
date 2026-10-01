@@ -6,6 +6,7 @@ import { Header } from './components/Header';
 import { VoiceVisualizer } from './components/VoiceVisualizer';
 import { VisionPreviewModal } from './components/VisionPreviewModal';
 import { JarvisMemoryHUD } from './components/JarvisMemoryHUD';
+import { CeoExecutiveHUD } from './components/CeoExecutiveHUD';
 import { ConnectorsView } from '@connectors/ui';
 import { CommandInputBar } from './components/CommandInputBar';
 import { jarvisMemoryEngine } from './services/memoryEngine';
@@ -19,6 +20,7 @@ export default function App() {
   const [connectionState, setConnectionState] = useState<ConnectionState>('disconnected');
   const [isMuted, setIsMuted] = useState(false);
   const [isMemoryHUDOpen, setIsMemoryHUDOpen] = useState(false);
+  const [isCeoHUDOpen, setIsCeoHUDOpen] = useState(false);
   const [isConnectorsOpen, setIsConnectorsOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [memoryCount, setMemoryCount] = useState<number>(jarvisMemoryEngine.getStats().totalItems);
@@ -1036,6 +1038,7 @@ export default function App() {
         selectedPersonaName={selectedPersona.name}
         isDemoMode={isDemoMode}
         onOpenMemoryHUD={() => setIsMemoryHUDOpen(true)}
+        onOpenCeoHUD={() => setIsCeoHUDOpen(true)}
         memoryCount={memoryCount}
         currentUser={currentUser}
         onOpenConnectors={() => setIsConnectorsOpen(true)}
@@ -1126,6 +1129,13 @@ export default function App() {
           setIsMemoryHUDOpen(false);
           refreshMemoryStats();
         }}
+        onSendPromptToJarvis={(p) => handleSendPrompt(p)}
+      />
+
+      {/* J.A.R.V.I.S. CEO Executive Orchestration HUD */}
+      <CeoExecutiveHUD
+        isOpen={isCeoHUDOpen}
+        onClose={() => setIsCeoHUDOpen(false)}
         onSendPromptToJarvis={(p) => handleSendPrompt(p)}
       />
 

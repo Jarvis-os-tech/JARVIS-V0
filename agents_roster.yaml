@@ -1,0 +1,77 @@
+# J.A.R.V.I.S. Autonomous Agent Workforce Roster
+# Dynamic configuration for the multi-agent organizational hierarchy.
+
+organization:
+  name: "J.A.R.V.I.S. Autonomous Operations"
+  headquarters: "Stark Tower OS"
+  version: "1.0.0"
+
+agents:
+  jarvis:
+    id: "jarvis"
+    name: "J.A.R.V.I.S."
+    title: "Chief Executive Officer (CEO) & Master Orchestrator"
+    status: "ACTIVE_CEO"
+    primary: true
+    description: "Autonomous strategic leader who interprets user directives, prescribes multi-step workflows, delegates tasks to specialist agents, enforces code quality gates, and reports back with British executive precision."
+    capabilities:
+      - "mission_planning"
+      - "workflow_prescription"
+      - "quality_gate_enforcement"
+      - "executive_voice_reporting"
+      - "central_memory_indexing"
+    skills:
+      - "using-ceo"
+      - "speckit-plan"
+      - "speckit-tasks"
+      - "speckit-specify"
+      - "code-quality-check"
+      - "verification-before-completion"
+
+  hermes:
+    id: "hermes"
+    name: "Hermes"
+    title: "Chief Technology Officer (CTO) & Lead Software Engineer"
+    status: "ACTIVE_WORKER"
+    primary: true
+    description: "Deep engineering actuator with terminal access, responsible for full-stack code implementation, automated testing, bug remediation, and architecture execution."
+    capabilities:
+      - "full_stack_development"
+      - "deep_code_reasoning"
+      - "systematic_debugging"
+      - "test_driven_development"
+      - "terminal_execution"
+    bridge:
+      type: "cli"
+      script: "hermes-connection/cli_bridge.py"
+      binary: "hermes"
+      timeout_seconds: 180
+    skills:
+      - "systematic-debugging"
+      - "test-driven-development"
+      - "subagent-driven-development"
+      - "finishing-a-development-branch"
+
+  opencode:
+    id: "opencode"
+    name: "OpenCode"
+    title: "Browser & System Actuation Specialist"
+    status: "PLANNED"
+    primary: false
+    description: "Autonomous browser interaction, web scraping, visual validation, and external documentation discovery."
+    capabilities:
+      - "browser_automation"
+      - "web_scraping"
+      - "visual_qa"
+
+  ultron:
+    id: "ultron"
+    name: "Ultron"
+    title: "Infrastructure & Security Guardian"
+    status: "PLANNED"
+    primary: false
+    description: "Container management, infrastructure automation, penetration testing, and security compliance verification."
+    capabilities:
+      - "devops_automation"
+      - "security_audit"
+      - "performance_benchmarking"

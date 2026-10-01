@@ -1,6 +1,216 @@
 {
-  "lastUpdated": "2026-09-29T09:53:37.245Z",
+  "lastUpdated": "2026-10-01T04:38:20.753Z",
   "skills": [
+    {
+      "name": "analyze-project-context",
+      "slug": "analyze-project-context",
+      "description": "Use when starting work on any project (technical or non-technical) to understand structure, standards, and best practices before making changes",
+      "source": "project",
+      "path": "/home/g0pi/Downloads/jarvis/.agents/skills/analyze-project-context",
+      "skillMdPath": "/home/g0pi/Downloads/jarvis/.agents/skills/analyze-project-context/SKILL.md",
+      "scripts": [],
+      "installedAt": "2026-10-01T03:45:24.254Z"
+    },
+    {
+      "name": "brainstorming",
+      "slug": "brainstorming",
+      "description": "You MUST use this before any creative work - creating features, building components, adding functionality, or modifying behavior. Explores user intent, requirements and design before implementation.",
+      "source": "project",
+      "path": "/home/g0pi/Downloads/jarvis/.agents/skills/brainstorming",
+      "skillMdPath": "/home/g0pi/Downloads/jarvis/.agents/skills/brainstorming/SKILL.md",
+      "scripts": [],
+      "installedAt": "2026-10-01T03:45:24.254Z"
+    },
+    {
+      "name": "CODE_QUALITY_CHECK",
+      "slug": "code-quality-check",
+      "description": "Apply the code-quality checklist to audit files or directories and produce a Markdown report with findings and suggested fixes. Use when asked to \"audit these files\", \"run a quality check\", \"code quality review\", or \"check against the code-quality checklist\".",
+      "source": "project",
+      "path": "/home/g0pi/Downloads/jarvis/.agents/skills/code-quality-check",
+      "skillMdPath": "/home/g0pi/Downloads/jarvis/.agents/skills/code-quality-check/SKILL.md",
+      "scripts": [],
+      "installedAt": "2026-10-01T03:45:24.255Z"
+    },
+    {
+      "name": "CREATE_DEEP_RESEARCH_PROMPT",
+      "slug": "create-deep-research-prompt",
+      "description": "Generate a structured deep research prompt. USE WHEN the user needs to research a complex topic, market, or bug deeply. Capabilities include objective clarification, tech stack validation, and prompt generation.",
+      "source": "project",
+      "path": "/home/g0pi/Downloads/jarvis/.agents/skills/create-deep-research-prompt",
+      "skillMdPath": "/home/g0pi/Downloads/jarvis/.agents/skills/create-deep-research-prompt/SKILL.md",
+      "scripts": [],
+      "installedAt": "2026-10-01T03:45:24.255Z"
+    },
+    {
+      "name": "developing-marketing-strategy",
+      "slug": "developing-marketing-strategy",
+      "description": "Use for go-to-market strategy, user acquisition, channel analysis, and performance marketing.",
+      "source": "project",
+      "path": "/home/g0pi/Downloads/jarvis/.agents/skills/developing-marketing-strategy",
+      "skillMdPath": "/home/g0pi/Downloads/jarvis/.agents/skills/developing-marketing-strategy/SKILL.md",
+      "scripts": [],
+      "installedAt": "2026-10-01T03:45:24.255Z"
+    },
+    {
+      "name": "dispatching-parallel-agents",
+      "slug": "dispatching-parallel-agents",
+      "description": "Use when facing 2+ independent tasks that can be worked on without shared state or sequential dependencies",
+      "source": "project",
+      "path": "/home/g0pi/Downloads/jarvis/.agents/skills/dispatching-parallel-agents",
+      "skillMdPath": "/home/g0pi/Downloads/jarvis/.agents/skills/dispatching-parallel-agents/SKILL.md",
+      "scripts": [],
+      "installedAt": "2026-10-01T03:45:24.255Z"
+    },
+    {
+      "name": "DOCUMENT_PROJECT_STATE",
+      "slug": "document-project-state",
+      "description": "Generate documentation for an existing project. USE WHEN onboarded to a new codebase OR documenting legacy code. Capabilities include architectural mapping, tech stack inventory, and technical debt documentation.",
+      "source": "project",
+      "path": "/home/g0pi/Downloads/jarvis/.agents/skills/document-project-state",
+      "skillMdPath": "/home/g0pi/Downloads/jarvis/.agents/skills/document-project-state/SKILL.md",
+      "scripts": [],
+      "installedAt": "2026-10-01T03:45:24.255Z"
+    },
+    {
+      "name": "executing-plans",
+      "slug": "executing-plans",
+      "description": "Use when you have a written implementation plan to execute in a separate session with review checkpoints",
+      "source": "project",
+      "path": "/home/g0pi/Downloads/jarvis/.agents/skills/executing-plans",
+      "skillMdPath": "/home/g0pi/Downloads/jarvis/.agents/skills/executing-plans/SKILL.md",
+      "scripts": [],
+      "installedAt": "2026-10-01T03:45:24.255Z"
+    },
+    {
+      "name": "finishing-a-development-branch",
+      "slug": "finishing-a-development-branch",
+      "description": "Use when implementation is complete, all tests pass, and you need to decide how to integrate the work - guides completion of development work by presenting structured options for merge, PR, or cleanup",
+      "source": "project",
+      "path": "/home/g0pi/Downloads/jarvis/.agents/skills/finishing-a-development-branch",
+      "skillMdPath": "/home/g0pi/Downloads/jarvis/.agents/skills/finishing-a-development-branch/SKILL.md",
+      "scripts": [],
+      "installedAt": "2026-10-01T03:45:24.256Z"
+    },
+    {
+      "name": "promptify",
+      "slug": "promptify",
+      "description": "Transform user requests into detailed, precise prompts for AI models. Use when users say \"promptify\", \"promptify this\", or explicitly request prompt engineering or improvement of their request for better AI responses.",
+      "source": "project",
+      "path": "/home/g0pi/Downloads/jarvis/.agents/skills/promptify",
+      "skillMdPath": "/home/g0pi/Downloads/jarvis/.agents/skills/promptify/SKILL.md",
+      "scripts": [],
+      "installedAt": "2026-10-01T03:45:24.256Z"
+    },
+    {
+      "name": "receiving-code-review",
+      "slug": "receiving-code-review",
+      "description": "Use when receiving code review feedback, before implementing suggestions, especially if feedback seems unclear or technically questionable - requires technical rigor and verification, not performative agreement or blind implementation",
+      "source": "project",
+      "path": "/home/g0pi/Downloads/jarvis/.agents/skills/receiving-code-review",
+      "skillMdPath": "/home/g0pi/Downloads/jarvis/.agents/skills/receiving-code-review/SKILL.md",
+      "scripts": [],
+      "installedAt": "2026-10-01T03:45:24.256Z"
+    },
+    {
+      "name": "requesting-code-review",
+      "slug": "requesting-code-review",
+      "description": "Use when completing tasks, implementing major features, or before merging to verify work meets requirements",
+      "source": "project",
+      "path": "/home/g0pi/Downloads/jarvis/.agents/skills/requesting-code-review",
+      "skillMdPath": "/home/g0pi/Downloads/jarvis/.agents/skills/requesting-code-review/SKILL.md",
+      "scripts": [],
+      "installedAt": "2026-10-01T03:45:24.256Z"
+    },
+    {
+      "name": "speckit",
+      "slug": "speckit",
+      "description": "Use when user wants to work with specifications or create feature requirements following the spec-driven development workflow",
+      "source": "project",
+      "path": "/home/g0pi/Downloads/jarvis/.agents/skills/speckit",
+      "skillMdPath": "/home/g0pi/Downloads/jarvis/.agents/skills/speckit/SKILL.md",
+      "scripts": [],
+      "installedAt": "2026-10-01T03:45:24.256Z"
+    },
+    {
+      "name": "speckit-checklist",
+      "slug": "speckit-checklist",
+      "description": "Generate custom checklist for the current feature based on user requirements",
+      "source": "project",
+      "path": "/home/g0pi/Downloads/jarvis/.agents/skills/speckit-checklist",
+      "skillMdPath": "/home/g0pi/Downloads/jarvis/.agents/skills/speckit-checklist/SKILL.md",
+      "scripts": [],
+      "installedAt": "2026-10-01T03:45:24.257Z"
+    },
+    {
+      "name": "speckit-constitution",
+      "slug": "speckit-constitution",
+      "description": "Create or update the project constitution from interactive or provided principle inputs, ensuring all dependent templates stay in sync",
+      "source": "project",
+      "path": "/home/g0pi/Downloads/jarvis/.agents/skills/speckit-constitution",
+      "skillMdPath": "/home/g0pi/Downloads/jarvis/.agents/skills/speckit-constitution/SKILL.md",
+      "scripts": [],
+      "installedAt": "2026-10-01T03:45:24.257Z"
+    },
+    {
+      "name": "speckit-plan",
+      "slug": "speckit-plan",
+      "description": "Execute implementation planning workflow using the plan template to generate design artifacts",
+      "source": "project",
+      "path": "/home/g0pi/Downloads/jarvis/.agents/skills/speckit-plan",
+      "skillMdPath": "/home/g0pi/Downloads/jarvis/.agents/skills/speckit-plan/SKILL.md",
+      "scripts": [],
+      "installedAt": "2026-10-01T03:45:24.257Z"
+    },
+    {
+      "name": "speckit-specify",
+      "slug": "speckit-specify",
+      "description": "Create or update feature specification from natural language feature description",
+      "source": "project",
+      "path": "/home/g0pi/Downloads/jarvis/.agents/skills/speckit-specify",
+      "skillMdPath": "/home/g0pi/Downloads/jarvis/.agents/skills/speckit-specify/SKILL.md",
+      "scripts": [],
+      "installedAt": "2026-10-01T03:45:24.257Z"
+    },
+    {
+      "name": "speckit-tasks",
+      "slug": "speckit-tasks",
+      "description": "Generate actionable, dependency-ordered tasks.md for the feature based on available design artifacts",
+      "source": "project",
+      "path": "/home/g0pi/Downloads/jarvis/.agents/skills/speckit-tasks",
+      "skillMdPath": "/home/g0pi/Downloads/jarvis/.agents/skills/speckit-tasks/SKILL.md",
+      "scripts": [],
+      "installedAt": "2026-10-01T03:45:24.257Z"
+    },
+    {
+      "name": "subagent-driven-development",
+      "slug": "subagent-driven-development",
+      "description": "Use when executing implementation plans with independent tasks in the current session",
+      "source": "project",
+      "path": "/home/g0pi/Downloads/jarvis/.agents/skills/subagent-driven-development",
+      "skillMdPath": "/home/g0pi/Downloads/jarvis/.agents/skills/subagent-driven-development/SKILL.md",
+      "scripts": [],
+      "installedAt": "2026-10-01T03:45:24.257Z"
+    },
+    {
+      "name": "systematic-debugging",
+      "slug": "systematic-debugging",
+      "description": "Use when encountering any bug, test failure, or unexpected behavior, before proposing fixes",
+      "source": "project",
+      "path": "/home/g0pi/Downloads/jarvis/.agents/skills/systematic-debugging",
+      "skillMdPath": "/home/g0pi/Downloads/jarvis/.agents/skills/systematic-debugging/SKILL.md",
+      "scripts": [],
+      "installedAt": "2026-10-01T03:45:24.257Z"
+    },
+    {
+      "name": "test-driven-development",
+      "slug": "test-driven-development",
+      "description": "Use when implementing any feature or bugfix, before writing implementation code",
+      "source": "project",
+      "path": "/home/g0pi/Downloads/jarvis/.agents/skills/test-driven-development",
+      "skillMdPath": "/home/g0pi/Downloads/jarvis/.agents/skills/test-driven-development/SKILL.md",
+      "scripts": [],
+      "installedAt": "2026-10-01T03:45:24.258Z"
+    },
     {
       "name": "typesafe-ai",
       "slug": "typesafe-ai",
@@ -10,6 +220,66 @@
       "skillMdPath": "/home/g0pi/Downloads/jarvis/.agents/skills/typesafe-ai/SKILL.md",
       "scripts": [],
       "installedAt": "2026-09-29T05:06:41.002Z"
+    },
+    {
+      "name": "use-context7",
+      "slug": "use-context7",
+      "description": "Retrieve up-to-date documentation for software libraries, frameworks, and components via the Context7 API. This skill should be used when looking up documentation for any programming library or framework, finding code examples for specific APIs or features, verifying correct usage of library functions, or obtaining current information about library APIs that may have changed since training.",
+      "source": "project",
+      "path": "/home/g0pi/Downloads/jarvis/.agents/skills/use-context7",
+      "skillMdPath": "/home/g0pi/Downloads/jarvis/.agents/skills/use-context7/SKILL.md",
+      "scripts": [],
+      "installedAt": "2026-10-01T03:45:24.258Z"
+    },
+    {
+      "name": "using-ceo",
+      "slug": "using-ceo",
+      "description": "J.A.R.V.I.S. Executive CEO Orchestrator protocol - prescribes workflows, coordinates dynamic agent roster (Hermes as Lead Engineer), enforces quality gates, and maintains durable operating memory.",
+      "source": "project",
+      "path": "/home/g0pi/Downloads/jarvis/.agents/skills/using-ceo",
+      "skillMdPath": "/home/g0pi/Downloads/jarvis/.agents/skills/using-ceo/SKILL.md",
+      "scripts": [],
+      "installedAt": "2026-10-01T03:45:54.776Z"
+    },
+    {
+      "name": "using-git-worktrees",
+      "slug": "using-git-worktrees",
+      "description": "Use when starting feature work that needs isolation from current workspace or before executing implementation plans - creates isolated git worktrees with smart directory selection and safety verification",
+      "source": "project",
+      "path": "/home/g0pi/Downloads/jarvis/.agents/skills/using-git-worktrees",
+      "skillMdPath": "/home/g0pi/Downloads/jarvis/.agents/skills/using-git-worktrees/SKILL.md",
+      "scripts": [],
+      "installedAt": "2026-10-01T03:45:24.259Z"
+    },
+    {
+      "name": "verification-before-completion",
+      "slug": "verification-before-completion",
+      "description": "Use when about to claim work is complete, fixed, or passing, before committing or creating PRs - requires running verification commands and confirming output before making any success claims; evidence before assertions always",
+      "source": "project",
+      "path": "/home/g0pi/Downloads/jarvis/.agents/skills/verification-before-completion",
+      "skillMdPath": "/home/g0pi/Downloads/jarvis/.agents/skills/verification-before-completion/SKILL.md",
+      "scripts": [],
+      "installedAt": "2026-10-01T03:45:24.259Z"
+    },
+    {
+      "name": "writing-plans",
+      "slug": "writing-plans",
+      "description": "Use when you have a spec or requirements for a multi-step task, before touching code",
+      "source": "project",
+      "path": "/home/g0pi/Downloads/jarvis/.agents/skills/writing-plans",
+      "skillMdPath": "/home/g0pi/Downloads/jarvis/.agents/skills/writing-plans/SKILL.md",
+      "scripts": [],
+      "installedAt": "2026-10-01T03:45:24.259Z"
+    },
+    {
+      "name": "writing-skills",
+      "slug": "writing-skills",
+      "description": "Use when creating new skills, editing existing skills, or verifying skills work before deployment",
+      "source": "project",
+      "path": "/home/g0pi/Downloads/jarvis/.agents/skills/writing-skills",
+      "skillMdPath": "/home/g0pi/Downloads/jarvis/.agents/skills/writing-skills/SKILL.md",
+      "scripts": [],
+      "installedAt": "2026-10-01T03:45:24.259Z"
     },
     {
       "name": "Ui design Guide",
