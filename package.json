@@ -9,6 +9,7 @@
     "build": "vite build frontend",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
+    "update:ref": "python3 scripts/update_codebase_reference.py",
     "brain": "tsx central_brain/src/server.ts",
     "brain:build": "vite build central_brain/frontend",
     "brain:test": "tsx central_brain/src/test_harness.ts"

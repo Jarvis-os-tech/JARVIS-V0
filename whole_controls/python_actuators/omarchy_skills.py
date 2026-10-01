@@ -97,6 +97,20 @@ async def toggle_float() -> Dict[str, Any]:
     """Toggles tiling vs floating for the active window."""
     return await execute_omarchy_command("hyprland", "float")
 
+async def set_wallpaper(path: str) -> Dict[str, Any]:
+    """Sets the desktop wallpaper using native omarchy-theme-bg-set with automatic path resolution."""
+    resolved_path = os.path.expanduser(path.strip())
+    # If path is a directory (e.g. ~/Downloads), find latest image
+    if os.path.isdir(resolved_path):
+        import glob
+        img_candidates = []
+        for ext in ("*.png", "*.jpg", "*.jpeg", "*.webp", "*.bmp"):
+            img_candidates.extend(glob.glob(os.path.join(resolved_path, ext)))
+        if img_candidates:
+            resolved_path = max(img_candidates, key=os.path.getmtime)
+    
+    return await execute_omarchy_command("theme", "set_bg", resolved_path)
+
 async def next_wallpaper() -> Dict[str, Any]:
     """Switches the desktop background to the next wallpaper in the Omarchy theme collection."""
     return await execute_omarchy_command("theme", "next_bg")

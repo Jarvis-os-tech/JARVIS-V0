@@ -185,3 +185,48 @@ async def list_installed_applications(limit: int = 50) -> Dict[str, Any]:
         return {"success": True, "count": len(apps), "applications": apps}
     except Exception as ex:
         return {"success": False, "error": str(ex)}
+
+async def open_folder(path_or_section: str = "home") -> Dict[str, Any]:
+    """Opens a directory or section in GNOME Nautilus file manager with alias resolution."""
+    raw = (path_or_section or "").strip().lower()
+    home = os.path.expanduser("~")
+    section_map = {
+        "downloads": os.path.join(home, "Downloads"),
+        "download": os.path.join(home, "Downloads"),
+        "documents": os.path.join(home, "Documents"),
+        "document": os.path.join(home, "Documents"),
+        "pictures": os.path.join(home, "Pictures"),
+        "photos": os.path.join(home, "Pictures"),
+        "music": os.path.join(home, "Music"),
+        "videos": os.path.join(home, "Videos"),
+        "desktop": os.path.join(home, "Desktop"),
+        "home": home,
+        "root": "/"
+    }
+    target = section_map.get(raw)
+    if not target:
+        target = os.path.expanduser(path_or_section.strip())
+    
+    if not os.path.exists(target):
+        target = home
+
+    gui_env = get_gui_env()
+    bin_cmd = "nautilus" if shutil.which("nautilus") else "xdg-open"
+    try:
+        subprocess.Popen(
+            [bin_cmd, target],
+            env=gui_env,
+            start_new_session=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+        return {
+            "success": True,
+            "status": "opened",
+            "folder": target,
+            "file_manager": bin_cmd,
+            "message": f"Successfully opened {target} in {bin_cmd}."
+        }
+    except Exception as ex:
+        return {"success": False, "error": f"Failed to open folder {target}: {str(ex)}"}
+

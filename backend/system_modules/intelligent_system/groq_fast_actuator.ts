@@ -306,8 +306,21 @@ export class GroqFastActuator {
     }
 
     // 6. Desktop, Hyprland & Omarchy Domain
-    if (/workspace|theme|wallpaper|nightlight|touchpad|omarchy|hyprland|screenshot|osd/i.test(text)) {
+    if (/workspace|theme|wallpaper|background|bg|nightlight|touchpad|omarchy|hyprland|screenshot|osd/i.test(text)) {
       selectedNames.add('omarchy_control');
+      selectedNames.add('set_wallpaper');
+    }
+
+    // 6b. File Explorer & Directory Navigation Domain
+    if (/folder|file|files|explorer|downloads|documents|pictures|directory|nautilus/i.test(text)) {
+      selectedNames.add('open_folder');
+      selectedNames.add('launch_application');
+    }
+
+    // 6c. Hardware & AI Diagnostics Domain
+    if (/diagnostic|diagnose|health|status|hardware|specs|pc spec|cpu usage|ram usage|thermals/i.test(text)) {
+      selectedNames.add('run_system_diagnostics');
+      selectedNames.add('get_system_telemetry');
     }
 
     // 7. Network & WiFi Domain

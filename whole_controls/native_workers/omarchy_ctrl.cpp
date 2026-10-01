@@ -236,27 +236,71 @@ int main(int argc, char* argv[]) {
     }
     // 2. THEME DOMAIN
     else if (domain == "theme") {
-        std::vector<std::string> cmd = {"omarchy", "theme"};
-        if (action == "next_bg" || action == "next-bg" || action == "bg_next" || action == "next_wallpaper") {
-            cmd.push_back("bg");
-            cmd.push_back("next");
-        } else if (action == "next") {
-            cmd.push_back("bg");
-            cmd.push_back("next");
+        if (action == "set_bg" || action == "set_wallpaper" || action == "wallpaper" || action == "bg_set") {
+            std::string img_path = target;
+            if (!img_path.empty() && img_path[0] == '~') {
+                const char* home = getenv("HOME");
+                if (home) img_path = std::string(home) + img_path.substr(1);
+            }
+            std::vector<std::string> bg_cmd = {"omarchy-theme-bg-set", img_path};
+            success = run_cmd_capture(bg_cmd, output);
+            if (!success) {
+                std::vector<std::string> bg_cmd2 = {"omarchy", "theme", "bg", "set", img_path};
+                success = run_cmd_capture(bg_cmd2, output);
+            }
+        } else if (action == "next_bg" || action == "next-bg" || action == "bg_next" || action == "next_wallpaper" || action == "next") {
+            std::vector<std::string> cmd = {"omarchy", "theme", "bg", "next"};
+            success = run_cmd_capture(cmd, output);
         } else if (action == "current") {
-            cmd.push_back("current");
+            std::vector<std::string> cmd = {"omarchy", "theme", "current"};
+            success = run_cmd_capture(cmd, output);
         } else if (action == "set") {
-            cmd.push_back("set");
-            if (!target.empty()) cmd.push_back(target);
+            // Check if target is an image file (ends with .png, .jpg, .jpeg, .webp, .bmp)
+            std::string lower_t = target;
+            for (auto& c : lower_t) c = tolower(c);
+            if (lower_t.find(".png") != std::string::npos || lower_t.find(".jpg") != std::string::npos ||
+                lower_t.find(".jpeg") != std::string::npos || lower_t.find(".webp") != std::string::npos) {
+                std::string img_path = target;
+                if (!img_path.empty() && img_path[0] == '~') {
+                    const char* home = getenv("HOME");
+                    if (home) img_path = std::string(home) + img_path.substr(1);
+                }
+                std::vector<std::string> bg_cmd = {"omarchy-theme-bg-set", img_path};
+                success = run_cmd_capture(bg_cmd, output);
+                if (!success) {
+                    std::vector<std::string> bg_cmd2 = {"omarchy", "theme", "bg", "set", img_path};
+                    success = run_cmd_capture(bg_cmd2, output);
+                }
+            } else {
+                std::vector<std::string> cmd = {"omarchy", "theme", "set"};
+                if (!target.empty()) cmd.push_back(target);
+                success = run_cmd_capture(cmd, output);
+            }
         } else if (action == "list") {
-            cmd.push_back("list");
+            std::vector<std::string> cmd = {"omarchy", "theme", "list"};
+            success = run_cmd_capture(cmd, output);
         } else if (action == "switcher") {
-            cmd.push_back("switcher");
+            std::vector<std::string> cmd = {"omarchy", "theme", "switcher"};
+            success = run_cmd_capture(cmd, output);
         } else {
-            cmd.push_back(action);
+            std::vector<std::string> cmd = {"omarchy", "theme", action};
             if (!target.empty()) cmd.push_back(target);
+            success = run_cmd_capture(cmd, output);
         }
-        success = run_cmd_capture(cmd, output);
+    }
+    // 2b. WALLPAPER DOMAIN
+    else if (domain == "wallpaper" || domain == "set_wallpaper") {
+        std::string img_path = target.empty() ? action : target;
+        if (!img_path.empty() && img_path[0] == '~') {
+            const char* home = getenv("HOME");
+            if (home) img_path = std::string(home) + img_path.substr(1);
+        }
+        std::vector<std::string> bg_cmd = {"omarchy-theme-bg-set", img_path};
+        success = run_cmd_capture(bg_cmd, output);
+        if (!success) {
+            std::vector<std::string> bg_cmd2 = {"omarchy", "theme", "bg", "set", img_path};
+            success = run_cmd_capture(bg_cmd2, output);
+        }
     }
     // 3. TOGGLE DOMAIN
     else if (domain == "toggle") {

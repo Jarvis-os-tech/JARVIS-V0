@@ -103,6 +103,10 @@ async def dispatch_tool(tool_name: str, args: Optional[Dict[str, Any]] = None) -
     elif tool in ["list_installed_applications"]:
         return await app_launcher.list_installed_applications(int(args.get("limit", 50)))
 
+    elif tool in ["open_folder", "navigate_file_manager", "open_directory"]:
+        folder = args.get("folder_path") or args.get("section_name") or args.get("path") or args.get("target") or "downloads"
+        return await app_launcher.open_folder(folder)
+
     # 2. APPLICATION & WINDOW CLOSING
     elif tool in ["close_window", "close_app", "close_application"]:
         target = args.get("target") or args.get("app") or args.get("application")
@@ -131,7 +135,13 @@ async def dispatch_tool(tool_name: str, args: Optional[Dict[str, Any]] = None) -
     elif tool in ["switch_workspace"]:
         return await omarchy_skills.switch_workspace(args.get("workspace_id") or args.get("workspace", "1"))
 
-    elif tool in ["next_wallpaper", "change_wallpaper"]:
+    elif tool in ["set_wallpaper", "change_wallpaper", "set_desktop_background"]:
+        path = args.get("path") or args.get("image") or args.get("target") or args.get("filename")
+        if path:
+            return await omarchy_skills.set_wallpaper(path)
+        return await omarchy_skills.next_wallpaper()
+
+    elif tool in ["next_wallpaper"]:
         return await omarchy_skills.next_wallpaper()
 
     elif tool in ["set_theme"]:

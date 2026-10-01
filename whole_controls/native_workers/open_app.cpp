@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <sys/stat.h>
 #include <fcntl.h>
 #include <stdlib.h>
 
@@ -46,6 +47,14 @@ bool contains_metacharacters(const std::string& s) {
     return false;
 }
 
+static std::string expand_tilde(const std::string& p) {
+    if (!p.empty() && p[0] == '~') {
+        const char* home = getenv("HOME");
+        if (home) return std::string(home) + p.substr(1);
+    }
+    return p;
+}
+
 int main(int argc, char* argv[]) {
     if (argc < 2) {
         print_error_and_exit("No arguments provided");
@@ -53,7 +62,7 @@ int main(int argc, char* argv[]) {
 
     std::vector<std::string> args;
     for (int i = 1; i < argc; ++i) {
-        args.push_back(argv[i]);
+        args.push_back(expand_tilde(argv[i]));
     }
 
     // Check max length and metachars
@@ -71,15 +80,47 @@ int main(int argc, char* argv[]) {
 
     std::vector<std::string> exec_args;
     
+    std::string first_arg = args[0];
+    std::string lower_first = first_arg;
+    for (auto& c : lower_first) c = tolower(c);
+
     // Check if it's a URL
-    const std::string& first_arg = args[0];
     if (first_arg.find("http://") == 0 || first_arg.find("https://") == 0 || first_arg.find("file://") == 0) {
         exec_args.push_back("xdg-open");
         for (const auto& arg : args) {
             exec_args.push_back(arg);
         }
-    } else {
-        exec_args = args;
+    }
+    // Check if it's a directory or folder path
+    else if (lower_first == "files" || lower_first == "file explorer" || lower_first == "file manager" || lower_first == "explorer") {
+        exec_args.push_back("nautilus");
+        if (args.size() > 1) {
+            for (size_t i = 1; i < args.size(); ++i) exec_args.push_back(args[i]);
+        }
+    }
+    else {
+        struct stat st;
+        if (stat(first_arg.c_str(), &st) == 0 && S_ISDIR(st.st_mode)) {
+            // First arg is an existing directory path -> open with nautilus
+            exec_args.push_back("nautilus");
+            exec_args.push_back(first_arg);
+            for (size_t i = 1; i < args.size(); ++i) exec_args.push_back(args[i]);
+        }
+        else if (lower_first == "terminal" || lower_first == "console") {
+            exec_args.push_back("ptyxis");
+            for (size_t i = 1; i < args.size(); ++i) exec_args.push_back(args[i]);
+        }
+        else if (lower_first == "editor" || lower_first == "text editor" || lower_first == "notepad") {
+            exec_args.push_back("gnome-text-editor");
+            for (size_t i = 1; i < args.size(); ++i) exec_args.push_back(args[i]);
+        }
+        else if (lower_first == "calc" || lower_first == "calculator") {
+            exec_args.push_back("gnome-calculator");
+            for (size_t i = 1; i < args.size(); ++i) exec_args.push_back(args[i]);
+        }
+        else {
+            exec_args = args;
+        }
     }
 
     std::vector<char*> c_args;

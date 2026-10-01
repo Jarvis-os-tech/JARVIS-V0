@@ -1,6 +1,26 @@
 {
-  "lastUpdated": "2026-10-01T04:38:20.753Z",
+  "lastUpdated": "2026-10-01T12:38:25.307Z",
   "skills": [
+    {
+      "name": "diagnose-crash",
+      "slug": "diagnose-crash",
+      "description": "Diagnose why a program crashed on this machine, from a systemd-coredump core dump. Use when a process has segfaulted, aborted, or otherwise dumped core, when asked why an application crashed or disappeared, or when a \"Process crashed:\" desktop notification is acted on. Triggers: crash, segfault, SIGSEGV, SIGABRT, core dump, coredumpctl, \"why did X crash\", \"X keeps crashing\", backtrace symbolization. Covers reporting a confirmed Omarchy bug upstream — see reporting.md.",
+      "source": "project",
+      "path": "/home/g0pi/Downloads/jarvis/skills/diagnose-crash",
+      "skillMdPath": "/home/g0pi/Downloads/jarvis/skills/diagnose-crash/SKILL.md",
+      "scripts": [],
+      "installedAt": "2026-10-01T12:37:54.910Z"
+    },
+    {
+      "name": "omarchy",
+      "slug": "omarchy",
+      "description": "REQUIRED for end-user customization of Linux desktop, window manager, or system config. Use when editing ~/.config/hypr/, ~/.config/omarchy/, ~/.config/alacritty/, ~/.config/foot/, ~/.config/kitty/, or ~/.config/ghostty/. Triggers: Hyprland, window rules, animations, keybindings, monitors, gaps, borders, blur, opacity, omarchy-shell, bar, terminal config, themes, background, night light, idle, lock screen, screenshots, reminders, layer rules, workspace settings, display config, and user-facing omarchy commands. Excludes Omarchy source development through `omarchy dev link` workflows.",
+      "source": "project",
+      "path": "/home/g0pi/Downloads/jarvis/skills/omarchy",
+      "skillMdPath": "/home/g0pi/Downloads/jarvis/skills/omarchy/SKILL.md",
+      "scripts": [],
+      "installedAt": "2026-10-01T12:37:54.909Z"
+    },
     {
       "name": "analyze-project-context",
       "slug": "analyze-project-context",

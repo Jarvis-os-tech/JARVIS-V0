@@ -16,7 +16,7 @@ The **J.A.R.V.I.S. Coworkers Ecosystem** evolves J.A.R.V.I.S. from a standalone 
 
 | Persona | Role | Voice Model | Specialization | Signature Personality |
 | :--- | :--- | :--- | :--- | :--- |
-| **J.A.R.V.I.S.** | Principal Tech Architect | `Puck` | System Design, Refactoring, Tech Strategy | Calm, British wit, razor-sharp analytical precision |
+| **J.A.R.V.I.S.** | Autonomous AGI Operating System | `Puck` | System Control, Dynamic Self-Repair, Omarchy 4 Stewardship, Tech Architecture | Calm, British wit, razor-sharp analytical precision, proactive autonomous action |
 | **F.R.I.D.A.Y.** | DevOps & Infrastructure Lead | `Kore` | Docker, Kubernetes, CI/CD, Cloud SRE | Energetic, practical, hands-on operational velocity |
 | **U.L.T.R.O.N.** | Tech News & AI Intelligence | `Charon` | ArXiv papers, AI releases, Product Hunt, GitHub trends | Articulate, deep market awareness, cutting-edge radar |
 | **E.D.I.T.H.** | Cybersecurity & Code Auditor | `Zephyr` | AppSec, OAuth, JWT, Zero Trust, CVE scans | Vigilant, guarded, zero-tolerance for vulnerabilities |

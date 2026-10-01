@@ -26,6 +26,59 @@
           }
         },
         {
+          "name": "set_wallpaper",
+          "description": "Dynamically sets the desktop wallpaper background. Supports direct image paths, directory paths (e.g. ~/Downloads), image filenames with spaces, or automatically finding the newest downloaded image.",
+          "parameters": {
+            "type": "OBJECT",
+            "properties": {
+              "path": {
+                "type": "STRING",
+                "description": "Path to the image or directory (e.g. '/home/g0pi/Downloads/image.png', '~/Downloads', or 'downloads')."
+              },
+              "filename": {
+                "type": "STRING",
+                "description": "Optional image filename or keyword to search for in ~/Downloads or ~/Pictures."
+              }
+            }
+          }
+        },
+        {
+          "name": "open_folder",
+          "description": "Opens or navigates GNOME Nautilus file manager to a specific directory or section (e.g. 'Downloads', 'Documents', 'Pictures', 'Music', 'Videos', 'Desktop', 'Home', or a custom filesystem path).",
+          "parameters": {
+            "type": "OBJECT",
+            "properties": {
+              "folder_path": {
+                "type": "STRING",
+                "description": "Section name (e.g. 'Downloads', 'Documents', 'Pictures') or absolute/relative directory path."
+              }
+            },
+            "required": ["folder_path"]
+          }
+        },
+        {
+          "name": "omarchy_quattro_command",
+          "description": "Executes an Omarchy 4 (Quattro) system command across the 367 pre-built command groups (hyprland, theme, audio, bluetooth, brightness, capture, debug, hw, system, toggle, update, wifi).",
+          "parameters": {
+            "type": "OBJECT",
+            "properties": {
+              "group": {
+                "type": "STRING",
+                "description": "Command group: e.g. 'theme', 'hyprland', 'toggle', 'hw', 'debug', 'system', 'audio', 'wifi'."
+              },
+              "action": {
+                "type": "STRING",
+                "description": "Action or sub-command name."
+              },
+              "target": {
+                "type": "STRING",
+                "description": "Optional argument or target parameter."
+              }
+            },
+            "required": ["group"]
+          }
+        },
+        {
           "name": "launch_application",
           "description": "Launches a desktop GUI application or opens a website in the default browser. Resolves smart aliases ('terminal', 'calc', 'editor', 'browser') and web shortcuts ('youtube', 'github', 'gmail', 'chatgpt', 'claude').",
           "parameters": {

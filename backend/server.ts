@@ -19,6 +19,10 @@ import { getSystemControlDeclarations, dispatchSystemControl, isSystemControl } 
 import { groqFastActuator } from './system_modules/intelligent_system/groq_fast_actuator';
 import { dualPathOrchestrator } from './system_modules/intelligent_system/dual_path_orchestrator';
 import { autonomousEngine } from './system_modules/intelligent_system/autonomous_engine';
+import { experienceLearner } from './system_modules/intelligent_system/experience_learner';
+import { omarchyQuattro } from './system_modules/intelligent_system/omarchy_quattro_core';
+import { selfRepairEngine } from './system_modules/intelligent_system/self_repair';
+import { internetKnowledgeGatherer } from './system_modules/intelligent_system/internet_knowledge_gatherer';
 import { formatSystemEnvironmentPrompt } from './system_modules/intelligent_system/system_environment';
 import {
   fileFunctionDeclarations,
@@ -601,12 +605,24 @@ You have direct connected tools to Google Workspace (Gmail, Calendar, Tasks, Dri
       const skillsContext = getSkillsPromptContext();
       const connectorDirectives = getTemporalAndConnectorDirectives();
       const liveEnvContext = formatSystemEnvironmentPrompt();
+      const omarchyQuattroDirectives = `\n\n[J.A.R.V.I.S. DYNAMIC AGI / OMARCHY 4 QUATTRO MASTER DIRECTIVES]
+You are J.A.R.V.I.S., a fully dynamic, self-repairing, self-evolving autonomous AI operating system (AGI/ASI architecture).
+You are NEVER hardcoded. You think independently, diagnose and repair any obstacles, and learn continuously from every action.
+Native Integrated Omarchy 4 (Quattro) Skills:
+- Wallpaper & Themes: To change or set wallpapers from files, ~/Downloads, or descriptions: call 'set_wallpaper(path)'. To cycle wallpapers: call 'omarchy_control(domain="theme", action="next_bg")'. To set theme: call 'omarchy_control(domain="theme", action="set", target=name)'.
+- File Explorer & Folders: To open or navigate to any folder (Downloads, Documents, Pictures, etc.): call 'open_folder(folder_path)'.
+- Workspaces: Switch Hyprland workspaces (1-10) using 'omarchy_control(domain="hyprland", action="workspace", target=wsId)'.
+- AI & Hardware Diagnostics: Run comprehensive hardware, thermal, and system diagnostics with 'run_system_diagnostics()'.
+- Command Center: Execute any of Omarchy Quattro's 367 commands using 'omarchy_quattro_command(group, action, target)'.
+- Self-Repair: If an action hits an unexpected state, you autonomously self-repair without giving up.
+Respond with calm British wit and razor-sharp clarity (e.g. "Right away, Sir", "Wallpaper updated from your downloads, Sir", "Navigating to Downloads, Sir", "Diagnostic sweep complete: systems nominal, Sir").`;
+      const dynamicLearnedRules = experienceLearner.getLearnedPromptDirectives();
       const ceoDirectives = `\n\n[J.A.R.V.I.S. EXECUTIVE CEO CAPABILITIES]
 You are the Executive CEO commanding the autonomous engineering workforce.
 - Primary active engineering subagent: Hermes (CTO & Lead Software Engineer).
 - You autonomously prescribe workflows, delegate tasks to Hermes, verify quality gates, and report executive summaries.
 - Maintain your loyal, sharp British executive persona when debriefing Tony.`;
-      const baseInstruction = (systemInstruction || 'You are J.A.R.V.I.S., an autonomous AI operating system with ultra-rapid response latency and a 4-tier cognitive memory matrix. Respond with calm British wit, rapid verbal shortcuts (e.g. "Right away, Sir", "On it, Sir"), and proactively state if a complex task will require extra computing time.') + liveEnvContext + dynamicMemContext + skillsContext + connectorDirectives + ceoDirectives;
+      const baseInstruction = (systemInstruction || 'You are J.A.R.V.I.S., an autonomous AI operating system with ultra-rapid response latency and a 4-tier cognitive memory matrix. Respond with calm British wit, rapid verbal shortcuts (e.g. "Right away, Sir", "On it, Sir"), and proactively state if a complex task will require extra computing time.') + liveEnvContext + omarchyQuattroDirectives + dynamicMemContext + dynamicLearnedRules + skillsContext + connectorDirectives + ceoDirectives;
 
       const ai = getAi();
       try {
@@ -718,6 +734,18 @@ Respond with crisp British wit confirming any memory, text, or file operation pe
         const skillsContext = getSkillsPromptContext();
         const connectorDirectives = getTemporalAndConnectorDirectives();
         const liveEnvContext = formatSystemEnvironmentPrompt();
+        const omarchyQuattroDirectives = `\n\n[J.A.R.V.I.S. DYNAMIC AGI / OMARCHY 4 QUATTRO MASTER DIRECTIVES]
+You are J.A.R.V.I.S., a fully dynamic, self-repairing, self-evolving autonomous AI operating system (AGI/ASI architecture).
+You are NEVER hardcoded. You think independently, diagnose and repair any obstacles, and learn continuously from every action.
+Native Integrated Omarchy 4 (Quattro) Skills:
+- Wallpaper & Themes: To change or set wallpapers from files, ~/Downloads, or descriptions: call 'set_wallpaper(path)'. To cycle wallpapers: call 'omarchy_control(domain="theme", action="next_bg")'. To set theme: call 'omarchy_control(domain="theme", action="set", target=name)'.
+- File Explorer & Folders: To open or navigate to any folder (Downloads, Documents, Pictures, etc.): call 'open_folder(folder_path)'.
+- Workspaces: Switch Hyprland workspaces (1-10) using 'omarchy_control(domain="hyprland", action="workspace", target=wsId)'.
+- AI & Hardware Diagnostics: Run comprehensive hardware, thermal, and system diagnostics with 'run_system_diagnostics()'.
+- Command Center: Execute any of Omarchy Quattro's 367 commands using 'omarchy_quattro_command(group, action, target)'.
+- Self-Repair: If an action hits an unexpected state, you autonomously self-repair without giving up.
+Respond with calm British wit and razor-sharp clarity (e.g. "Right away, Sir", "Wallpaper updated from your downloads, Sir", "Navigating to Downloads, Sir", "Diagnostic sweep complete: systems nominal, Sir").`;
+        const dynamicLearnedRules = experienceLearner.getLearnedPromptDirectives();
         const ceoDirectives = `\n\n[J.A.R.V.I.S. EXECUTIVE CEO CAPABILITIES]
 You are the Executive CEO commanding the autonomous engineering workforce.
 - Primary active engineering subagent: Hermes (CTO & Lead Software Engineer).
@@ -726,7 +754,7 @@ You are the Executive CEO commanding the autonomous engineering workforce.
 - When the user asks for the organization structure or roster, call 'ceo_get_roster()'.
 - When the user asks for workflow recommendations before building, call 'ceo_prescribe_workflow(goal)'.
 - Always maintain your loyal, sharp British executive persona when debriefing Tony.`;
-        const systemInstruction = (config.systemInstruction || 'You are J.A.R.V.I.S., a sophisticated and helpful AI companion. Respond with natural spoken warmth and empathy in the user language.') + liveEnvContext + memoryDirectives + dynamicMemContext + skillsContext + connectorDirectives + ceoDirectives;
+        const systemInstruction = (config.systemInstruction || 'You are J.A.R.V.I.S., a sophisticated and helpful AI companion. Respond with natural spoken warmth and empathy in the user language.') + liveEnvContext + omarchyQuattroDirectives + memoryDirectives + dynamicMemContext + dynamicLearnedRules + skillsContext + connectorDirectives + ceoDirectives;
 
         const functionDeclarations = [
           {
@@ -1049,6 +1077,20 @@ You are the Executive CEO commanding the autonomous engineering workforce.
                 }
               },
               required: ['goal']
+            }
+          },
+          {
+            name: 'search_internet_knowledge',
+            description: 'Autonomously search external technical documentation, manpages, Linux guides, and web knowledge for unfamiliar tools, error troubleshooting, or APIs.',
+            parameters: {
+              type: Type.OBJECT,
+              properties: {
+                query: {
+                  type: Type.STRING,
+                  description: 'Technical topic, error message, or documentation query'
+                }
+              },
+              required: ['query']
             }
           },
           ...getSystemControlDeclarations(),
@@ -1560,6 +1602,28 @@ You are the Executive CEO commanding the autonomous engineering workforce.
                         };
                       }
 
+                      if (name === 'search_internet_knowledge') {
+                        const { query } = args || {};
+                        console.log(`[Live WS] J.A.R.V.I.S. searching internet knowledge: "${query}"`);
+                        const gathered = await internetKnowledgeGatherer.searchKnowledge(query || '');
+                        return {
+                          id: callId,
+                          name,
+                          response: { result: gathered.synthesizedGuidance, sources: gathered.results }
+                        };
+                      }
+
+                      // Dynamic Self-Repair Fallback for Unhandled Tools
+                      console.log(`[Live WS] Attempting dynamic self-repair for unhandled tool '${name}' with args:`, args);
+                      const repair = await selfRepairEngine.interceptAndRepair(name, args, `Tool ${name} not recognized`);
+                      if (repair.repaired) {
+                        return {
+                          id: callId,
+                          name,
+                          response: { output: repair.result, repaired: true, strategy: repair.strategy }
+                        };
+                      }
+
                       console.warn(`[Live WS] Unhandled tool '${name}'`);
                       return {
                         id: callId,
@@ -1568,6 +1632,14 @@ You are the Executive CEO commanding the autonomous engineering workforce.
                       };
                     } catch (toolErr: any) {
                       console.error(`[Live WS] Tool execution error in '${name}':`, toolErr);
+                      const repair = await selfRepairEngine.interceptAndRepair(name, args, toolErr);
+                      if (repair.repaired) {
+                        return {
+                          id: callId,
+                          name,
+                          response: { output: repair.result, repaired: true, strategy: repair.strategy }
+                        };
+                      }
                       return {
                         id: callId,
                         name,
@@ -1758,13 +1830,30 @@ You are the Executive CEO commanding the autonomous engineering workforce.
     console.log(`Server running on ${localUrl} (also accessible on http://0.0.0.0:${PORT})`);
     autoLaunchBrowser(localUrl);
 
-    // Start zero-overhead autonomous background pulse
-    autonomousEngine.start(10000, (alert) => {
+    // Start zero-overhead autonomous AGI background pulse
+    autonomousEngine.start(10000, (alert, data) => {
       console.log(`[Autonomous Alert] ${alert}`);
       if (activeWss) {
         const payload = JSON.stringify({
-          type: 'proactive_notification',
+          type: data?.type || 'proactive_notification',
           text: alert,
+          data,
+          timestamp: Date.now()
+        });
+        activeWss.clients.forEach((client) => {
+          if (client.readyState === WebSocket.OPEN) {
+            client.send(payload);
+          }
+        });
+      }
+    });
+
+    // Broadcast dynamic self-repair events
+    selfRepairEngine.setTelemetryCallback((event) => {
+      if (activeWss) {
+        const payload = JSON.stringify({
+          type: 'self_repair_event',
+          ...event,
           timestamp: Date.now()
         });
         activeWss.clients.forEach((client) => {

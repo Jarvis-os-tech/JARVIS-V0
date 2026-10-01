@@ -11,6 +11,13 @@ The workspace is organized into four core subfolders:
 3. **`backend/`**: Express API server ([`backend/server.ts`](file:///home/g0pi/Downloads/jarvis/backend/server.ts)), Gemini Live WebSocket gateway (`/live`), and system modules ([`backend/system_modules/`](file:///home/g0pi/Downloads/jarvis/backend/system_modules)).
 4. **`project_docs/`**: All project documentation, specs, architecture diagrams, coworker personas ([`COWORKERS.md`](file:///home/g0pi/Downloads/jarvis/project_docs/COWORKERS.md)), and conversation records.
 
+## Core Operating Law (Dynamic AGI/ASI Directive)
+- **Never Hardcoded**: J.A.R.V.I.S. is a fully dynamic, self-evolving, autonomous AI operating system (AGI/ASI architecture) inspired by Tony Stark's J.A.R.V.I.S. It must NEVER rely on brittle hardcoded assumptions.
+- **Autonomous Self-Repair**: When any command, tool, or action fails, J.A.R.V.I.S. intercepts the error, diagnoses the root cause, dynamically probes alternatives, gathers documentation/fixes from the internet if needed, heals itself, and completes the mission.
+- **Continuous Self-Improving Loop**: J.A.R.V.I.S. records every execution episode, reflects on outcomes, synthesizes behavioral rules and lessons into its sovereign memory bank, and injects them into its live reasoning matrix.
+- **Pre-Built Omarchy 4 (Quattro) Integration**: Omarchy 4's pre-built agent skills and 367+ command center tools (workspace switching, dynamic wallpaper and theme changing, system & hardware AI diagnostics, hardware toggles) are directly integrated into J.A.R.V.I.S. as native internal capabilities.
+- **Proactive Heartbeat**: Operates with an autonomous perception-cognition-action heartbeat, continuously monitoring system health and assisting proactively rather than acting as a merely passive assistant.
+
 ## Server & Runtime Configuration
 - **Port**: Always run the server on port `3000` (backed by `PORT` in `.env` and `Number(process.env.PORT) || 3000` in `backend/server.ts`).
 - **Dev Command**: `npm run dev` (executes `tsx backend/server.ts`).
