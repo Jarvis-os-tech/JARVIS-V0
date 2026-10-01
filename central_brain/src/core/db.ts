@@ -246,7 +246,7 @@ export function getGlobalMetrics(): {
   const distilled = stats.distilledTotal || 0;
   const savings = raw > 0 ? (((raw - distilled) / raw) * 100).toFixed(1) + '%' : '0.0%';
 
-  const agentCountRow = db.prepare('SELECT COUNT(*) as cnt FROM agent_registry WHERE status != "OFFLINE"').get() as any;
+  const agentCountRow = db.prepare("SELECT COUNT(*) as cnt FROM agent_registry WHERE status != 'OFFLINE'").get() as any;
 
   return {
     totalSessions: stats.total || 0,
