@@ -33,12 +33,52 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const server = http.createServer(app);
-const wss = new WebSocketServer({ server, path: '/stream' });
+const wss = new WebSocketServer({
+  server,
+  path: '/stream',
+  verifyClient: ({ req }, done) => {
+    if (isAuthorizedRequest(req)) done(true);
+    else done(false, 401, 'Authentication required');
+  }
+});
 
-const PORT = 8200;
+const PORT = Number(process.env.CENTRAL_BRAIN_PORT) || 8200;
+const BIND_HOST = process.env.CENTRAL_BRAIN_HOST || '127.0.0.1';
+const API_TOKEN = process.env.JARVIS_API_TOKEN?.trim() || '';
+const ALLOWED_ORIGINS = new Set(
+  (process.env.CENTRAL_BRAIN_CORS_ORIGINS || 'http://127.0.0.1:8200,http://localhost:8200,http://127.0.0.1:3000,http://localhost:3000')
+    .split(',')
+    .map(origin => origin.trim())
+    .filter(Boolean)
+);
 
-app.use(cors({ origin: '*' }));
+function isLoopbackAddress(address?: string): boolean {
+  return address === '127.0.0.1' || address === '::1' || address === '::ffff:127.0.0.1';
+}
+
+function isAuthorizedRequest(req: any): boolean {
+  if (isLoopbackAddress(req.socket?.remoteAddress)) return true;
+  if (!API_TOKEN) return false;
+  const bearer = String(req.headers.authorization || '');
+  const headerToken = String(req.headers['x-jarvis-api-token'] || '');
+  return bearer === `Bearer ${API_TOKEN}` || headerToken === API_TOKEN;
+}
+
+if (!['127.0.0.1', 'localhost', '::1'].includes(BIND_HOST) && !API_TOKEN) {
+  throw new Error('JARVIS_API_TOKEN must be configured before binding Central Brain to a non-loopback host.');
+}
+
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || ALLOWED_ORIGINS.has(origin)) return callback(null, true);
+    return callback(new Error('Origin is not allowed by Central Brain CORS policy'));
+  }
+}));
 app.use(express.json({ limit: '10mb' }));
+app.use((req, res, next) => {
+  if (isAuthorizedRequest(req)) return next();
+  res.status(401).json({ error: 'Authentication required. Use a loopback client or provide JARVIS_API_TOKEN.' });
+});
 
 // Active WebSocket connections pool
 const clients = new Set<WebSocket>();
@@ -247,10 +287,10 @@ if (fs.existsSync(FRONTEND_DIST)) {
 }
 
 // Start server
-server.listen(PORT, async () => {
+server.listen(PORT, BIND_HOST, async () => {
   console.log(`=======================================================`);
   console.log(`🧠 [CENTRAL BRAIN] Multi-Agent Platform Running`);
-  console.log(`📡 HTTP & Telemetry WS: http://localhost:${PORT}`);
+  console.log(`📡 HTTP & Telemetry WS: http://${BIND_HOST}:${PORT}`);
   console.log(`🛡️ Circuit Breaker:     ${getCircuitBreaker().status}`);
   console.log(`=======================================================`);
 

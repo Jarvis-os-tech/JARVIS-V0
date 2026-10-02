@@ -202,6 +202,18 @@ TABLE_MAP = {
     "preferences": "preferences",
     "instructions": "instructions"
 }
+TABLE_MAP["personaldetails"] = "personal_details"
+
+ALLOWED_TRIAD_CATEGORIES = frozenset(TABLE_MAP)
+
+
+def _validated_table(category: str) -> str:
+    """Resolve a triad category through a fixed map; never interpolate user input."""
+    normalized = (category or "").strip()
+    table = TABLE_MAP.get(normalized)
+    if not table:
+        raise ValueError(f"Unsupported memory category: {category}")
+    return table
 
 
 def handle_get_triad(category=None):
@@ -225,7 +237,7 @@ def handle_get_triad(category=None):
             return []
 
     if category and category != "all":
-        tbl = TABLE_MAP.get(category, category)
+        tbl = _validated_table(category)
         items = fetch_cat(category, tbl)
         conn.close()
         return items
@@ -240,7 +252,7 @@ def handle_get_triad(category=None):
 
 
 def handle_add_triad(category: str, content: str, learned_date: str = None):
-    tbl = TABLE_MAP.get(category, "personal_details")
+    tbl = _validated_table(category)
     if not learned_date:
         import datetime
         learned_date = f"[[{datetime.date.today().isoformat()}]]"
@@ -317,7 +329,7 @@ def handle_clear_memory(category: str = "all", scope: str = "all"):
         if scope_lower in ("all", "buffer", "full"):
             tables.append(("memory_buffer", "memory_buffer"))
     else:
-        tbl = TABLE_MAP.get(cat_lower, cat_lower)
+        tbl = _validated_table(cat_lower)
         tables = [(cat_lower, tbl)]
 
     cleared_counts = {}
@@ -395,7 +407,7 @@ def handle_remove_triad(category: str, content_or_id: str):
     tables_to_search = (
         [("personal_data", "personal_details"), ("preferences", "preferences"), ("instructions", "instructions")]
         if (not category or category in ("all", "*", "everything"))
-        else [(category, TABLE_MAP.get(category, "personal_details"))]
+        else [(category, _validated_table(category))]
     )
 
     total_deleted = 0
@@ -438,7 +450,7 @@ def handle_remove_triad(category: str, content_or_id: str):
 
 
 def handle_rewrite_triad(category: str, old_content_or_id: str, new_content: str):
-    tbl = TABLE_MAP.get(category, "personal_details")
+    tbl = _validated_table(category)
     conn = get_db_connection()
     c = conn.cursor()
 

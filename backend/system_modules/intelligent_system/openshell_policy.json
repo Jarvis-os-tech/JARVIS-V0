@@ -1,0 +1,121 @@
+{
+  "$schema": "https://docs.nvidia.com/openshell/schemas/policy-v1.json",
+  "name": "jarvis-default-agent-policy",
+  "version": "1.0.0",
+  "description": "Kernel-isolated security policy for J.A.R.V.I.S. autonomous agent execution",
+  "sandbox": {
+    "default_mode": "hybrid",
+    "runtime": "docker",
+    "image": "ubuntu:24.04",
+    "resource_limits": {
+      "memory_max_mb": 4096,
+      "cpu_quota_percent": 100,
+      "pids_max": 256,
+      "timeout_seconds": 60
+    },
+    "security_profile": {
+      "no_new_privileges": true,
+      "seccomp": "strict-agent",
+      "drop_capabilities": [
+        "CAP_SYS_ADMIN",
+        "CAP_NET_ADMIN",
+        "CAP_SYS_PTRACE",
+        "CAP_DAC_OVERRIDE",
+        "CAP_SYS_RAWIO"
+      ],
+      "readonly_rootfs": true
+    }
+  },
+  "filesystem": {
+    "read_write": [
+      "/home/g0pi/Downloads/jarvis",
+      "/home/g0pi/Downloads/jarvis/scratch",
+      "/home/g0pi/Downloads/jarvis/data",
+      "/home/g0pi/Downloads/jarvis/skills"
+    ],
+    "read_only": [
+      "/usr/lib",
+      "/usr/bin",
+      "/lib",
+      "/lib64",
+      "/etc/ssl/certs",
+      "/etc/resolv.conf"
+    ],
+    "denied": [
+      "/etc/shadow",
+      "/etc/passwd",
+      "/etc/sudoers",
+      "/root",
+      "/home/*/.ssh",
+      "/home/*/.gnupg",
+      "/home/*/.bashrc",
+      "/home/*/.zshrc",
+      "/proc/sys",
+      "/sys/firmware"
+    ]
+  },
+  "network": {
+    "default_action": "deny",
+    "allowed_egress_domains": [
+      "generativelanguage.googleapis.com",
+      "api.groq.com",
+      "integrate.api.nvidia.com",
+      "api.github.com",
+      "raw.githubusercontent.com",
+      "registry.npmjs.org",
+      "pypi.org",
+      "files.pythonhosted.org",
+      "huggingface.co"
+    ],
+    "allowed_local_ports": [
+      3000,
+      17670,
+      9876
+    ]
+  },
+  "credentials": {
+    "protected_keys": [
+      "GEMINI_API_KEY",
+      "GROQ_API_KEY",
+      "NVIDIA_API_KEY",
+      "GITHUB_TOKEN",
+      "OPENAI_API_KEY",
+      "GOOGLE_CLIENT_SECRET",
+      "FIREBASE_CONFIG"
+    ],
+    "injection_policy": "supervised_endpoint_only",
+    "allow_direct_read": false
+  },
+  "execution_rules": {
+    "fast_path_allowed": [
+      "get_system_telemetry",
+      "get_pc_specs",
+      "get_system_volume",
+      "get_display_brightness",
+      "scan_wifi_networks",
+      "inspect_network_sockets",
+      "describe_selection",
+      "read_file",
+      "list_dir",
+      "search_memory"
+    ],
+    "sandbox_required": [
+      "write_file",
+      "append_file",
+      "rewrite_file",
+      "remove_file",
+      "execute_skill_script",
+      "install_skills",
+      "run_system_diagnostics",
+      "omarchy_quattro_command",
+      "ceo_execute_mission"
+    ],
+    "long_running_async": [
+      "install_skills",
+      "execute_skill_script",
+      "package_install",
+      "heavy_compile",
+      "ceo_execute_mission"
+    ]
+  }
+}

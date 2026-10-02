@@ -1,0 +1,18 @@
+version: "1.0.0"
+description: "Quality Gate & Architecture Checklists"
+checklists:
+  code_quality:
+    name: "TypeScript & Code Quality Gate"
+    rules:
+      - "Zero TypeScript errors (tsc --noEmit / npm run lint)"
+      - "Vite bundle builds cleanly without fatal asset resolution errors (npm run build)"
+      - "Strict compliance with 4-subfolder workspace architecture"
+      - "Zero hardcoded assumption anti-patterns"
+      - "Active git target branch is dev"
+
+  session_logging:
+    name: "Central Memory Index Logging Gate"
+    rules:
+      - "Log completed session into jarvis_memory_bundle/vault/agents/session_index.json"
+      - "Sync human-readable session_index.md view"
+      - "Include accurate topic, summary, date (DD-MM-YYYY), and artifacts"

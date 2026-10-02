@@ -1,0 +1,146 @@
+{
+  "agents": [
+    {
+      "id": "claude",
+      "name": "Claude Code",
+      "binary": "claude",
+      "role": "Principal Systems Architect",
+      "domain": "cli",
+      "description": "Anthropic Claude Code CLI for high-level architectural refactoring, complex bug analysis, and codebase understanding.",
+      "color": "#D97706",
+      "preferredPaths": [
+        "/home/g0pi/.local/bin/claude",
+        "~/.local/bin/claude"
+      ],
+      "healthArgs": ["--version"],
+      "commandTemplate": {
+        "initial": ["-p", "{prompt}", "--dangerously-skip-permissions"],
+        "resume": ["--resume", "{sessionId}", "-p", "{prompt}", "--dangerously-skip-permissions"]
+      },
+      "skills": [
+        {
+          "id": "architecture_refactor",
+          "name": "Architecture Refactoring",
+          "description": "Performs multi-file refactoring and architectural restructures across complex codebases."
+        },
+        {
+          "id": "deep_diagnosis",
+          "name": "Deep Diagnostic Analysis",
+          "description": "Diagnoses subtle race conditions, memory leaks, and architectural anti-patterns."
+        }
+      ]
+    },
+    {
+      "id": "codex",
+      "name": "Codex CLI",
+      "binary": "codex",
+      "role": "Senior Implementation Specialist",
+      "domain": "cli",
+      "description": "OpenAI Codex CLI specialized in rapid automated feature implementation, test creation, and code generation.",
+      "color": "#10B981",
+      "preferredPaths": [
+        "/home/g0pi/.local/bin/codex",
+        "~/.local/bin/codex"
+      ],
+      "healthArgs": ["--version"],
+      "commandTemplate": {
+        "initial": ["exec", "{prompt}"],
+        "resume": ["exec", "{prompt}"]
+      },
+      "skills": [
+        {
+          "id": "feature_codegen",
+          "name": "Rapid Code Generation",
+          "description": "Generates clean TypeScript/Python/Rust implementations for specified modules and endpoints."
+        },
+        {
+          "id": "automated_review",
+          "name": "Automated Code Review",
+          "description": "Conducts non-interactive static code review audits."
+        }
+      ]
+    },
+    {
+      "id": "opencode",
+      "name": "OpenCode",
+      "binary": "opencode",
+      "role": "Full-Stack System Engineer",
+      "domain": "cli",
+      "description": "Autonomous full-stack engineering agent with multi-turn session tracking and ACP/MCP toolset interoperability.",
+      "color": "#3B82F6",
+      "preferredPaths": [
+        "/home/g0pi/.local/bin/opencode",
+        "~/.local/bin/opencode"
+      ],
+      "healthArgs": ["--version"],
+      "commandTemplate": {
+        "initial": ["run", "--auto", "--prompt", "{prompt}"],
+        "resume": ["run", "--auto", "--session", "{sessionId}", "--prompt", "{prompt}"]
+      },
+      "skills": [
+        {
+          "id": "system_integration",
+          "name": "System Integration",
+          "description": "Implements end-to-end full-stack integration across services and database layers."
+        },
+        {
+          "id": "acp_connectivity",
+          "name": "ACP Interoperability",
+          "description": "Interoperates with local Agent Client Protocol daemons."
+        }
+      ]
+    },
+    {
+      "id": "hermes",
+      "name": "Hermes Agent",
+      "binary": "hermes",
+      "role": "DevOps & OS Shell Actuator",
+      "domain": "cli",
+      "description": "Autonomous DevOps & system agent for OS-level tool manipulation, bash automation, and Linux server actions.",
+      "color": "#8B5CF6",
+      "preferredPaths": [
+        "/home/g0pi/.local/bin/hermes",
+        "~/.local/bin/hermes"
+      ],
+      "healthArgs": ["--version"],
+      "commandTemplate": {
+        "initial": ["-p", "default", "chat", "--create-if-missing", "--query-file", "{queryFile}", "--oneshot", "-Q", "--max-turns", "5", "--yolo"],
+        "resume": ["-p", "default", "chat", "--continue", "{sessionId}", "--create-if-missing", "--query-file", "{queryFile}", "--oneshot", "-Q", "--max-turns", "5", "--yolo"]
+      },
+      "skills": [
+        {
+          "id": "shell_actuation",
+          "name": "Linux OS Shell Actuation",
+          "description": "Executes complex system administration, file pipeline transformations, and container management."
+        }
+      ]
+    },
+    {
+      "id": "openmanus",
+      "name": "OpenManus Agent",
+      "binary": "python3",
+      "role": "Autonomous Web & Task Planner",
+      "domain": "web",
+      "description": "Autonomous multi-step task planning and web automation agent adhering to the A2A protocol.",
+      "color": "#F59E0B",
+      "preferredPaths": [
+        "/home/g0pi/tools/OpenManus/main.py",
+        "~/tools/OpenManus/main.py"
+      ],
+      "endpointUrl": "http://127.0.0.1:10000",
+      "healthArgs": ["--help"],
+      "skills": [
+        {
+          "id": "multi_step_planning",
+          "name": "Multi-Step Task Planning",
+          "description": "Decomposes compound tasks into sequential steps with self-reflective tool chaining."
+        },
+        {
+          "id": "browser_navigation",
+          "name": "Autonomous Browser Use",
+          "description": "Navigates DOM elements, fills web forms, and conducts live online web research."
+        }
+      ]
+    }
+  ]
+}

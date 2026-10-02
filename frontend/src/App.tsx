@@ -1,14 +1,19 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { User } from 'firebase/auth';
 import { PERSONAS } from './data/personas';
-import { VoicePersona, ConnectionState, ConversationMessage, AgentConfig, SkillItem } from './types';
+import { VoicePersona, ConnectionState, ConversationMessage, AgentConfig, SkillItem, BackgroundTask, SkillDisplayCard as SkillDisplayCardType } from './types';
 import { Header } from './components/Header';
 import { VoiceVisualizer } from './components/VoiceVisualizer';
 import { VisionPreviewModal } from './components/VisionPreviewModal';
 import { JarvisMemoryHUD } from './components/JarvisMemoryHUD';
 import { CeoExecutiveHUD } from './components/CeoExecutiveHUD';
+import { SecurityHUDModal } from './components/SecurityHUDModal';
+import { AgentSquadDrawer } from './components/AgentSquadDrawer';
+import { AgentSpace } from './components/AgentSpace';
 import { ConnectorsView } from '@connectors/ui';
 import { CommandInputBar } from './components/CommandInputBar';
+import { ParallelTaskDock } from './components/ParallelTaskDock';
+import { SkillDisplayCard } from './components/SkillDisplayCard';
 import { jarvisMemoryEngine } from './services/memoryEngine';
 import { AudioQueuePlayer, float32ToInt16Base64, calculateVolume } from './utils/audio';
 import { demoVoiceInstance } from './services/demoVoiceService';
@@ -21,12 +26,22 @@ export default function App() {
   const [isMuted, setIsMuted] = useState(false);
   const [isMemoryHUDOpen, setIsMemoryHUDOpen] = useState(false);
   const [isCeoHUDOpen, setIsCeoHUDOpen] = useState(false);
-  const [isConnectorsOpen, setIsConnectorsOpen] = useState(false);
+  const [isSecurityHUDOpen, setIsSecurityHUDOpen] = useState(false);
+  const [isAgentSquadOpen, setIsAgentSquadOpen] = useState(false);
+  const [agentStreamLogs, setAgentStreamLogs] = useState<string[]>([]);
+  const [agentSupervisorStatus, setAgentSupervisorStatus] = useState<any>({
+    status: 'idle'
+  });
+  const [continuousPlan, setContinuousPlan] = useState<any | null>(null);
+  const [activeView, setActiveView] = useState<'main' | 'connectors' | 'agent-space'>('main');
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [memoryCount, setMemoryCount] = useState<number>(jarvisMemoryEngine.getStats().totalItems);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [reminders, setReminders] = useState<{ id: string; title: string }[]>([]);
   const [fastActuationAlert, setFastActuationAlert] = useState<{ tool: string; latencyMs: number } | null>(null);
+  const [activeTasks, setActiveTasks] = useState<BackgroundTask[]>([]);
+  const [completedTasks, setCompletedTasks] = useState<BackgroundTask[]>([]);
+  const [selectedDisplayCard, setSelectedDisplayCard] = useState<SkillDisplayCardType | null>(null);
 
   const [inputVolume, setInputVolume] = useState<number>(0);
   const [outputVolume, setOutputVolume] = useState<number>(0);
@@ -237,6 +252,17 @@ export default function App() {
 
   const localRecRef = useRef<any>(null);
   const shouldLocalRecListenRef = useRef(false);
+
+  const handleCancelTask = (taskId: string) => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: 'cancel_task', taskId }));
+    }
+    setActiveTasks(prev => prev.filter(t => t.id !== taskId));
+  };
+
+  const handleDismissCompletedTask = (taskId: string) => {
+    setCompletedTasks(prev => prev.filter(t => t.id !== taskId));
+  };
 
   // Synthesize J.A.R.V.I.S. full system prompt with multi-tier memory matrix
   const buildSystemInstruction = () => {
@@ -667,6 +693,98 @@ export default function App() {
           stopVision();
         }
 
+        if (msg.type === 'cli_agent_stream' && msg.chunk) {
+          setAgentStreamLogs(prev => [...prev.slice(-400), msg.chunk]);
+        }
+
+        if (msg.type === 'continuous_plan_started') {
+          setContinuousPlan({ ...msg, status: 'running' });
+        }
+
+        if (msg.type === 'continuous_plan_step_started') {
+          setContinuousPlan((prev: any) => {
+            if (!prev || prev.planId !== msg.planId) return prev;
+            const steps = prev.steps.map((step: any) => step.index === msg.stepIndex ? { ...step, status: 'running' } : step);
+            return { ...prev, currentStep: msg.stepIndex, steps };
+          });
+        }
+
+        if (msg.type === 'continuous_plan_step_completed' || msg.type === 'continuous_plan_step_failed') {
+          setContinuousPlan((prev: any) => {
+            if (!prev || prev.planId !== msg.planId) return prev;
+            const steps = prev.steps.map((step: any) => step.index === msg.stepIndex ? { ...step, status: msg.type.endsWith('failed') ? 'failed' : 'completed' } : step);
+            return { ...prev, steps };
+          });
+        }
+
+        if (msg.type === 'continuous_plan_completed' || msg.type === 'continuous_plan_failed' || msg.type === 'continuous_plan_cancelled') {
+          setContinuousPlan((prev: any) => prev && prev.planId === msg.planId ? { ...prev, status: msg.type.replace('continuous_plan_', '') } : prev);
+          window.setTimeout(() => setContinuousPlan((prev: any) => prev?.planId === msg.planId ? null : prev), 5000);
+        }
+
+        if (msg.type === 'cli_agent_status') {
+          setAgentSupervisorStatus((prev: any) => ({
+            ...prev,
+            ...msg
+          }));
+        }
+
+        // Parallel Task Manager Events (Hermes Sub-Agent & Background Tasks)
+        if (msg.type === 'tasks_sync') {
+          if (Array.isArray(msg.activeTasks)) setActiveTasks(msg.activeTasks);
+          if (Array.isArray(msg.completedTasks)) setCompletedTasks(msg.completedTasks);
+        }
+
+        if (msg.type === 'task_started' && msg.task) {
+          console.log(`[ParallelTask] Task started: ${msg.task.title}`);
+          setActiveTasks(prev => {
+            const filtered = prev.filter(t => t.id !== msg.task.id);
+            return [msg.task, ...filtered];
+          });
+          if (msg.verbalAcknowledgment) {
+            setFastActuationAlert({
+              tool: msg.task.title,
+              latencyMs: 75
+            });
+            setTimeout(() => setFastActuationAlert(null), 3000);
+          }
+        }
+
+        if (msg.type === 'task_progress') {
+          setActiveTasks(prev => prev.map(t => {
+            if (t.id === msg.taskId) {
+              return {
+                ...t,
+                progressPercent: msg.progressPercent ?? t.progressPercent,
+                progressMessage: msg.progressMessage ?? t.progressMessage
+              };
+            }
+            return t;
+          }));
+        }
+
+        if (msg.type === 'task_completed' && msg.task) {
+          console.log(`[ParallelTask] Task completed: ${msg.task.title} (${msg.durationMs}ms)`);
+          setActiveTasks(prev => prev.filter(t => t.id !== msg.task.id));
+          setCompletedTasks(prev => [msg.task, ...prev.filter(t => t.id !== msg.task.id)]);
+          if (msg.displayCard) {
+            setSelectedDisplayCard(msg.displayCard);
+          }
+        }
+
+        if (msg.type === 'task_failed' && msg.task) {
+          console.warn(`[ParallelTask] Task failed: ${msg.task.title}`, msg.error);
+          setActiveTasks(prev => prev.filter(t => t.id !== msg.task.id));
+          setCompletedTasks(prev => [msg.task, ...prev.filter(t => t.id !== msg.task.id)]);
+        }
+
+        if (msg.type === 'task_cancelled') {
+          setActiveTasks(prev => prev.filter(t => t.id !== msg.taskId));
+          if (msg.task) {
+            setCompletedTasks(prev => [msg.task, ...prev.filter(t => t.id !== msg.taskId)]);
+          }
+        }
+
         if (msg.type === 'memory_update' && msg.facts) {
           console.log('[Live Memory Event] Received mined facts from backend:', msg.facts);
           for (const f of msg.facts) {
@@ -1039,87 +1157,112 @@ export default function App() {
         isDemoMode={isDemoMode}
         onOpenMemoryHUD={() => setIsMemoryHUDOpen(true)}
         onOpenCeoHUD={() => setIsCeoHUDOpen(true)}
+        onOpenSecurityHUD={() => setIsSecurityHUDOpen(true)}
+        onToggleAgentSpace={() => setActiveView(prev => prev === 'agent-space' ? 'main' : 'agent-space')}
         memoryCount={memoryCount}
         currentUser={currentUser}
-        onOpenConnectors={() => setIsConnectorsOpen(true)}
+        onOpenConnectors={() => setActiveView('connectors')}
       />
 
       {/* Main Workspace Layout */}
       <div className="flex-1 min-h-0 w-full relative z-10 flex flex-col items-center justify-between overflow-y-auto">
-        <main className="w-full max-w-4xl flex-1 flex flex-col items-center justify-center p-4 sm:p-6 relative">
-          
-          {/* Demo Mode Notice Banner */}
-          {isDemoMode && !errorMsg && (
-            <div className="w-full max-w-xl mb-3 p-3 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs flex items-center justify-between gap-3 backdrop-blur-md animate-fade-in shadow-lg">
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
-                <span className="font-mono">
-                  <strong>J.A.R.V.I.S. Demo Mode Active:</strong> Voice synthesis, 4-tier memory banks &amp; Arc-Reactor are running.
-                </span>
-              </div>
-            </div>
-          )}
+        {activeView === 'main' && (
+          <main className="w-full max-w-4xl flex-1 flex flex-col items-center justify-center p-4 sm:p-6 relative">
 
-          {/* Error Banner */}
-          {errorMsg && (
-            <div className="w-full max-w-xl mb-3 p-3.5 rounded-2xl text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 backdrop-blur-md animate-fade-in bg-cyan-950/60 border border-cyan-500/30 text-cyan-200 shadow-xl">
-              <div className="flex items-start gap-2.5 flex-1">
-                <AlertCircle className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
-                <div className="flex flex-col gap-0.5">
-                  <span className="font-bold text-white font-mono">Neural Link Notice</span>
-                  <span className="text-[11px] leading-relaxed text-slate-300">{errorMsg}</span>
+            {/* Demo Mode Notice Banner */}
+            {isDemoMode && !errorMsg && (
+              <div className="w-full max-w-xl mb-3 p-3 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs flex items-center justify-between gap-3 backdrop-blur-md animate-fade-in shadow-lg">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+                  <span className="font-mono">
+                    <strong>J.A.R.V.I.S. Demo Mode Active:</strong> Voice synthesis, 4-tier memory banks &amp; Arc-Reactor are running.
+                  </span>
                 </div>
               </div>
-              <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
-                <button
-                  onClick={() => {
-                    setIsDemoMode(true);
-                    setErrorMsg(null);
-                    setConnectionState('disconnected');
-                  }}
-                  className="px-3 py-1.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 rounded-xl font-bold transition-all text-[11px] shadow-sm font-mono"
-                >
-                  Use Demo Voice
-                </button>
-                <button
-                  onClick={() => {
-                    if (connectionState === 'disconnected' || connectionState === 'error') {
-                      handleStartSession();
-                    } else {
-                      startMicStream();
-                    }
-                  }}
-                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl font-medium border border-cyan-500/20 transition-colors flex items-center gap-1 text-[11px] font-mono"
-                >
-                  <RefreshCw className="w-3 h-3" /> Retry
-                </button>
+            )}
+
+            {/* Error Banner */}
+            {errorMsg && (
+              <div className="w-full max-w-xl mb-3 p-3.5 rounded-2xl text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 backdrop-blur-md animate-fade-in bg-cyan-950/60 border border-cyan-500/30 text-cyan-200 shadow-xl">
+                <div className="flex items-start gap-2.5 flex-1">
+                  <AlertCircle className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
+                  <div className="flex flex-col gap-0.5">
+                    <span className="font-bold text-white font-mono">Neural Link Notice</span>
+                    <span className="text-[11px] leading-relaxed text-slate-300">{errorMsg}</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                  <button
+                    onClick={() => {
+                      setIsDemoMode(true);
+                      setErrorMsg(null);
+                      setConnectionState('disconnected');
+                    }}
+                    className="px-3 py-1.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 rounded-xl font-bold transition-all text-[11px] shadow-sm font-mono"
+                  >
+                    Use Demo Voice
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (connectionState === 'disconnected' || connectionState === 'error') {
+                        handleStartSession();
+                      } else {
+                        startMicStream();
+                      }
+                    }}
+                    className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl font-medium border border-cyan-500/20 transition-colors flex items-center gap-1 text-[11px] font-mono"
+                  >
+                    <RefreshCw className="w-3 h-3" /> Retry
+                  </button>
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Core Interactive Arc Reactor Voice Visualizer */}
-          <VoiceVisualizer
-            connectionState={connectionState}
-            inputVolume={inputVolume}
-            outputVolume={outputVolume}
-            personaName={selectedPersona.name}
-            personaColor="cyan"
-            isMuted={isMuted}
-            onToggleMute={() => setIsMuted(!isMuted)}
-            onStartSession={handleStartSession}
-            onStopSession={handleStopSession}
-            onInterrupt={handleInterrupt}
-            isVisionActive={isVisionActive}
-            visionMode={visionMode}
-            onToggleVision={handleToggleVision}
-          />
+            {/* Core Interactive Arc Reactor Voice Visualizer */}
+            <VoiceVisualizer
+              connectionState={connectionState}
+              inputVolume={inputVolume}
+              outputVolume={outputVolume}
+              personaName={selectedPersona.name}
+              personaColor="cyan"
+              isMuted={isMuted}
+              onToggleMute={() => setIsMuted(!isMuted)}
+              onStartSession={handleStartSession}
+              onStopSession={handleStopSession}
+              onInterrupt={handleInterrupt}
+              isVisionActive={isVisionActive}
+              visionMode={visionMode}
+              onToggleVision={handleToggleVision}
+            />
 
-          {/* J.A.R.V.I.S. Command Input Bar */}
-          <CommandInputBar
-            onSendPrompt={handleSendPrompt}
-            isProcessing={connectionState === 'speaking' || connectionState === 'connecting'}
-          />
-        </main>
+            {/* J.A.R.V.I.S. Command Input Bar */}
+            <CommandInputBar
+              onSendPrompt={handleSendPrompt}
+              isProcessing={connectionState === 'speaking' || connectionState === 'connecting'}
+            />
+
+            {/* Active Skill Display Card (Hermes Sub-Agent Response, etc.) */}
+            {selectedDisplayCard && (
+              <SkillDisplayCard
+                card={selectedDisplayCard}
+                onDismiss={() => setSelectedDisplayCard(null)}
+              />
+            )}
+
+            {/* Parallel Task Dock for Sub-Agents & Background Executions */}
+            <ParallelTaskDock
+              activeTasks={activeTasks}
+              completedTasks={completedTasks}
+              onCancelTask={handleCancelTask}
+              onSelectDisplayCard={(card) => setSelectedDisplayCard(card)}
+              onDismissCompletedTask={handleDismissCompletedTask}
+            />
+          </main>
+        )}
+
+        {activeView === 'agent-space' && (
+          <AgentSpace streamLogs={agentStreamLogs} />
+        )}
       </div>
 
       {/* J.A.R.V.I.S. 4-Tier Memory Matrix Hologram HUD */}
@@ -1139,11 +1282,26 @@ export default function App() {
         onSendPromptToJarvis={(p) => handleSendPrompt(p)}
       />
 
+      {/* NVIDIA OpenShell Security & Sandbox Matrix HUD */}
+      <SecurityHUDModal
+        isOpen={isSecurityHUDOpen}
+        onClose={() => setIsSecurityHUDOpen(false)}
+      />
+
+      {/* J.A.R.V.I.S. Agent Squad & A2A Hub Drawer */}
+      <AgentSquadDrawer
+        isOpen={isAgentSquadOpen}
+        onClose={() => setIsAgentSquadOpen(false)}
+        streamLogs={agentStreamLogs}
+        supervisorStatus={agentSupervisorStatus}
+        onClearLogs={() => setAgentStreamLogs([])}
+      />
+
       {/* Model Context Protocol Connectors Directory Modal */}
-      {isConnectorsOpen && (
+      {activeView === 'connectors' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
           <div className="w-full max-w-5xl h-[88vh] shadow-[0_0_50px_rgba(0,216,255,0.2)] rounded-2xl overflow-hidden border border-cyan-500/30">
-            <ConnectorsView onClose={() => setIsConnectorsOpen(false)} />
+            <ConnectorsView onClose={() => setActiveView('main')} />
           </div>
         </div>
       )}
@@ -1169,6 +1327,38 @@ export default function App() {
             <span className="text-[10px] font-mono tracking-widest text-amber-300 font-bold uppercase">⚡ Fast Actuator Triggered</span>
             <span className="text-xs font-mono text-white">{fastActuationAlert.tool} ({fastActuationAlert.latencyMs}ms)</span>
           </div>
+        </div>
+      )}
+
+      {continuousPlan && (
+        <div className="fixed top-20 left-6 z-50 w-[min(360px,calc(100vw-3rem))] rounded-2xl border border-cyan-400/40 bg-slate-950/90 p-4 shadow-[0_0_30px_rgba(6,182,212,0.2)] backdrop-blur-md animate-fade-in">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <div className="text-[10px] font-mono font-bold uppercase tracking-widest text-cyan-300">Continuous coworker workflow</div>
+              <div className="mt-1 text-sm font-semibold text-white">{continuousPlan.title || 'Desktop workflow'}</div>
+            </div>
+            {continuousPlan.status === 'running' && (
+              <button
+                onClick={() => wsRef.current?.readyState === WebSocket.OPEN && wsRef.current.send(JSON.stringify({ type: 'cancel_continuous_plan' }))}
+                className="rounded-lg border border-rose-400/40 px-2 py-1 text-[10px] font-mono uppercase text-rose-300 hover:bg-rose-500/20"
+              >
+                Stop
+              </button>
+            )}
+          </div>
+          <div className="mt-3 space-y-1.5">
+            {(continuousPlan.steps || []).map((step: any) => (
+              <div key={step.index} className="flex items-center gap-2 text-[11px] font-mono">
+                <span className={step.status === 'completed' ? 'text-emerald-400' : step.status === 'failed' ? 'text-rose-400' : step.status === 'running' ? 'text-amber-300 animate-pulse' : 'text-slate-500'}>
+                  {step.status === 'completed' ? '✓' : step.status === 'failed' ? '×' : step.status === 'running' ? '>' : '·'}
+                </span>
+                <span className="truncate text-slate-300">{step.label}</span>
+              </div>
+            ))}
+          </div>
+          {continuousPlan.status !== 'running' && (
+            <div className="mt-3 text-[10px] font-mono uppercase tracking-wider text-cyan-300">{continuousPlan.status}</div>
+          )}
         </div>
       )}
 

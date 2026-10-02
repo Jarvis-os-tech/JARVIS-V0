@@ -1,0 +1,47 @@
+version: "1.0.0"
+description: "Standard Operating Procedures (SOPs) for CEO workflow prescription"
+workflows:
+  FEATURE:
+    title: "Autonomous Feature Engineering Cycle"
+    description: "End-to-end specification, task breakdown, code generation, and test verification."
+    prescribed_skills:
+      - "speckit-plan"
+      - "speckit-tasks"
+      - "test-driven-development"
+      - "verification-before-completion"
+    assigned_worker: "hermes"
+
+  BUGFIX:
+    title: "Defect Remediation & Root Cause Resolution"
+    description: "Reproduces issue, isolates root cause, patches defect, and verifies regression tests."
+    prescribed_skills:
+      - "systematic-debugging"
+      - "test-driven-development"
+      - "code-quality-check"
+    assigned_worker: "hermes"
+
+  REFACTOR:
+    title: "Architectural Refactor & Optimization"
+    description: "Improves code modularity, speeds up execution, eliminates duplication without breaking APIs."
+    prescribed_skills:
+      - "code-quality-check"
+      - "verification-before-completion"
+      - "finishing-a-development-branch"
+    assigned_worker: "hermes"
+
+  RESEARCH:
+    title: "Technical Investigation & Intelligence Synthesis"
+    description: "Surveys documentation, assesses alternative architectures, and synthesizes actionable findings."
+    prescribed_skills:
+      - "create-deep-research-prompt"
+      - "analyze-project-context"
+      - "document-project-state"
+    assigned_worker: "hermes"
+
+  AUDIT:
+    title: "Quality, Security & Architecture Audit"
+    description: "Audits repository dependencies, type safety, security posture, and operating health."
+    prescribed_skills:
+      - "code-quality-check"
+      - "verification-before-completion"
+    assigned_worker: "jarvis"

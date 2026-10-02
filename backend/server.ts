@@ -24,6 +24,7 @@ import { omarchyQuattro } from './system_modules/intelligent_system/omarchy_quat
 import { selfRepairEngine } from './system_modules/intelligent_system/self_repair';
 import { internetKnowledgeGatherer } from './system_modules/intelligent_system/internet_knowledge_gatherer';
 import { formatSystemEnvironmentPrompt } from './system_modules/intelligent_system/system_environment';
+import { continuousExecutionQueue } from './system_modules/intelligent_system/continuous_execution_queue';
 import {
   fileFunctionDeclarations,
   handleWriteFile,
@@ -51,6 +52,26 @@ import {
   executeCeoMission,
   prescribeWorkflow
 } from './system_modules/ceo/index';
+import { openShellRuntime } from './system_modules/intelligent_system/openshell_runtime';
+import { openShellPolicyEngine } from './system_modules/intelligent_system/openshell_policy';
+
+// ─── Agent Space: CLI/IDE/Web Agent Orchestration ─────────────────────────
+import { cliAgentRegistry } from './system_modules/intelligent_system/cli_agent_registry';
+import { cliAgentBridge } from './system_modules/intelligent_system/cli_agent_bridge';
+import { agentSessionManager } from './system_modules/intelligent_system/agent_session_manager';
+import { a2aHub } from './system_modules/intelligent_system/a2a_hub';
+import { cliSupervisorLoop } from './system_modules/intelligent_system/cli_supervisor_loop';
+
+// ─── Parallel Task Manager & Hermes Sub-Agent Suite ───────────────────────
+import { parallelTaskManager } from './parallel_task_manager';
+import {
+  execHermes,
+  checkHermesHealth,
+  getHermesMemories,
+  syncHermesMemories,
+  getHermesToolDeclarations,
+  getHermesPromptDirective
+} from './hermes_bridge';
 
 const OPERATOR_NAME = process.env.OPERATOR_NAME || (process.env.USER ? `Operator ${process.env.USER}` : 'Operator');
 
@@ -77,6 +98,33 @@ function runMemoryBridge(args: string[]): Promise<any> {
 }
 
 const PORT = Number(process.env.PORT) || 3000;
+const BIND_HOST = process.env.JARVIS_HOST || '127.0.0.1';
+const API_TOKEN = process.env.JARVIS_API_TOKEN?.trim() || '';
+
+function isLoopbackAddress(address?: string): boolean {
+  if (!address) return false;
+  return address === '127.0.0.1' || address === '::1' || address === '::ffff:127.0.0.1';
+}
+
+function isAuthorizedRequest(req: { headers: Record<string, any>; socket: { remoteAddress?: string } }): boolean {
+  // Desktop clients are intentionally loopback-only by default. A token is
+  // required for non-loopback clients when the host is exposed remotely.
+  if (isLoopbackAddress(req.socket.remoteAddress)) return true;
+  if (!API_TOKEN) return false;
+  const bearer = String(req.headers.authorization || '');
+  const headerToken = String(req.headers['x-jarvis-api-token'] || '');
+  return bearer === `Bearer ${API_TOKEN}` || headerToken === API_TOKEN;
+}
+
+function requireApiAuth(req: any, res: any, next: any) {
+  if (req.path === '/health') return next();
+  if (isAuthorizedRequest(req)) return next();
+  res.status(401).json({ error: 'Authentication required. Use a loopback client or provide JARVIS_API_TOKEN.' });
+}
+
+if (!['127.0.0.1', 'localhost', '::1'].includes(BIND_HOST) && !API_TOKEN) {
+  throw new Error('JARVIS_API_TOKEN must be configured before binding J.A.R.V.I.S. to a non-loopback host.');
+}
 
 function autoLaunchBrowser(url: string) {
   if (process.env.AUTO_LAUNCH === 'false' || process.env.CI === 'true') {
@@ -106,6 +154,16 @@ function autoLaunchBrowser(url: string) {
 async function startServer() {
   const app = express();
   app.use(express.json({ limit: '10mb' }));
+  app.use('/api', requireApiAuth);
+  app.use('/.well-known/agent.json', requireApiAuth);
+
+  // Initialize NVIDIA OpenShell Security Runtime
+  try {
+    const secInit = await openShellRuntime.initialize();
+    console.log(`[OpenShell Security] ${secInit.message} (Mode: ${secInit.mode})`);
+  } catch (secErr: any) {
+    console.warn(`[OpenShell Security] Initialization notice: ${secErr.message}`);
+  }
 
   // PWA Support: Headers for Service Worker and Manifest
   app.use((req, res, next) => {
@@ -192,8 +250,37 @@ async function startServer() {
     });
   });
 
+  // OpenShell Security Runtime & Policy REST Endpoints
+  app.get('/api/security/status', (_req, res) => {
+    res.json({
+      status: 'nominal',
+      timestamp: new Date().toISOString(),
+      ...openShellRuntime.getStatus(),
+      policy: openShellPolicyEngine.getPolicy()
+    });
+  });
+
+  app.get('/api/security/policy', (_req, res) => {
+    res.json(openShellPolicyEngine.getPolicy());
+  });
+
+  app.post('/api/security/policy/verify', (req, res) => {
+    const verification = openShellPolicyEngine.verifyPolicyUpdate(req.body);
+    res.json(verification);
+  });
+
   // Broadcast helper for real-time client sync
   let activeWss: WebSocketServer | null = null;
+
+  openShellRuntime.setBroadcaster((payload) => {
+    if (!activeWss) return;
+    const msg = JSON.stringify(payload);
+    activeWss.clients.forEach((client) => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(msg);
+      }
+    });
+  });
 
   function broadcastMemoryUpdated(category: string, action: string, data: any) {
     if (!activeWss) return;
@@ -335,6 +422,150 @@ async function startServer() {
 
   // Mount Connectors API (Google Workspace & GitHub MCP backed by Python)
   app.use(connectorRoutes);
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // J.A.R.V.I.S. Agent Space — REST API Endpoints
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  // A2A Protocol: Master Agent Card
+  app.get('/.well-known/agent.json', (_req, res) => {
+    res.json(a2aHub.getMasterAgentCard());
+  });
+
+  // List all discovered agents with status
+  app.get('/api/agents', (_req, res) => {
+    try {
+      const agents = cliAgentRegistry.getAllAgents().map(a => ({
+        id: a.entry.id,
+        name: a.entry.name,
+        role: a.entry.role,
+        domain: a.entry.domain,
+        color: a.entry.color,
+        description: a.entry.description,
+        isAvailable: a.isAvailable,
+        version: a.version || null,
+        resolvedPath: a.resolvedPath,
+        skills: a.entry.skills,
+        activeSessions: agentSessionManager.getSessionsByAgent(a.entry.id)
+          .filter(s => s.status === 'active' || s.status === 'busy').length
+      }));
+      res.json({ agents });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // List all sessions (active + closed)
+  app.get('/api/agents/sessions', (req, res) => {
+    try {
+      const activeOnly = req.query.active === 'true';
+      const sessions = activeOnly
+        ? agentSessionManager.getActiveSessions()
+        : agentSessionManager.getAllSessions();
+      res.json({ sessions });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Open a new session with an agent
+  app.post('/api/agents/sessions/open', (req, res) => {
+    try {
+      const { agentId } = req.body;
+      if (!agentId) {
+        return res.status(400).json({ error: 'agentId is required.' });
+      }
+      const session = agentSessionManager.openSession(agentId);
+      res.json({ session });
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  // Send a command to an active session
+  app.post('/api/agents/sessions/:sessionId/send', async (req, res) => {
+    try {
+      const { sessionId } = req.params;
+      const { prompt, cwd, timeoutMs } = req.body;
+      if (!prompt) {
+        return res.status(400).json({ error: 'prompt is required.' });
+      }
+      const result = await agentSessionManager.sendCommand(sessionId, prompt, { cwd, timeoutMs });
+      res.json({ result });
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  // Close a session
+  app.post('/api/agents/sessions/:sessionId/close', (req, res) => {
+    try {
+      const { sessionId } = req.params;
+      const closed = agentSessionManager.closeSession(sessionId);
+      res.json({ closed, sessionId });
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  // Abort a running command in a session
+  app.post('/api/agents/sessions/:sessionId/abort', (req, res) => {
+    try {
+      const { sessionId } = req.params;
+      const aborted = agentSessionManager.abortCommand(sessionId);
+      res.json({ aborted, sessionId });
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  // Get a specific session's details and history
+  app.get('/api/agents/sessions/:sessionId', (req, res) => {
+    try {
+      const { sessionId } = req.params;
+      const session = agentSessionManager.getSession(sessionId);
+      if (!session) {
+        return res.status(404).json({ error: `Session '${sessionId}' not found.` });
+      }
+      res.json({ session });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // A2A JSON-RPC 2.0 endpoint
+  app.post('/api/a2a/rpc', async (req, res) => {
+    try {
+      const response = await a2aHub.handleRpcRequest(req.body);
+      res.json(response);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Run supervisor loop (autonomous multi-turn with verification)
+  app.post('/api/agents/supervisor/run', async (req, res) => {
+    try {
+      const { goal, primaryAgentId, fallbackAgentId } = req.body;
+      if (!goal || !primaryAgentId) {
+        return res.status(400).json({ error: 'goal and primaryAgentId are required.' });
+      }
+      const result = await cliSupervisorLoop.executeSupervisorLoop({
+        goal,
+        primaryAgentId,
+        fallbackAgentId,
+        onLog: (log) => {
+          if (activeWss) {
+            const payload = JSON.stringify({ type: 'cli_agent_stream', chunk: log, agentId: primaryAgentId });
+            activeWss.clients.forEach(c => { if (c.readyState === WebSocket.OPEN) c.send(payload); });
+          }
+        }
+      });
+      res.json({ result });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
 
   // J.A.R.V.I.S. Universal Skills & Plugins REST Endpoints
   app.get('/api/skills', (_req, res) => {
@@ -495,6 +726,103 @@ async function startServer() {
     }
   });
 
+  // ─── Parallel Tasks API ──────────────────────────────────────────
+  app.get('/api/tasks', (_req, res) => {
+    res.json({
+      success: true,
+      activeTasks: parallelTaskManager.getActiveTasks(),
+      completedTasks: parallelTaskManager.getCompletedTasks()
+    });
+  });
+
+  app.post('/api/tasks/run', async (req, res) => {
+    try {
+      const { category, title, prompt, args, skillName } = req.body;
+      const task = await parallelTaskManager.executeParallelTask({
+        category,
+        title,
+        prompt,
+        args,
+        skillName,
+        customExecution: async (updateProgress) => {
+          if (category === 'hermes' || skillName === 'delegate_to_hermes') {
+            updateProgress('Executing Hermes deep reasoning...', 35);
+            const hermesRes = await execHermes(prompt || args?.prompt || '', { yolo: true });
+            updateProgress('Synthesizing Hermes response...', 90);
+            return {
+              success: hermesRes.success,
+              data: hermesRes,
+              speechSummary: hermesRes.text.slice(0, 200),
+              displayCard: {
+                type: 'hermes_response',
+                title: title || `Hermes ⟶ ${(prompt || '').slice(0, 50)}`,
+                data: {
+                  text: hermesRes.text,
+                  prompt: prompt || args?.prompt,
+                  sessionId: hermesRes.sessionId,
+                  success: hermesRes.success,
+                  error: hermesRes.error,
+                  durationMs: hermesRes.durationMs
+                }
+              },
+              error: hermesRes.error
+            };
+          }
+          return { success: true, data: { status: 'completed' }, speechSummary: 'Task finished' };
+        }
+      });
+      res.json({ success: true, task });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  app.post('/api/tasks/:id/cancel', (req, res) => {
+    const success = parallelTaskManager.cancelTask(req.params.id);
+    res.json({ success, taskId: req.params.id });
+  });
+
+  // ─── Hermes Sub-Agent Suite API ─────────────────────────────────
+  app.get('/api/hermes/health', async (_req, res) => {
+    try {
+      const health = await checkHermesHealth();
+      res.json({ success: true, ...health });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  app.post('/api/hermes/chat', async (req, res) => {
+    try {
+      const { prompt, timeout, maxTurns, yolo, sessionName, mode } = req.body;
+      if (!prompt) {
+        return res.status(400).json({ success: false, error: 'Prompt is required' });
+      }
+      const result = await execHermes(prompt, { timeout, maxTurns, yolo, sessionName, mode });
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  app.get('/api/hermes/memories', (_req, res) => {
+    try {
+      const mems = getHermesMemories();
+      res.json({ success: true, ...mems });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  app.post('/api/hermes/sync-memory', async (_req, res) => {
+    try {
+      const syncResult = await syncHermesMemories();
+      res.json(syncResult);
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
   // Helper for resilient text generation with fallback models and retry logic
   async function generateWithFallback(ai: GoogleGenAI, config: {
     contents: any;
@@ -626,7 +954,9 @@ You are the Executive CEO commanding the autonomous engineering workforce.
 - Primary active engineering subagent: Hermes (CTO & Lead Software Engineer).
 - You autonomously prescribe workflows, delegate tasks to Hermes, verify quality gates, and report executive summaries.
 - Maintain your loyal, sharp British executive persona when debriefing Tony.`;
-      const baseInstruction = (systemInstruction || 'You are J.A.R.V.I.S., an autonomous AI operating system with ultra-rapid response latency and a 4-tier cognitive memory matrix. Respond with calm British wit, rapid verbal shortcuts (e.g. "Right away, Sir", "On it, Sir"), and proactively state if a complex task will require extra computing time.') + liveEnvContext + omarchyQuattroDirectives + dynamicMemContext + dynamicLearnedRules + skillsContext + connectorDirectives + ceoDirectives;
+      const continuousExecutionDirectives = `\n\n[CONTINUOUS GUI COWORKER EXECUTION]
+For multiple desktop actions in one request, call execute_continuous_plan with one ordered action per step. The plan starts immediately in the background, executes one GUI action only after the previous action completes, and streams progress. Never parallelize dependent GUI actions. If the operator says stop, cancel, or abort the workflow, call cancel_continuous_plan.`;
+      const baseInstruction = (systemInstruction || 'You are J.A.R.V.I.S., an autonomous AI operating system with ultra-rapid response latency and a 4-tier cognitive memory matrix. Respond with calm British wit, rapid verbal shortcuts (e.g. "Right away, Sir", "On it, Sir"), and proactively state if a complex task will require extra computing time.') + liveEnvContext + omarchyQuattroDirectives + dynamicMemContext + dynamicLearnedRules + skillsContext + connectorDirectives + ceoDirectives + continuousExecutionDirectives;
 
       const ai = getAi();
       try {
@@ -666,7 +996,17 @@ You are the Executive CEO commanding the autonomous engineering workforce.
   });
 
   // WebSocket Server for Gemini Live API
-  const wss = new WebSocketServer({ server, path: '/live' });
+  const wss = new WebSocketServer({
+    server,
+    path: '/live',
+    verifyClient: ({ req }, done) => {
+      if (isAuthorizedRequest(req)) {
+        done(true);
+      } else {
+        done(false, 401, 'Authentication required');
+      }
+    }
+  });
   activeWss = wss;
 
   wss.on('error', (err) => {
@@ -675,6 +1015,14 @@ You are the Executive CEO commanding the autonomous engineering workforce.
 
   wss.on('connection', (clientWs: WebSocket) => {
     console.log('[Live WS] Client connected');
+    parallelTaskManager.subscribe(clientWs);
+    try {
+      clientWs.send(JSON.stringify({
+        type: 'tasks_sync',
+        activeTasks: parallelTaskManager.getActiveTasks(),
+        completedTasks: parallelTaskManager.getCompletedTasks()
+      }));
+    } catch {}
     let session: any = null;
     let currentTurnModelText = '';
     let currentTurnUserText = '';
@@ -762,7 +1110,9 @@ You are the Executive CEO commanding the autonomous engineering workforce.
 - When the user asks for the organization structure or roster, call 'ceo_get_roster()'.
 - When the user asks for workflow recommendations before building, call 'ceo_prescribe_workflow(goal)'.
 - Always maintain your loyal, sharp British executive persona when debriefing Tony.`;
-        const systemInstruction = (config.systemInstruction || 'You are J.A.R.V.I.S., a sophisticated and helpful AI companion. Respond with natural spoken warmth and empathy in the user language.') + liveEnvContext + omarchyQuattroDirectives + memoryDirectives + dynamicMemContext + dynamicLearnedRules + skillsContext + connectorDirectives + ceoDirectives;
+        const continuousExecutionDirectives = `\n\n[CONTINUOUS GUI COWORKER EXECUTION]
+For a multi-action desktop request, call execute_continuous_plan with ordered GUI tool calls. The server acknowledges immediately and streams each step while the plan continues in the background. Never use parallel calls for dependent GUI actions. Use cancel_continuous_plan when the operator asks to stop the workflow.`;
+        const systemInstruction = (config.systemInstruction || 'You are J.A.R.V.I.S., a sophisticated and helpful AI companion. Respond with natural spoken warmth and empathy in the user language.') + liveEnvContext + omarchyQuattroDirectives + memoryDirectives + dynamicMemContext + dynamicLearnedRules + skillsContext + connectorDirectives + ceoDirectives + continuousExecutionDirectives + getHermesPromptDirective();
 
         const functionDeclarations = [
           {
@@ -1101,8 +1451,106 @@ You are the Executive CEO commanding the autonomous engineering workforce.
               required: ['query']
             }
           },
+          {
+            name: 'get_security_status',
+            description: 'Query NVIDIA OpenShell security runtime status, sandbox isolation level, active policy, and running background spliced tasks.',
+            parameters: {
+              type: Type.OBJECT,
+              properties: {}
+            }
+          },
+          {
+            name: 'execute_continuous_plan',
+            description: 'Start an ordered, non-blocking GUI coworker workflow. The server executes each system-control action sequentially and streams live progress while this call returns immediately.',
+            parameters: {
+              type: Type.OBJECT,
+              properties: {
+                title: { type: Type.STRING, description: 'Short human-readable name for the workflow.' },
+                actions: {
+                  type: Type.ARRAY,
+                  description: 'Ordered GUI actions. Preserve the requested order.',
+                  items: {
+                    type: Type.OBJECT,
+                    properties: {
+                      tool: { type: Type.STRING, description: 'Concrete system-control tool such as launch_application, open_folder, desktop_control, or omarchy_control.' },
+                      args: { type: Type.OBJECT, description: 'Arguments for the selected system-control tool.' },
+                      label: { type: Type.STRING, description: 'Concise spoken label for this step.' },
+                      waitMs: { type: Type.NUMBER, description: 'Optional delay after this step, from 0 to 10000 milliseconds.' }
+                    },
+                    required: ['tool']
+                  }
+                }
+              },
+              required: ['actions']
+            }
+          },
+          {
+            name: 'cancel_continuous_plan',
+            description: 'Cancel the currently running ordered GUI coworker workflow for this voice session.',
+            parameters: { type: Type.OBJECT, properties: {} }
+          },
+          // ─── Agent Space: Orchestration Tools ───────────────────────────
+          {
+            name: 'delegate_to_agent',
+            description: 'Activate an external CLI agent (Claude Code, Codex, OpenCode, Hermes, OpenManus) to execute a task. Opens a persistent session if none exists, or sends a follow-up command to an existing session. The agent runs autonomously with YOLO mode (auto-approves all permission gates). Returns the agent output when complete.',
+            parameters: {
+              type: Type.OBJECT,
+              properties: {
+                agentId: {
+                  type: Type.STRING,
+                  description: 'The agent to delegate to. Options: "claude", "codex", "opencode", "hermes", "openmanus"'
+                },
+                prompt: {
+                  type: Type.STRING,
+                  description: 'The task or command to send to the agent'
+                },
+                sessionId: {
+                  type: Type.STRING,
+                  description: 'Optional: existing session ID to send a follow-up command. If omitted, a new session is opened.'
+                }
+              },
+              required: ['agentId', 'prompt']
+            }
+          },
+          {
+            name: 'list_connected_agents',
+            description: 'List all external agents discovered on this system, their availability status, versions, skills, and any active sessions.',
+            parameters: {
+              type: Type.OBJECT,
+              properties: {}
+            }
+          },
+          {
+            name: 'close_agent_session',
+            description: 'Close an active agent session. The session history is preserved but no more commands can be sent. Use when done working with an agent.',
+            parameters: {
+              type: Type.OBJECT,
+              properties: {
+                sessionId: {
+                  type: Type.STRING,
+                  description: 'The session ID to close'
+                }
+              },
+              required: ['sessionId']
+            }
+          },
+          {
+            name: 'abort_agent_task',
+            description: 'Abort a currently running agent command. Use when an agent is taking too long or producing incorrect output.',
+            parameters: {
+              type: Type.OBJECT,
+              properties: {
+                sessionId: {
+                  type: Type.STRING,
+                  description: 'The session ID whose running command should be aborted'
+                }
+              },
+              required: ['sessionId']
+            }
+          },
           ...getSystemControlDeclarations(),
           ...getConnectorToolDeclarations(),
+          ...getHermesToolDeclarations(),
           ...fileFunctionDeclarations
         ];
 
@@ -1230,6 +1678,39 @@ You are the Executive CEO commanding the autonomous engineering workforce.
                   const functionCalls = toolCall.functionCalls;
                   console.log(`[Live WS] Received ${functionCalls.length} simultaneous tool call(s):`, functionCalls.map((c: any) => c.name));
 
+                  // Gemini may still emit several ordinary GUI tool calls in one
+                  // turn. Convert that batch into a serial coworker workflow so
+                  // dependent desktop actions never execute through Promise.all.
+                  if (functionCalls.length > 1 && functionCalls.every((call: any) => isSystemControl(call.name))) {
+                    try {
+                      const queued = continuousExecutionQueue.start(clientWs, {
+                        title: 'Ordered desktop workflow',
+                        actions: functionCalls.map((call: any) => ({
+                          tool: call.name,
+                          args: call.args || {},
+                          label: call.name
+                        }))
+                      });
+                      session.sendToolResponse({
+                        functionResponses: functionCalls.map((call: any, index: number) => ({
+                          id: call.id,
+                          name: call.name,
+                          response: {
+                            result: {
+                              accepted: true,
+                              planId: queued.planId,
+                              queuedStep: index,
+                              message: 'Queued for ordered background execution.'
+                            }
+                          }
+                        }))
+                      });
+                      return;
+                    } catch (batchErr: any) {
+                      console.warn('[Live WS] Could not queue ordered GUI batch:', batchErr?.message || batchErr);
+                    }
+                  }
+
                   const functionResponses = await Promise.all(functionCalls.map(async (funcCall: any) => {
                     const callId = funcCall.id;
                     const name = funcCall.name;
@@ -1253,6 +1734,39 @@ You are the Executive CEO commanding the autonomous engineering workforce.
                         };
                       }
 
+                      if (name === 'execute_continuous_plan') {
+                        const { title, actions } = args || {};
+                        try {
+                          const receipt = continuousExecutionQueue.start(clientWs, { title, actions });
+                          return {
+                            id: callId,
+                            name,
+                            response: {
+                              result: {
+                                accepted: true,
+                                ...receipt,
+                                message: 'Workflow accepted and executing sequentially in the background.'
+                              }
+                            }
+                          };
+                        } catch (planErr: any) {
+                          return {
+                            id: callId,
+                            name,
+                            response: { error: planErr.message || 'Invalid continuous workflow.' }
+                          };
+                        }
+                      }
+
+                      if (name === 'cancel_continuous_plan') {
+                        const cancelled = continuousExecutionQueue.cancel(clientWs, 'Cancelled by operator voice command');
+                        return {
+                          id: callId,
+                          name,
+                          response: { result: { cancelled } }
+                        };
+                      }
+
                       if (name === 'switch_persona') {
                         const targetPersonaId = args?.targetPersonaId;
                         console.log(`[Live WS] Gemini requested persona switch to: ${targetPersonaId}`);
@@ -1271,13 +1785,23 @@ You are the Executive CEO commanding the autonomous engineering workforce.
 
                       if (name === 'query_memory') {
                         const cat = args?.category || 'all';
-                        const query = args?.query || '';
+                        const query = String(args?.query || '').trim();
                         console.log(`[Live WS] J.A.R.V.I.S. querying memory: category=${cat}, query=${query}`);
                         const data = await runMemoryBridge(['get_triad', cat]);
+                        const filteredData = query
+                          ? (Array.isArray(data)
+                            ? data.filter((item: any) => String(item.content || '').toLowerCase().includes(query.toLowerCase()))
+                            : Object.fromEntries(Object.entries(data || {}).map(([key, items]: [string, any]) => [
+                              key,
+                              Array.isArray(items)
+                                ? items.filter((item: any) => String(item.content || '').toLowerCase().includes(query.toLowerCase()))
+                                : items
+                            ])))
+                          : data;
                         return {
                           id: callId,
                           name,
-                          response: { result: data }
+                          response: { result: filteredData }
                         };
                       }
 
@@ -1346,6 +1870,16 @@ You are the Executive CEO commanding the autonomous engineering workforce.
                           id: callId,
                           name,
                           response: { result: `Successfully rewritten in ${category} memory: "${new_content}"` }
+                        };
+                      }
+
+                      if (name === 'get_security_status') {
+                        const status = openShellRuntime.getStatus();
+                        console.log(`[Live WS] J.A.R.V.I.S. queried OpenShell security status:`, status.mode);
+                        return {
+                          id: callId,
+                          name,
+                          response: { result: status }
                         };
                       }
 
@@ -1621,6 +2155,203 @@ You are the Executive CEO commanding the autonomous engineering workforce.
                         };
                       }
 
+                      // ─── Agent Space: Tool Dispatch ─────────────────────────
+                      if (name === 'delegate_to_agent') {
+                        const { agentId, prompt, sessionId: existingSessionId } = args || {};
+                        console.log(`[Live WS] J.A.R.V.I.S. delegating to agent '${agentId}': "${prompt?.slice(0, 80)}..."`);
+
+                        try {
+                          // Open a new session or reuse existing
+                          let sessionId = existingSessionId;
+                          if (!sessionId) {
+                            const session = agentSessionManager.openSession(agentId);
+                            sessionId = session.sessionId;
+                          }
+
+                          // Stream output to the connected client in real-time
+                          const streamToClient = (chunk: string) => {
+                            if (clientWs.readyState === WebSocket.OPEN) {
+                              clientWs.send(JSON.stringify({
+                                type: 'cli_agent_stream',
+                                sessionId,
+                                agentId,
+                                chunk
+                              }));
+                            }
+                          };
+
+                          // Temporarily wire the session manager broadcast for this execution
+                          agentSessionManager.setBroadcast((payload) => {
+                            if (clientWs.readyState === WebSocket.OPEN) {
+                              clientWs.send(JSON.stringify(payload));
+                            }
+                          });
+
+                          const result = await agentSessionManager.sendCommand(sessionId!, prompt, {
+                            cwd: process.cwd()
+                          });
+
+                          return {
+                            id: callId,
+                            name,
+                            response: {
+                              result: {
+                                success: result.success,
+                                sessionId,
+                                agentId: result.agentId,
+                                output: result.output.slice(0, 4000), // Cap for Gemini context
+                                durationMs: result.durationMs,
+                                yoloBypassCount: result.yoloBypassCount,
+                                hint: 'Use the same sessionId for follow-up commands to this agent.'
+                              }
+                            }
+                          };
+                        } catch (err: any) {
+                          return {
+                            id: callId,
+                            name,
+                            response: { error: `Agent delegation failed: ${err.message}` }
+                          };
+                        }
+                      }
+
+                      if (name === 'list_connected_agents') {
+                        console.log(`[Live WS] J.A.R.V.I.S. listing connected agents`);
+                        const agents = cliAgentRegistry.getAllAgents().map(a => ({
+                          id: a.entry.id,
+                          name: a.entry.name,
+                          role: a.entry.role,
+                          isAvailable: a.isAvailable,
+                          version: a.version || 'unknown',
+                          skills: a.entry.skills.map(s => s.name),
+                          activeSessions: agentSessionManager.getSessionsByAgent(a.entry.id)
+                            .filter(s => s.status === 'active' || s.status === 'busy')
+                            .map(s => ({ sessionId: s.sessionId, commandCount: s.commandCount }))
+                        }));
+                        return {
+                          id: callId,
+                          name,
+                          response: { result: { agents, totalAvailable: agents.filter(a => a.isAvailable).length } }
+                        };
+                      }
+
+                      if (name === 'close_agent_session') {
+                        const { sessionId } = args || {};
+                        console.log(`[Live WS] J.A.R.V.I.S. closing agent session: ${sessionId}`);
+                        const closed = agentSessionManager.closeSession(sessionId);
+                        return {
+                          id: callId,
+                          name,
+                          response: { result: { closed, sessionId } }
+                        };
+                      }
+
+                      if (name === 'abort_agent_task') {
+                        const { sessionId } = args || {};
+                        console.log(`[Live WS] J.A.R.V.I.S. aborting agent task: ${sessionId}`);
+                        const aborted = agentSessionManager.abortCommand(sessionId);
+                        return {
+                          id: callId,
+                          name,
+                          response: { result: { aborted, sessionId } }
+                        };
+                      }
+
+                      // ─── Hermes Sub-Agent & Parallel Execution ──────────────
+                      if (name === 'delegate_to_hermes' || name === 'hermes_chat') {
+                        const prompt = args?.prompt || args?.message || '';
+                        const sessionName = args?.sessionName;
+                        console.log(`[Live WS] Delegating to Hermes sub-agent: "${prompt.slice(0, 70)}..."`);
+
+                        // Run task via ParallelTaskManager
+                        const taskPromise = parallelTaskManager.executeParallelTask({
+                          category: 'hermes',
+                          title: `Hermes ⟶ ${prompt.slice(0, 50) || 'Deep Reasoning'}`,
+                          prompt,
+                          clientWs,
+                          customExecution: async (updateProgress) => {
+                            updateProgress('Hermes deep reasoning & personal vault synthesis...', 35);
+                            const res = await execHermes(prompt, {
+                              yolo: true,
+                              sessionName,
+                              mode: name === 'hermes_chat' ? 'chat' : 'oneshot'
+                            });
+                            updateProgress('Synthesizing Hermes response...', 85);
+
+                            const displayCard = {
+                              type: 'hermes_response',
+                              title: `Hermes ⟶ ${prompt.slice(0, 50)}`,
+                              data: {
+                                text: res.text,
+                                prompt,
+                                sessionId: res.sessionId,
+                                success: res.success,
+                                error: res.error,
+                                durationMs: res.durationMs
+                              }
+                            };
+
+                            return {
+                              success: res.success,
+                              data: {
+                                text: res.text,
+                                sessionId: res.sessionId,
+                                durationMs: res.durationMs
+                              },
+                              speechSummary: res.success
+                                ? (res.text.length > 250 ? res.text.slice(0, 250) + '...' : res.text)
+                                : `Hermes encountered an issue: ${res.error}`,
+                              displayCard,
+                              error: res.error
+                            };
+                          }
+                        });
+
+                        // Dual-Tier fast-path check (120ms): if completed ultra-fast, return directly
+                        const fastResult: any = await Promise.race([
+                          taskPromise,
+                          new Promise<null>((res) => setTimeout(() => res(null), 120))
+                        ]);
+
+                        if (fastResult && fastResult.status === 'completed') {
+                          return {
+                            id: callId,
+                            name,
+                            response: {
+                              output: {
+                                status: 'completed',
+                                result: fastResult.result,
+                                displayCard: fastResult.displayCard
+                              }
+                            }
+                          };
+                        }
+
+                        // Background handoff: Return immediate verbal acknowledgment to Gemini Live
+                        // so speech audio streams <300ms without freezing full-duplex session
+                        return {
+                          id: callId,
+                          name,
+                          response: {
+                            output: {
+                              status: 'in_progress',
+                              verbal_directive: `I have delegated "${prompt.slice(0, 50)}" to Hermes in the background, Sir. Announce to ${OPERATOR_NAME} in one concise, natural sentence that Hermes is on it, and remain listening.`,
+                              message: 'Executing in background via ParallelTaskManager.'
+                            }
+                          }
+                        };
+                      }
+
+                      if (name === 'sync_hermes_memory') {
+                        console.log('[Live WS] Synchronizing Hermes memories into sovereign vault...');
+                        const syncRes = await syncHermesMemories();
+                        return {
+                          id: callId,
+                          name,
+                          response: { output: syncRes }
+                        };
+                      }
+
                       // Dynamic Self-Repair Fallback for Unhandled Tools
                       console.log(`[Live WS] Attempting dynamic self-repair for unhandled tool '${name}' with args:`, args);
                       const repair = await selfRepairEngine.interceptAndRepair(name, args, `Tool ${name} not recognized`);
@@ -1786,6 +2517,55 @@ You are the Executive CEO commanding the autonomous engineering workforce.
             }
           }
         }
+
+        if (msg.type === 'cancel_continuous_plan') {
+          continuousExecutionQueue.cancel(clientWs, 'Cancelled by operator');
+        }
+
+        if (msg.type === 'cancel_task' && msg.taskId) {
+          console.log(`[Live WS] Operator cancelled task: ${msg.taskId}`);
+          parallelTaskManager.cancelTask(msg.taskId);
+        }
+
+        if (msg.type === 'run_parallel_task') {
+          const { category, title, prompt, args, skillName } = msg;
+          console.log(`[Live WS] Operator requested parallel task [${category}]: ${title || prompt}`);
+          parallelTaskManager.executeParallelTask({
+            category,
+            title,
+            prompt,
+            args,
+            skillName,
+            clientWs,
+            customExecution: async (updateProgress) => {
+              if (category === 'hermes' || skillName === 'delegate_to_hermes') {
+                updateProgress('Hermes deep reasoning & vault synthesis...', 35);
+                const res = await execHermes(prompt || args?.prompt || '', { yolo: true });
+                updateProgress('Finalizing response...', 90);
+                const displayCard = {
+                  type: 'hermes_response',
+                  title: title || `Hermes ⟶ ${(prompt || '').slice(0, 50)}`,
+                  data: {
+                    text: res.text,
+                    prompt: prompt || args?.prompt,
+                    sessionId: res.sessionId,
+                    success: res.success,
+                    error: res.error,
+                    durationMs: res.durationMs
+                  }
+                };
+                return {
+                  success: res.success,
+                  data: res,
+                  speechSummary: res.success ? res.text.slice(0, 200) : `Hermes error: ${res.error}`,
+                  displayCard,
+                  error: res.error
+                };
+              }
+              return { success: true, data: { status: 'completed' }, speechSummary: 'Task completed' };
+            }
+          });
+        }
       } catch (err) {
         console.error('[Live WS] Error handling client message:', err);
       }
@@ -1793,6 +2573,8 @@ You are the Executive CEO commanding the autonomous engineering workforce.
 
     clientWs.on('close', () => {
       console.log('[Live WS] Client disconnected');
+      parallelTaskManager.unsubscribe(clientWs);
+      continuousExecutionQueue.cancelForClient(clientWs);
       dualPathOrchestrator.handleInterruption(clientWs);
       if (session) {
         try { session.close(); } catch (e) {}
@@ -1833,9 +2615,9 @@ You are the Executive CEO commanding the autonomous engineering workforce.
     process.exit(1);
   });
 
-  server.listen(PORT, '0.0.0.0', () => {
+  server.listen(PORT, BIND_HOST, () => {
     const localUrl = `http://localhost:${PORT}`;
-    console.log(`Server running on ${localUrl} (also accessible on http://0.0.0.0:${PORT})`);
+    console.log(`Server running on ${localUrl} (bound to ${BIND_HOST}:${PORT})`);
     autoLaunchBrowser(localUrl);
 
     // Start zero-overhead autonomous AGI background pulse
@@ -1867,6 +2649,24 @@ You are the Executive CEO commanding the autonomous engineering workforce.
         activeWss.clients.forEach((client) => {
           if (client.readyState === WebSocket.OPEN) {
             client.send(payload);
+          }
+        });
+      }
+    });
+
+    // Initialize Agent Space: discover host CLI agents and wire real-time WS broadcasts
+    cliAgentRegistry.initialize().then(() => {
+      console.log('[Server] Agent Space CLI registry initialized successfully.');
+    }).catch(err => {
+      console.warn('[Server] Agent Space initialization warning:', err.message);
+    });
+
+    agentSessionManager.setBroadcast((payload) => {
+      if (activeWss) {
+        const data = typeof payload === 'string' ? payload : JSON.stringify(payload);
+        activeWss.clients.forEach((client) => {
+          if (client.readyState === WebSocket.OPEN) {
+            client.send(data);
           }
         });
       }

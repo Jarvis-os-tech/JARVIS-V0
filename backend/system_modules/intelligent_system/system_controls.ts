@@ -7,6 +7,8 @@ import { resolveFolderNavigation, resolveWallpaperPath } from './dynamic_resolve
 import { selfRepairEngine } from './self_repair';
 import { experienceLearner } from './experience_learner';
 import { getSelectionContext, actOnSelection, describeSelection } from './selection_awareness';
+import { openShellPolicyEngine } from './openshell_policy';
+import { openShellRuntime } from './openshell_runtime';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -140,6 +142,35 @@ export async function dispatchSystemControl(name: string, args: Record<string, a
   const controlsDir = getControlsDir();
   const workersBin = path.resolve(controlsDir, 'native_workers/bin');
 
+  // OpenShell Policy Evaluation
+  const policyEval = openShellPolicyEngine.evaluateToolExecution(name, args);
+  if (!policyEval.allowed) {
+    return {
+      success: false,
+      error: policyEval.reason,
+      policyBlocked: true,
+      policyApplied: openShellPolicyEngine.getPolicy().name
+    };
+  }
+
+  // Fast acknowledgment for long-running operations (installations, heavy compilations, background missions)
+  if (policyEval.isLongRunning) {
+    const dispatcherScript = path.resolve(controlsDir, 'python_actuators/unified_dispatcher.py');
+    const rawArgs = JSON.stringify(args || {});
+    return await openShellRuntime.executeSecurely(
+      name,
+      'python3',
+      [dispatcherScript, name, rawArgs],
+      {
+        timeoutMs,
+        customEnv: {
+          JARVIS_WORKERS_BIN: workersBin,
+          PYTHONUNBUFFERED: '1'
+        }
+      }
+    );
+  }
+
   let rawResult: any = null;
   let executionError: any = null;
 
@@ -266,35 +297,39 @@ function fallbackPythonDispatch(
 ) {
   const dispatcherScript = path.resolve(controlsDir, 'python_actuators/unified_dispatcher.py');
   const rawArgs = JSON.stringify(args || {});
-  execFile(
+
+  openShellRuntime.executeSecurely(
+    name,
     'python3',
     [dispatcherScript, name, rawArgs],
     {
-      timeout: timeoutMs,
-      env: {
-        ...process.env,
+      timeoutMs,
+      customEnv: {
         JARVIS_WORKERS_BIN: workersBin,
         PYTHONUNBUFFERED: '1'
       }
-    },
-    (err, stdout, stderr) => {
-      if (err) {
-        console.warn(`[System Control] Execution warning for '${name}':`, err.message);
-        return resolve({
-          success: false,
-          error: err.message,
-          stderr: stderr ? stderr.trim() : undefined
-        });
-      }
-      try {
-        const parsed = JSON.parse(stdout.trim());
-        resolve(parsed);
-      } catch {
-        resolve({
-          success: true,
-          output: stdout.trim()
-        });
-      }
     }
-  );
+  ).then(sandboxedResult => {
+    if (!sandboxedResult.success) {
+      console.warn(`[OpenShell Dispatch] Execution warning for '${name}':`, sandboxedResult.error);
+      return resolve({
+        success: false,
+        error: sandboxedResult.error,
+        stderr: sandboxedResult.stderr,
+        sandboxed: sandboxedResult.sandboxed
+      });
+    }
+    try {
+      const parsed = JSON.parse((sandboxedResult.output || '').trim());
+      resolve(parsed);
+    } catch {
+      resolve({
+        success: true,
+        output: sandboxedResult.output?.trim(),
+        sandboxed: sandboxedResult.sandboxed
+      });
+    }
+  }).catch(err => {
+    resolve({ success: false, error: err.message });
+  });
 }

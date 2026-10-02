@@ -2,25 +2,37 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { Type } from '@google/genai';
+import { openShellPolicyEngine } from './openshell_policy';
+import { assertAuthorizedPath } from './workspace_policy';
 
 /**
  * Resolves ~ to user home directory and relative paths to workspace cwd.
  */
 export function resolveSafePath(inputPath: string): string {
   if (!inputPath) throw new Error('Path is required');
+  let resolved: string;
   if (inputPath.startsWith('~/') || inputPath === '~') {
-    return path.join(os.homedir(), inputPath.slice(inputPath === '~' ? 1 : 2));
+    resolved = path.join(os.homedir(), inputPath.slice(inputPath === '~' ? 1 : 2));
+  } else if (path.isAbsolute(inputPath)) {
+    resolved = path.normalize(inputPath);
+  } else {
+    resolved = path.resolve(process.cwd(), inputPath);
   }
-  if (path.isAbsolute(inputPath)) {
-    return path.normalize(inputPath);
-  }
-  return path.resolve(process.cwd(), inputPath);
+  return assertAuthorizedPath(resolved);
 }
 
 const PROTECTED_SYSTEM_PATHS = new Set(['/', '/bin', '/boot', '/dev', '/etc', '/lib', '/lib64', '/proc', '/root', '/run', '/sys', '/usr']);
 
+function enforceOpenShellPolicy(operation: string, targetPath: string) {
+  const evalResult = openShellPolicyEngine.evaluateToolExecution(operation, { filePath: targetPath });
+  if (!evalResult.allowed) {
+    throw new Error(`OpenShell Security Policy Violation: ${evalResult.reason}`);
+  }
+}
+
 function assertSafeForDeletion(absPath: string) {
   const norm = path.normalize(absPath);
+  enforceOpenShellPolicy('remove_file', norm);
   if (PROTECTED_SYSTEM_PATHS.has(norm)) {
     throw new Error(`CRITICAL GUARD: Cannot delete protected system path: ${norm}`);
   }
@@ -31,6 +43,7 @@ function assertSafeForDeletion(absPath: string) {
 
 export function handleWriteFile(filePath: string, content: string, overwrite = true) {
   const absPath = resolveSafePath(filePath);
+  enforceOpenShellPolicy('write_file', absPath);
   if (!overwrite && fs.existsSync(absPath)) {
     throw new Error(`File already exists and overwrite is set to false: ${absPath}`);
   }
@@ -46,6 +59,7 @@ export function handleWriteFile(filePath: string, content: string, overwrite = t
 
 export function handleAppendFile(filePath: string, content: string) {
   const absPath = resolveSafePath(filePath);
+  enforceOpenShellPolicy('append_file', absPath);
   fs.mkdirSync(path.dirname(absPath), { recursive: true });
   fs.appendFileSync(absPath, content, 'utf-8');
   return {
@@ -58,6 +72,7 @@ export function handleAppendFile(filePath: string, content: string) {
 
 export function handleRewriteFile(filePath: string, targetContent: string, replacementContent: string) {
   const absPath = resolveSafePath(filePath);
+  enforceOpenShellPolicy('rewrite_file', absPath);
   if (!fs.existsSync(absPath)) {
     throw new Error(`Target file does not exist: ${absPath}`);
   }
@@ -98,6 +113,7 @@ export function handleRemoveFile(filePath: string, recursive = false) {
 
 export function handleReadFile(filePath: string, startLine?: number, endLine?: number) {
   const absPath = resolveSafePath(filePath);
+  enforceOpenShellPolicy('read_file', absPath);
   if (!fs.existsSync(absPath)) {
     throw new Error(`File does not exist: ${absPath}`);
   }

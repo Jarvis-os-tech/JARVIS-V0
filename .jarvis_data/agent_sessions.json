@@ -1,0 +1,94 @@
+{
+  "version": 1,
+  "sessions": {
+    "jarvis-hermes-1790904842751": {
+      "sessionId": "jarvis-hermes-1790904842751",
+      "agentId": "hermes",
+      "agentName": "Hermes Agent",
+      "status": "closed",
+      "history": [],
+      "createdAt": 1790904842751,
+      "lastActiveAt": 1790904842751,
+      "commandCount": 0
+    },
+    "jarvis-codex-1790905666983": {
+      "sessionId": "jarvis-codex-1790905666983",
+      "agentId": "codex",
+      "agentName": "Codex CLI",
+      "status": "closed",
+      "history": [],
+      "createdAt": 1790905666983,
+      "lastActiveAt": 1790905668466,
+      "commandCount": 0
+    },
+    "jarvis-hermes-1790905707855": {
+      "sessionId": "jarvis-hermes-1790905707855",
+      "agentId": "hermes",
+      "agentName": "Hermes Agent",
+      "status": "active",
+      "history": [
+        {
+          "role": "user",
+          "content": "Acknowledge presence and system status immediately.",
+          "timestamp": 1790905707858
+        },
+        {
+          "role": "agent",
+          "content": "💤 OMH — memory consolidation due (session_start_recovery: session_ending_with_unconsolidated_turns:1)\n�✅ **JARVIS-OS Lead Orchestrator online** — System status:\n\n- **Workspace**: `/home/g0pi/Downloads/jarvis` (dev branch, 12 ahead)\n- **Runtime**: Linux 7.2.5-3-omarchy | Node/TypeScript project (npm)\n- **Kanban**: Ready for task routing (researcher/implementer/reviewer/ops)\n- **Memory**: 55% used (1,229/2,200 chars) — consolidated at session end\n- **User Profile**: 79% — Jarvis OS voice-first multi-agent on Omarchy, bilingual EN/Telgish\n- **Superpowers plugin**: Loaded (brainstorming, systematic-debugging, TDD, etc.)\n\nReady for delegation. What's the first task?",
+          "timestamp": 1790905738839,
+          "durationMs": 30979,
+          "exitCode": 0
+        }
+      ],
+      "createdAt": 1790905707855,
+      "lastActiveAt": 1790905738839,
+      "commandCount": 1
+    },
+    "jarvis-hermes-1790922167446": {
+      "sessionId": "jarvis-hermes-1790922167446",
+      "agentId": "hermes",
+      "agentName": "Hermes Agent",
+      "status": "active",
+      "history": [
+        {
+          "role": "user",
+          "content": "HI",
+          "timestamp": 1790922167449
+        },
+        {
+          "role": "agent",
+          "content": "Hey! The superpowers skill is loaded and ready. How can I help you today?",
+          "timestamp": 1790922201167,
+          "durationMs": 33715,
+          "exitCode": 0
+        }
+      ],
+      "createdAt": 1790922167446,
+      "lastActiveAt": 1790922201167,
+      "commandCount": 1
+    },
+    "jarvis-openmanus-1790923585682": {
+      "sessionId": "jarvis-openmanus-1790923585682",
+      "agentId": "openmanus",
+      "agentName": "OpenManus Agent",
+      "status": "closed",
+      "history": [
+        {
+          "role": "user",
+          "content": "hi",
+          "timestamp": 1790923589936
+        },
+        {
+          "role": "agent",
+          "content": "",
+          "timestamp": 1790923589942,
+          "durationMs": 5,
+          "exitCode": -1
+        }
+      ],
+      "createdAt": 1790923585682,
+      "lastActiveAt": 1790923593100,
+      "commandCount": 1
+    }
+  }
+}

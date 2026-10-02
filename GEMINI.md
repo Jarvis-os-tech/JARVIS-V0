@@ -23,6 +23,7 @@ The workspace is organized into four core subfolders:
 - **Dev Command**: `npm run dev` (executes `tsx backend/server.ts`).
 - **Auto-Launch**: When the server is started and localhost is ready, it automatically launches the default browser at `http://localhost:3000` (via cross-platform `xdg-open` / `open` / `start`).
 - **Environment**: All secrets, API keys, and endpoint configurations are managed in `.env`.
+- **Security Boundary**: The primary server binds to `127.0.0.1` by default. Set `JARVIS_API_TOKEN` before using a non-loopback `JARVIS_HOST`; delegated agents are workspace-scoped and YOLO approval bypass is disabled unless `JARVIS_AGENT_YOLO=true` is explicitly set.
 
 ## Verification & Quality Gates
 - **Type Checking**: Run `npm run lint` (`tsc --noEmit`) before completing server or client code changes.

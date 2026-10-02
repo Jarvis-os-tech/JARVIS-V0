@@ -10,6 +10,9 @@ import json
 import time
 import base64
 import hashlib
+import hmac
+import secrets
+import subprocess
 import email.message
 import urllib.request
 import urllib.parse
@@ -170,7 +173,9 @@ def _http(url: str, headers: dict = None, method: str = "GET", body: any = None)
 
 # ─── Vault & Store ─────────────────────────────────────────────────────────────
 
-# ponytail: XOR keystream cipher; switch to cryptography/AES-GCM if compliance demands it.
+# Versioned authenticated token storage. The v2 format uses OpenSSL AES-256-CBC
+# with PBKDF2 and an HMAC-SHA256 over the ciphertext. Legacy XOR values remain
+# readable for migration, but every newly stored token uses v2.
 def _keystream(key: bytes, length: int) -> bytes:
     stream = bytearray()
     counter = 0
@@ -199,18 +204,62 @@ def _encrypt(secret: str) -> str:
         return ""
     key = _get_vault_key()
     raw = secret.encode("utf-8")
-    stream = _keystream(key, len(raw))
-    xored = bytes(a ^ b for a, b in zip(raw, stream))
-    return base64.b64encode(xored).decode("utf-8")
+    cipher = _openssl_crypt(raw, key, decrypt=False)
+    mac = hmac.new(key, cipher, hashlib.sha256).digest()
+    return "v2:" + base64.urlsafe_b64encode(cipher).decode("ascii") + ":" + base64.urlsafe_b64encode(mac).decode("ascii")
 
 def _decrypt(cipher_b64: str) -> str:
     if not cipher_b64:
         return ""
     key = _get_vault_key()
+    if cipher_b64.startswith("v2:"):
+        try:
+            _, cipher_text, mac_text = cipher_b64.split(":", 2)
+            cipher = base64.urlsafe_b64decode(cipher_text.encode("ascii"))
+            expected_mac = base64.urlsafe_b64decode(mac_text.encode("ascii"))
+            actual_mac = hmac.new(key, cipher, hashlib.sha256).digest()
+            if not hmac.compare_digest(actual_mac, expected_mac):
+                raise ValueError("Token integrity check failed")
+            return _openssl_crypt(cipher, key, decrypt=True).decode("utf-8")
+        except Exception as exc:
+            raise ValueError(f"Unable to decrypt connector token: {exc}") from exc
+
+    # One-time compatibility path for tokens written by the old XOR vault.
     raw = base64.b64decode(cipher_b64)
     stream = _keystream(key, len(raw))
     xored = bytes(a ^ b for a, b in zip(raw, stream))
     return xored.decode("utf-8", errors="replace")
+
+
+def _openssl_crypt(data: bytes, key: bytes, decrypt: bool) -> bytes:
+    """Run AES-256-CBC through the system OpenSSL binary without putting the key in argv."""
+    read_fd, write_fd = os.pipe()
+    try:
+        os.write(write_fd, key)
+        os.close(write_fd)
+        write_fd = -1
+        command = [
+            "openssl", "enc", "-aes-256-cbc", "-pbkdf2", "-iter", "200000",
+            "-salt", "-a", "-A", "-pass", f"fd:{read_fd}"
+        ]
+        if decrypt:
+            command.insert(2, "-d")
+        result = subprocess.run(
+            command,
+            input=data,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            pass_fds=(read_fd,),
+            timeout=10,
+            check=False,
+        )
+        if result.returncode != 0:
+            raise RuntimeError(result.stderr.decode("utf-8", errors="replace").strip() or "OpenSSL encryption failed")
+        return result.stdout
+    finally:
+        os.close(read_fd)
+        if write_fd != -1:
+            os.close(write_fd)
 
 def load_store() -> dict:
     if not STORE_FILE.exists():
@@ -261,12 +310,28 @@ def get_oauth_url(connector_id: str, callback_url: str) -> dict:
     if not client_id:
         return {"error": f"Missing {cfg['client_id_env']} in environment"}
 
+    state = secrets.token_urlsafe(32)
+    store = load_store()
+    pending_states = store.get("_oauth_states", {})
+    now = time.time()
+    pending_states = {
+        token: value for token, value in pending_states.items()
+        if now - float(value.get("createdAt", 0)) < 600
+    }
+    pending_states[state] = {
+        "connectorId": connector_id,
+        "callbackUrl": callback_url,
+        "createdAt": now,
+    }
+    store["_oauth_states"] = pending_states
+    save_store(store)
+
     params = {
         "client_id": client_id,
         "redirect_uri": callback_url,
         "response_type": "code",
         "scope": " ".join(cfg["scopes"]) if connector_id == "google" else ",".join(cfg["scopes"]),
-        "state": connector_id,
+        "state": state,
     }
     if connector_id == "google":
         params["access_type"] = "offline"
@@ -275,7 +340,20 @@ def get_oauth_url(connector_id: str, callback_url: str) -> dict:
     auth_url = f"{cfg['auth_url']}?{urllib.parse.urlencode(params)}"
     return {"authUrl": auth_url}
 
-def handle_oauth_callback(connector_id: str, code: str, callback_url: str) -> dict:
+def handle_oauth_callback(state_token: str, code: str, callback_url: str) -> dict:
+    store = load_store()
+    pending_states = store.get("_oauth_states", {})
+    pending = pending_states.pop(state_token, None)
+    store["_oauth_states"] = pending_states
+    save_store(store)
+    if not pending:
+        return {"error": "Invalid or expired OAuth state"}
+    if time.time() - float(pending.get("createdAt", 0)) >= 600:
+        return {"error": "Expired OAuth state"}
+    if pending.get("callbackUrl") != callback_url:
+        return {"error": "OAuth callback URL mismatch"}
+
+    connector_id = pending.get("connectorId")
     cfg = OAUTH_CONFIGS.get(connector_id)
     if not cfg:
         return {"error": f"Unknown connector {connector_id}"}

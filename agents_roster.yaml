@@ -1,5 +1,11 @@
-# J.A.R.V.I.S. Autonomous Agent Workforce Roster
-# Dynamic configuration for the multi-agent organizational hierarchy.
+# ==============================================================================
+# J.A.R.V.I.S. OS — Autonomous Agent Workforce Roster
+# ==============================================================================
+# Version: 1.0.0
+# Description: Defines the executive hierarchy and operational workforce.
+# J.A.R.V.I.S. operates as the Executive CEO, with Hermes currently active as the
+# primary engineering worker. Additional agents are registered incrementally.
+# ==============================================================================
 
 organization:
   name: "J.A.R.V.I.S. Autonomous Operations"
@@ -15,11 +21,12 @@ agents:
     primary: true
     description: "Autonomous strategic leader who interprets user directives, prescribes multi-step workflows, delegates tasks to specialist agents, enforces code quality gates, and reports back with British executive precision."
     capabilities:
-      - "mission_planning"
+      - "mission_decomposition"
       - "workflow_prescription"
+      - "subagent_delegation"
       - "quality_gate_enforcement"
-      - "executive_voice_reporting"
       - "central_memory_indexing"
+      - "executive_voice_reporting"
     skills:
       - "using-ceo"
       - "speckit-plan"
@@ -30,21 +37,24 @@ agents:
 
   hermes:
     id: "hermes"
-    name: "Hermes"
+    name: "Hermes Agent"
     title: "Chief Technology Officer (CTO) & Lead Software Engineer"
     status: "ACTIVE_WORKER"
     primary: true
-    description: "Deep engineering actuator with terminal access, responsible for full-stack code implementation, automated testing, bug remediation, and architecture execution."
+    description: "Deep engineering actuator with terminal and filesystem access, responsible for full-stack code implementation, automated testing, bug remediation, and architecture execution."
     capabilities:
-      - "full_stack_development"
-      - "deep_code_reasoning"
-      - "systematic_debugging"
-      - "test_driven_development"
-      - "terminal_execution"
+      - "deep_reasoning"
+      - "code_implementation"
+      - "code_refactoring"
+      - "unit_testing"
+      - "cli_execution"
+      - "actuator_tools"
+      - "multi_turn_session"
+      - "kanban_management"
     bridge:
       type: "cli"
-      script: "hermes-connection/cli_bridge.py"
-      binary: "hermes"
+      script: "backend/hermes_bridge.ts"
+      binary: "/home/g0pi/.local/bin/hermes"
       timeout_seconds: 180
     skills:
       - "systematic-debugging"
@@ -54,24 +64,39 @@ agents:
 
   opencode:
     id: "opencode"
-    name: "OpenCode"
-    title: "Browser & System Actuation Specialist"
+    name: "OpenCode Agent"
+    title: "Browser & System Actuator"
     status: "PLANNED"
     primary: false
     description: "Autonomous browser interaction, web scraping, visual validation, and external documentation discovery."
     capabilities:
       - "browser_automation"
       - "web_scraping"
-      - "visual_qa"
+      - "cross_agent_communication"
+    skills: []
 
   ultron:
     id: "ultron"
-    name: "Ultron"
-    title: "Infrastructure & Security Guardian"
+    name: "Ultron / OpenClaw"
+    title: "COO / Operations & Desktop Automation"
     status: "PLANNED"
     primary: false
-    description: "Container management, infrastructure automation, penetration testing, and security compliance verification."
+    description: "System diagnostics, hardware toggles, and OS desktop automation."
     capabilities:
-      - "devops_automation"
-      - "security_audit"
-      - "performance_benchmarking"
+      - "desktop_actuation"
+      - "hardware_diagnostics"
+      - "system_monitoring"
+    skills: []
+
+  qa_auditor:
+    id: "qa_auditor"
+    name: "QA Auditor"
+    title: "Chief Quality Assurance & Evidence Verification"
+    status: "PLANNED"
+    primary: false
+    description: "Enforces zero-fluff validation, screenshots, lint checks, and test runner proof."
+    capabilities:
+      - "static_analysis"
+      - "type_verification"
+      - "evidence_collection"
+    skills: []

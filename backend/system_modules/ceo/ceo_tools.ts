@@ -1,6 +1,6 @@
-import { executeCeoMission, prescribeWorkflow, CeoProgressCallback } from './ceo_orchestrator.js';
-import { loadAgentRoster, getAgent } from './ceo_roster.js';
-import { findAgentSessions, loadMasterSessionIndex, recordAgentSession } from './ceo_session_logger.js';
+import { executeCeoMission, prescribeWorkflow, CeoProgressCallback } from './ceo_orchestrator';
+import { loadAgentRoster, getAgent } from './ceo_roster';
+import { findAgentSessions, loadMasterSessionIndex, recordAgentSession } from './ceo_session_logger';
 
 export const CEO_TOOL_DECLARATIONS = [
   {

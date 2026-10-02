@@ -1,0 +1,6 @@
+[submodule "external/OpenShell"]
+	path = external/OpenShell
+	url = https://github.com/NVIDIA/OpenShell.git
+[submodule "protocols/a2a"]
+	path = protocols/a2a
+	url = https://github.com/a2aproject/A2A.git

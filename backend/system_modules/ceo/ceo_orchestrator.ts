@@ -2,8 +2,9 @@ import { spawn } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-import { loadAgentRoster, getAgent, AgentDefinition } from './ceo_roster.js';
-import { recordAgentSession, findAgentSessions, MasterSessionIndex, loadMasterSessionIndex, SessionSearchResult } from './ceo_session_logger.js';
+import { loadAgentRoster, getAgent, AgentDefinition } from './ceo_roster';
+import { recordAgentSession, findAgentSessions, MasterSessionIndex, loadMasterSessionIndex, SessionSearchResult } from './ceo_session_logger';
+import { execHermes } from '../../hermes_bridge';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -45,24 +46,6 @@ export type CeoProgressCallback = (event: {
   details?: any;
 }) => void;
 
-/**
- * Resolve path to Hermes executable
- */
-function resolveHermesBinary(): string {
-  const envBin = process.env.HERMES_BIN;
-  if (envBin && fs.existsSync(envBin)) return envBin;
-
-  const standardPaths = [
-    '/home/g0pi/.local/bin/hermes',
-    path.resolve(process.env.HOME || '', '.local/bin/hermes'),
-    path.resolve(process.env.HOME || '', '.hermes/hermes-agent/bin/hermes')
-  ];
-
-  for (const p of standardPaths) {
-    if (fs.existsSync(p)) return p;
-  }
-  return 'hermes';
-}
 
 /**
  * Classify user intent and prescribe workflow based on CEO skills
@@ -143,65 +126,31 @@ export function prescribeWorkflow(goal: string): WorkflowPrescription {
 }
 
 /**
- * Execute task via Hermes CLI
+ * Execute task via Hermes CLI using robust Hermes Bridge
  */
-async function invokeHermes(prompt: string, skills: string[] = []): Promise<{ success: boolean; output: string }> {
-  const hermesBin = resolveHermesBinary();
+async function invokeHermes(prompt: string, skills: string[] = []): Promise<{ success: boolean; output: string; sessionId?: string }> {
+  try {
+    const formattedPrompt = skills.length > 0 
+      ? `[Applicable Skills: ${skills.join(', ')}]\n\n${prompt}`
+      : prompt;
 
-  return new Promise((resolve) => {
-    // Format Hermes command with one-shot mode and skills
-    const args: string[] = ['-z', prompt, '--yolo'];
-    if (skills.length > 0) {
-      args.push('-s', skills.join(','));
-    }
-
-    let stdout = '';
-    let stderr = '';
-
-    const proc = spawn(hermesBin, args, {
-      cwd: WORKSPACE_ROOT,
-      env: { ...process.env, PYTHONUNBUFFERED: '1' }
+    const res = await execHermes(formattedPrompt, {
+      yolo: true,
+      provider: process.env.HERMES_PROVIDER || 'nvidia',
+      model: process.env.HERMES_MODEL || 'meta/llama-3.3-70b-instruct'
     });
 
-    const timeout = setTimeout(() => {
-      try {
-        proc.kill('SIGTERM');
-      } catch (e) {}
-      resolve({
-        success: false,
-        output: stdout || `[Hermes] Execution timed out after 120 seconds.`
-      });
-    }, 120000);
-
-    proc.stdout?.on('data', (d) => {
-      stdout += d.toString();
-    });
-
-    proc.stderr?.on('data', (d) => {
-      stderr += d.toString();
-    });
-
-    proc.on('close', (code) => {
-      clearTimeout(timeout);
-      if (code === 0) {
-        resolve({ success: true, output: stdout.trim() || stderr.trim() });
-      } else {
-        // If Hermes returned non-zero, capture whatever it said
-        resolve({
-          success: false,
-          output: stdout.trim() || stderr.trim() || `Hermes exited with code ${code}`
-        });
-      }
-    });
-
-    proc.on('error', (err) => {
-      clearTimeout(timeout);
-      resolve({
-        success: false,
-        output: `Failed to spawn Hermes executable at '${hermesBin}': ${err.message}`
-      });
-    });
-  });
+    return {
+      success: res.success,
+      output: res.text || res.error || 'Hermes completed execution.',
+      sessionId: res.sessionId
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      output: `Failed to delegate to Hermes: ${err.message}`
+    };
+  }
 }
 
 /**

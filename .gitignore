@@ -51,3 +51,4 @@ jarvis_memory_bundle/vault/agents/*
 !**/vault/**/.gitkeep
 project_docs/
 data/
+scratch/

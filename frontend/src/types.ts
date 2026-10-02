@@ -140,3 +140,47 @@ export interface SkillItem {
   scripts?: string[];
   installedAt?: string;
 }
+
+// ----------------------------------------------------
+// Parallel Task & Sub-Agent HUD Types
+// ----------------------------------------------------
+
+export type TaskStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
+
+export type TaskCategory =
+  | 'hermes'
+  | 'prime_agent'
+  | 'ultron'
+  | 'system'
+  | 'weather'
+  | 'news'
+  | 'productivity'
+  | 'obsidian'
+  | 'research'
+  | 'calculation'
+  | 'data_fetch';
+
+export interface SkillDisplayCard {
+  type: string;
+  title: string;
+  data: any;
+}
+
+export interface BackgroundTask {
+  id: string;
+  type: TaskCategory;
+  title: string;
+  prompt?: string;
+  status: TaskStatus;
+  startTime: number;
+  completedTime?: number;
+  durationMs?: number;
+  progressPercent?: number;
+  progressMessage?: string;
+  verbalAcknowledgment?: string;
+  speechSummary?: string;
+  result?: any;
+  displayCard?: SkillDisplayCard;
+  sources?: any[];
+  error?: string;
+}

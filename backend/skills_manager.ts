@@ -3,6 +3,7 @@ import path from 'path';
 import os from 'os';
 import { exec } from 'child_process';
 import { fileURLToPath } from 'url';
+import { openShellRuntime } from './system_modules/intelligent_system/openshell_runtime';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -528,21 +529,31 @@ export async function executeSkillScript(slugOrName: string, scriptName: string,
     };
   }
 
-  let command = `"${scriptPath}" ${args.map(a => `"${a}"`).join(' ')}`;
+  let executable = scriptPath;
+  let scriptArgs = args;
   if (scriptName.endsWith('.py')) {
-    command = `python3 "${scriptPath}" ${args.map(a => `"${a}"`).join(' ')}`;
+    executable = 'python3';
+    scriptArgs = [scriptPath, ...args];
   } else if (scriptName.endsWith('.js') || scriptName.endsWith('.mjs')) {
-    command = `node "${scriptPath}" ${args.map(a => `"${a}"`).join(' ')}`;
+    executable = 'node';
+    scriptArgs = [scriptPath, ...args];
   } else if (scriptName.endsWith('.sh')) {
-    command = `bash "${scriptPath}" ${args.map(a => `"${a}"`).join(' ')}`;
+    executable = 'bash';
+    scriptArgs = [scriptPath, ...args];
   }
 
-  console.log(`[Skills Manager] Executing script: ${command}`);
-  const result = await runCommand(command, match.path);
+  console.log(`[Skills Manager] Executing script under OpenShell governance: ${executable} ${scriptArgs.join(' ')}`);
+  const result = await openShellRuntime.executeSecurely(
+    'execute_skill_script',
+    executable,
+    scriptArgs,
+    { cwd: match.path }
+  );
+
   return {
-    success: result.code === 0,
-    output: result.stdout || result.stderr,
-    error: result.code !== 0 ? result.stderr || 'Execution failed' : undefined
+    success: result.success,
+    output: result.output || result.stderr || '',
+    error: !result.success ? result.error || 'Execution failed under OpenShell policy' : undefined
   };
 }
 
