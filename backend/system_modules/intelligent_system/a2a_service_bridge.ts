@@ -191,29 +191,28 @@ export class A2AServiceBridge {
   }
 
   /**
-   * Sends a task delegation request to the A2A server using JSON-RPC 2.0.
+   * Sends a task delegation request to the A2A server using standard A2A 1.0 protocol.
    */
   public async sendTask(prompt: string, contextId?: string): Promise<any> {
-    const url = `http://127.0.0.1:${this.port}/a2a/jsonrpc`;
-    const taskId = `a2a-task-${Date.now()}`;
+    const url = `http://127.0.0.1:${this.port}/a2a/rest/message:send`;
+    const messageId = `msg-${Date.now()}`;
+    const ctxId = contextId || `ctx-${Date.now()}`;
     const payload = {
-      jsonrpc: '2.0',
-      id: taskId,
-      method: 'tasks.send',
-      params: {
-        task_id: taskId,
-        context_id: contextId || `ctx-${Date.now()}`,
-        message: {
-          role: 'user',
-          parts: [{ text: prompt }]
-        }
+      message: {
+        message_id: messageId,
+        context_id: ctxId,
+        role: 'ROLE_USER',
+        parts: [{ text: prompt }]
       }
     };
 
     try {
       const resp = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'A2A-Version': '1.0'
+        },
         body: JSON.stringify(payload),
         signal: AbortSignal.timeout(10000)
       });

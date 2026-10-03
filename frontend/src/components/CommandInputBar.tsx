@@ -1,11 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Terminal, Send, X, Sparkles, Layers, Box, Cpu } from 'lucide-react';
-
-interface CommandInputBarProps {
-  onSendPrompt: (prompt: string) => void;
-  disabled?: boolean;
-  isProcessing?: boolean;
-}
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 
 const SKILL_SUGGESTIONS = [
   {
@@ -14,26 +11,32 @@ const SKILL_SUGGESTIONS = [
     desc: 'Install specific skill via skills CLI'
   },
   {
-    cmd: '/skills add typesafe-ai/skills',
-    title: 'Add Package',
-    desc: 'Install package & share to all agents'
+    cmd: '/skills npx skills list --installed',
+    title: 'List Installed',
+    desc: 'Show all currently installed skills'
   },
   {
-    cmd: '/skills https://github.com/vercel-labs/agent-skills',
-    title: 'Git Repo Ingest',
-    desc: 'Clone and parse all skills from Git repository'
+    cmd: '/skills npx skills search --query "agent"',
+    title: 'Search Skills',
+    desc: 'Find skills by keyword in registry'
   },
   {
-    cmd: '/skills list',
-    title: 'List Matrix',
-    desc: 'View all active skills shared across agents'
+    cmd: '/skills npx skills install github:org/repo',
+    title: 'Install from GitHub',
+    desc: 'Install skill directly from GitHub repo'
   },
   {
-    cmd: '/skills remove typesafe-ai',
-    title: 'Remove Skill',
-    desc: 'Purge an installed skill from the system'
+    cmd: '/skills npx skills update --all',
+    title: 'Update All Skills',
+    desc: 'Update all installed skills to latest'
   }
 ];
+
+interface CommandInputBarProps {
+  onSendPrompt: (prompt: string) => void;
+  disabled?: boolean;
+  isProcessing?: boolean;
+}
 
 export const CommandInputBar: React.FC<CommandInputBarProps> = ({
   onSendPrompt,
@@ -74,41 +77,48 @@ export const CommandInputBar: React.FC<CommandInputBarProps> = ({
     <div className="w-full max-w-xl mx-auto mt-4 px-2 sm:px-0 flex flex-col items-center z-20 relative">
       {/* Suggestions Floating Tactical HUD Panel */}
       {showSuggestions && (
-        <div className="w-full mb-2 bg-[#09101d]/95 border border-cyan-500/40 rounded-2xl p-3 shadow-[0_16px_40px_rgba(0,0,0,0.65),0_0_25px_rgba(0,240,255,0.18)] backdrop-blur-2xl animate-in fade-in slide-in-from-bottom-2 duration-200">
-          <div className="flex items-center justify-between pb-2 mb-2 border-b border-cyan-500/20 px-1">
-            <div className="flex items-center gap-1.5 text-xs font-mono text-cyan-400 font-bold uppercase tracking-wider">
-              <Sparkles className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
-              <span>J.A.R.V.I.S. Command &amp; Skills Matrix</span>
-            </div>
-            <button
-              type="button"
-              onClick={() => setShowSuggestions(false)}
-              className="text-slate-500 hover:text-slate-300 text-xs px-1.5 py-0.5 rounded hover:bg-slate-800/50 transition-colors"
-            >
-              ✕
-            </button>
-          </div>
-          <div className="space-y-1">
-            {SKILL_SUGGESTIONS.map((item, idx) => (
-              <button
-                key={idx}
-                type="button"
-                onClick={() => handleSelectSuggestion(item.cmd)}
-                className="w-full text-left flex items-center justify-between px-3 py-2 rounded-xl bg-slate-900/60 hover:bg-cyan-950/60 border border-slate-800/80 hover:border-cyan-500/50 transition-all group active:scale-[0.98]"
+        <Card className="w-full mb-2 border-cyan-500/30 bg-[#09101d]/95 shadow-[0_16px_40px_rgba(0,0,0,0.65),0_0_25px_rgba(0,240,255,0.18)] animate-in fade-in slide-in-from-bottom-2 duration-200">
+          <CardContent className="p-3">
+            <div className="flex items-center justify-between pb-2 mb-2 border-b border-cyan-500/20 px-1">
+              <div className="flex items-center gap-1.5 text-xs font-mono text-cyan-400 font-bold uppercase tracking-wider">
+                <Sparkles className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
+                <span>J.A.R.V.I.S. Command & Skills Matrix</span>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowSuggestions(false)}
+                className="text-slate-500 hover:text-slate-300 h-6 w-6"
+                aria-label="Close suggestions"
               >
-                <div className="flex items-center gap-2.5 overflow-hidden">
-                  <Box className="w-3.5 h-3.5 text-cyan-400/70 group-hover:text-cyan-300 shrink-0" />
-                  <span className="font-mono text-xs text-slate-200 group-hover:text-cyan-200 truncate">
-                    {item.cmd}
+                <X className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+            <div className="space-y-1">
+              {SKILL_SUGGESTIONS.map((item, idx) => (
+                <Button
+                  key={idx}
+                  variant="outline"
+                  className={cn(
+                    'w-full text-left justify-between px-3 py-2 rounded-xl transition-all group active:scale-[0.98]',
+                    'bg-slate-900/60 hover:bg-cyan-950/60 border-slate-800/80 hover:border-cyan-500/50'
+                  )}
+                  onClick={() => handleSelectSuggestion(item.cmd)}
+                >
+                  <div className="flex items-center gap-2.5 overflow-hidden">
+                    <Box className="w-3.5 h-3.5 text-cyan-400/70 group-hover:text-cyan-300 shrink-0" />
+                    <span className="font-mono text-xs text-slate-200 group-hover:text-cyan-200 truncate">
+                      {item.cmd}
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-slate-400 group-hover:text-cyan-300 shrink-0 font-mono tracking-wider ml-2 px-1.5 py-0.5 rounded bg-slate-800/50 border border-slate-700/50">
+                    {item.title}
                   </span>
-                </div>
-                <span className="text-[10px] text-slate-400 group-hover:text-cyan-300 shrink-0 font-mono tracking-wider ml-2 px-1.5 py-0.5 rounded bg-slate-800/50 border border-slate-700/50">
-                  {item.title}
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
+                </Button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Cybernetic Input Form Container */}
@@ -117,85 +127,140 @@ export const CommandInputBar: React.FC<CommandInputBarProps> = ({
         className="w-full relative group"
       >
         {/* HUD Tactical Corner Accents */}
-        <div className={`absolute -top-1 -left-1 w-3 h-3 border-t-2 border-l-2 pointer-events-none rounded-tl-sm transition-all group-focus-within:scale-110 group-focus-within:drop-shadow-[0_0_6px_rgba(0,240,255,0.8)] ${isSkillCommand ? 'border-purple-400 group-focus-within:border-purple-300' : 'border-cyan-400/80 group-focus-within:border-cyan-300'}`} />
-        <div className={`absolute -top-1 -right-1 w-3 h-3 border-t-2 border-r-2 pointer-events-none rounded-tr-sm transition-all group-focus-within:scale-110 group-focus-within:drop-shadow-[0_0_6px_rgba(0,240,255,0.8)] ${isSkillCommand ? 'border-purple-400 group-focus-within:border-purple-300' : 'border-cyan-400/80 group-focus-within:border-cyan-300'}`} />
-        <div className={`absolute -bottom-1 -left-1 w-3 h-3 border-b-2 border-l-2 pointer-events-none rounded-bl-sm transition-all group-focus-within:scale-110 group-focus-within:drop-shadow-[0_0_6px_rgba(0,240,255,0.8)] ${isSkillCommand ? 'border-purple-400 group-focus-within:border-purple-300' : 'border-cyan-400/80 group-focus-within:border-cyan-300'}`} />
-        <div className={`absolute -bottom-1 -right-1 w-3 h-3 border-b-2 border-r-2 pointer-events-none rounded-br-sm transition-all group-focus-within:scale-110 group-focus-within:drop-shadow-[0_0_6px_rgba(0,240,255,0.8)] ${isSkillCommand ? 'border-purple-400 group-focus-within:border-purple-300' : 'border-cyan-400/80 group-focus-within:border-cyan-300'}`} />
+        <div className={cn(
+          'absolute -top-1 -left-1 w-3 h-3 border-t-2 border-l-2 pointer-events-none rounded-tl-sm transition-all group-focus-within:scale-110 group-focus-within:drop-shadow-[0_0_6px_rgba(0,240,255,0.8)]',
+          isSkillCommand
+            ? 'border-purple-400 group-focus-within:border-purple-300'
+            : 'border-cyan-400/80 group-focus-within:border-cyan-300'
+        )} />
+        <div className={cn(
+          'absolute -top-1 -right-1 w-3 h-3 border-t-2 border-r-2 pointer-events-none rounded-tr-sm transition-all group-focus-within:scale-110 group-focus-within:drop-shadow-[0_0_6px_rgba(0,240,255,0.8)]',
+          isSkillCommand
+            ? 'border-purple-400 group-focus-within:border-purple-300'
+            : 'border-cyan-400/80 group-focus-within:border-cyan-300'
+        )} />
+        <div className={cn(
+          'absolute -bottom-1 -left-1 w-3 h-3 border-b-2 border-l-2 pointer-events-none rounded-bl-sm transition-all group-focus-within:scale-110 group-focus-within:drop-shadow-[0_0_6px_rgba(0,240,255,0.8)]',
+          isSkillCommand
+            ? 'border-purple-400 group-focus-within:border-purple-300'
+            : 'border-cyan-400/80 group-focus-within:border-cyan-300'
+        )} />
+        <div className={cn(
+          'absolute -bottom-1 -right-1 w-3 h-3 border-b-2 border-r-2 pointer-events-none rounded-br-sm transition-all group-focus-within:scale-110 group-focus-within:drop-shadow-[0_0_6px_rgba(0,240,255,0.8)]',
+          isSkillCommand
+            ? 'border-purple-400 group-focus-within:border-purple-300'
+            : 'border-cyan-400/80 group-focus-within:border-cyan-300'
+        )} />
 
         {/* Input Bar Shell */}
-        <div className={`flex items-center gap-3 bg-[#0a1120]/90 backdrop-blur-2xl border rounded-2xl px-4 py-2.5 transition-all duration-300 ${
-          isSkillCommand
-            ? 'border-purple-500/50 shadow-[0_10px_35px_rgba(0,0,0,0.5),0_0_25px_rgba(168,85,247,0.2)] focus-within:border-purple-400 focus-within:shadow-[0_12px_40px_rgba(0,0,0,0.6),0_0_35px_rgba(168,85,247,0.35)]'
-            : 'border-cyan-500/35 shadow-[0_10px_35px_rgba(0,0,0,0.5),0_0_25px_rgba(0,240,255,0.14)] focus-within:border-cyan-400 focus-within:shadow-[0_12px_40px_rgba(0,0,0,0.6),0_0_35px_rgba(0,240,255,0.3)]'
-        }`}>
-          {/* Terminal / HUD Prefix */}
-          <div className="flex items-center gap-1.5 shrink-0 select-none">
-            {isSkillCommand ? (
-              <>
-                <Layers className="w-4 h-4 text-purple-400 animate-pulse" />
-                <span className="font-mono text-xs font-bold text-purple-400 hidden sm:inline tracking-wider">
-                  SKILLS &gt;
-                </span>
-              </>
-            ) : (
-              <>
-                <Terminal className="w-4 h-4 text-cyan-400 animate-pulse" />
-                <span className="font-mono text-xs font-bold text-cyan-400/90 hidden sm:inline tracking-wider">
-                  DIRECTIVE &gt;
-                </span>
-              </>
-            )}
-          </div>
-
-          {/* Text Input */}
-          <input
-            ref={inputRef}
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onFocus={() => {
-              if (input.startsWith('/')) setShowSuggestions(true);
-            }}
-            disabled={disabled}
-            placeholder={
-              isProcessing
-                ? 'J.A.R.V.I.S. is processing directive...'
-                : 'Transmit directive or /skills command... (Press Enter ↵)'
-            }
-            className="w-full bg-transparent text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none font-mono py-1 disabled:opacity-50"
-          />
-
-          {/* Clear Button */}
-          {input.length > 0 && (
-            <button
-              type="button"
-              onClick={() => {
-                setInput('');
-                setShowSuggestions(false);
-              }}
-              className="p-1 text-slate-400 hover:text-slate-200 rounded-lg hover:bg-slate-800/60 transition-colors"
-              title="Clear input"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
+        <Card
+          className={cn(
+            'flex items-center gap-3 bg-[#0a1120]/90 backdrop-blur-2xl px-4 py-2.5 transition-all duration-300',
+            isSkillCommand
+              ? 'border-purple-500/50 shadow-[0_10px_35px_rgba(0,0,0,0.5),0_0_25px_rgba(168,85,247,0.2)] focus-within:border-purple-400 focus-within:shadow-[0_12px_40px_rgba(0,0,0,0.6),0_0_35px_rgba(168,85,247,0.35)]'
+              : 'border-cyan-500/35 shadow-[0_10px_35px_rgba(0,0,0,0.5),0_0_25px_rgba(0,240,255,0.14)] focus-within:border-cyan-400 focus-within:shadow-[0_12px_40px_rgba(0,240,255,0.3)]'
           )}
+        >
+          <CardContent className="p-0">
+            {/* HUD Tactical Corner Accents */}
+            <div className={cn(
+              'absolute -top-1 -left-1 w-3 h-3 border-t-2 border-l-2 pointer-events-none rounded-tl-sm transition-all group-focus-within:scale-110 group-focus-within:drop-shadow-[0_0_6px_rgba(0,240,255,0.8)]',
+              isSkillCommand
+                ? 'border-purple-400 group-focus-within:border-purple-300'
+                : 'border-cyan-400/80 group-focus-within:border-cyan-300'
+            )} />
+            <div className={cn(
+              'absolute -top-1 -right-1 w-3 h-3 border-t-2 border-r-2 pointer-events-none rounded-tr-sm transition-all group-focus-within:scale-110 group-focus-within:drop-shadow-[0_0_6px_rgba(0,240,255,0.8)]',
+              isSkillCommand
+                ? 'border-purple-400 group-focus-within:border-purple-300'
+                : 'border-cyan-400/80 group-focus-within:border-cyan-300'
+            )} />
+            <div className={cn(
+              'absolute -bottom-1 -left-1 w-3 h-3 border-b-2 border-l-2 pointer-events-none rounded-bl-sm transition-all group-focus-within:scale-110 group-focus-within:drop-shadow-[0_0_6px_rgba(0,240,255,0.8)]',
+              isSkillCommand
+                ? 'border-purple-400 group-focus-within:border-purple-300'
+                : 'border-cyan-400/80 group-focus-within:border-cyan-300'
+            )} />
+            <div className={cn(
+              'absolute -bottom-1 -right-1 w-3 h-3 border-b-2 border-r-2 pointer-events-none rounded-br-sm transition-all group-focus-within:scale-110 group-focus-within:drop-shadow-[0_0_6px_rgba(0,240,255,0.8)]',
+              isSkillCommand
+                ? 'border-purple-400 group-focus-within:border-purple-300'
+                : 'border-cyan-400/80 group-focus-within:border-cyan-300'
+            )} />
 
-          {/* Transmit Action Button */}
-          <button
-            type="submit"
-            disabled={!input.trim() || disabled}
-            className={`p-2.5 rounded-xl flex items-center justify-center transition-all active:scale-95 ${
-              input.trim() && !disabled
-                ? isSkillCommand
-                  ? 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white font-bold hover:scale-105 shadow-[0_0_20px_rgba(168,85,247,0.5)] cursor-pointer'
-                  : 'bg-gradient-to-r from-cyan-400 via-sky-400 to-blue-500 text-slate-950 font-black hover:scale-105 shadow-[0_0_22px_rgba(0,240,255,0.55)] cursor-pointer'
-                : 'bg-slate-900/80 text-slate-600 border border-slate-800/80 cursor-not-allowed'
-            }`}
-            title="Transmit directive"
-          >
-            <Send className="w-4 h-4" />
-          </button>
-        </div>
+            {/* Terminal / HUD Prefix */}
+            <div className="flex items-center gap-1.5 shrink-0 select-none relative z-10">
+              {isSkillCommand ? (
+                <>
+                  <Layers className="w-4 h-4 text-purple-400 animate-pulse" />
+                  <span className="font-mono text-xs font-bold text-purple-400 hidden sm:inline tracking-wider">
+                    {'SKILLS >'}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <Terminal className="w-4 h-4 text-cyan-400 animate-pulse" />
+                  <span className="font-mono text-xs font-bold text-cyan-400/90 hidden sm:inline tracking-wider">
+                    {'DIRECTIVE >'}
+                  </span>
+                </>
+              )}
+            </div>
+
+            {/* Text Input */}
+            <input
+              ref={inputRef}
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onFocus={() => {
+                if (input.startsWith('/')) setShowSuggestions(true);
+              }}
+              disabled={disabled}
+              placeholder={
+                isProcessing
+                  ? 'J.A.R.V.I.S. is processing directive...'
+                  : 'Transmit directive or /skills command... (Press Enter ↵)'
+              }
+              className="w-full bg-transparent text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none font-mono py-1 disabled:opacity-50 relative z-10"
+            />
+
+            {/* Clear Button */}
+            {input.length > 0 && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  setInput('');
+                  setShowSuggestions(false);
+                }}
+                className="text-slate-400 hover:text-slate-200 h-7 w-7"
+                title="Clear input"
+                disabled={disabled}
+              >
+                <X className="w-3.5 h-3.5" />
+              </Button>
+            )}
+
+            {/* Transmit Action Button */}
+            <Button
+              type="submit"
+              disabled={!input.trim() || disabled}
+              className={cn(
+                'p-2.5 rounded-xl flex items-center justify-center transition-all active:scale-95 relative z-10',
+                input.trim() && !disabled
+                  ? isSkillCommand
+                    ? 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white font-bold hover:scale-105 shadow-[0_0_20px_rgba(168,85,247,0.5)] cursor-pointer'
+                    : 'bg-gradient-to-r from-cyan-400 via-sky-400 to-blue-500 text-slate-950 font-black hover:scale-105 shadow-[0_0_22px_rgba(0,240,255,0.55)] cursor-pointer'
+                  : 'bg-slate-900/80 text-slate-600 border border-slate-800/80 cursor-not-allowed'
+              )}
+              title="Transmit directive"
+            >
+              <Send className="w-4 h-4" />
+            </Button>
+          </CardContent>
+        </Card>
       </form>
     </div>
   );
