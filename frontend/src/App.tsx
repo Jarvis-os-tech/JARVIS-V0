@@ -15,11 +15,15 @@ import { CommandInputBar } from './components/CommandInputBar';
 import { ParallelTaskDock } from './components/ParallelTaskDock';
 import { SkillDisplayCard } from './components/SkillDisplayCard';
 import { LaunchBriefingCard, LaunchBriefing } from './components/LaunchBriefingCard';
+import { TelemetryWingLeft } from './components/TelemetryWingLeft';
+import { TelemetryWingRight } from './components/TelemetryWingRight';
+import { THEMES, ThemeId, applyTheme, getInitialTheme } from './lib/design-system';
+import { sfx } from './lib/sfx';
 import { jarvisMemoryEngine } from './services/memoryEngine';
 import { AudioQueuePlayer, float32ToInt16Base64, calculateVolume } from './utils/audio';
 import { demoVoiceInstance } from './services/demoVoiceService';
 import { initAuthListener } from './services/authService';
-import { AlertCircle, RefreshCw, Cpu, Zap } from 'lucide-react';
+import { AlertCircle, RefreshCw, Cpu, Zap, X } from 'lucide-react';
 
 export default function App() {
   const [selectedPersona, setSelectedPersona] = useState<VoicePersona>(PERSONAS[0]);
@@ -56,8 +60,17 @@ export default function App() {
   // Demo Voice Mode
   const [isDemoMode, setIsDemoMode] = useState(false);
 
+  const [currentTheme, setCurrentTheme] = useState<ThemeId>(getInitialTheme());
+  const [isLeftWingOpen, setIsLeftWingOpen] = useState(false);
+  const [isRightWingOpen, setIsRightWingOpen] = useState(false);
+  const [recentMemories, setRecentMemories] = useState<any[]>([]);
+
   const selectedPersonaRef = useRef<VoicePersona>(selectedPersona);
   const isDemoModeRef = useRef(isDemoMode);
+
+  useEffect(() => {
+    applyTheme(currentTheme);
+  }, [currentTheme]);
 
   useEffect(() => {
     selectedPersonaRef.current = selectedPersona;
@@ -69,6 +82,20 @@ export default function App() {
 
   const refreshMemoryStats = () => {
     setMemoryCount(jarvisMemoryEngine.getStats().totalItems);
+    setRecentMemories([
+      ...jarvisMemoryEngine.getPersonalData(),
+      ...jarvisMemoryEngine.getPreferences(),
+      ...jarvisMemoryEngine.getInstructions()
+    ]);
+  };
+
+  const handleSelectPersona = (p: VoicePersona) => {
+    setSelectedPersona(p);
+    setAgentConfig(prev => ({
+      ...prev,
+      selectedPersonaId: p.id,
+      voiceName: p.voiceName,
+    }));
   };
 
   // Initial API Key, Server Health Check & Auth Listener
@@ -1246,117 +1273,210 @@ export default function App() {
         memoryCount={memoryCount}
         currentUser={currentUser}
         onOpenConnectors={() => setActiveView('connectors')}
+        currentTheme={currentTheme}
+        onSelectTheme={setCurrentTheme}
+        onToggleLeftTelemetry={() => setIsLeftWingOpen(!isLeftWingOpen)}
+        onToggleRightTelemetry={() => setIsRightWingOpen(!isRightWingOpen)}
       />
 
       {/* Main Workspace Layout */}
-      <div className="flex-1 min-h-0 w-full relative z-10 flex flex-col items-center justify-between overflow-y-auto">
+      <div className="flex-1 min-h-0 w-full relative z-10 flex flex-col overflow-y-auto">
         {activeView === 'main' && (
-          <main className="w-full max-w-4xl flex-1 flex flex-col items-center justify-center p-4 sm:p-6 relative">
+          <div className="w-full flex-1 max-w-[1720px] mx-auto px-3 sm:px-6 py-4 flex items-start justify-between gap-5 relative">
+            
+            {/* Left Telemetry Wing (Desktop) */}
+            <div className="hidden lg:block shrink-0 sticky top-4">
+              <TelemetryWingLeft
+                connectionState={connectionState}
+                selectedPersona={selectedPersona}
+                onSelectPersona={handleSelectPersona}
+                inputVolume={inputVolume}
+                outputVolume={outputVolume}
+                themeColor={THEMES[currentTheme]?.primary}
+              />
+            </div>
 
-            {/* Demo Mode Notice Banner */}
-            {isDemoMode && !errorMsg && (
-              <div className="w-full max-w-xl mb-3 p-3 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs flex items-center justify-between gap-3 backdrop-blur-md animate-fade-in shadow-lg">
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
-                  <span className="font-mono">
-                    <strong>J.A.R.V.I.S. Demo Mode Active:</strong> Voice synthesis, 4-tier memory banks &amp; Arc-Reactor are running.
-                  </span>
-                </div>
-              </div>
-            )}
+            {/* Center Stage: Holo-Nexus */}
+            <main className="flex-1 min-w-0 max-w-3xl mx-auto flex flex-col items-center justify-center relative">
 
-            {/* Error Banner */}
-            {errorMsg && (
-              <div className="w-full max-w-xl mb-3 p-3.5 rounded-2xl text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 backdrop-blur-md animate-fade-in bg-cyan-950/60 border border-cyan-500/30 text-cyan-200 shadow-xl">
-                <div className="flex items-start gap-2.5 flex-1">
-                  <AlertCircle className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
-                  <div className="flex flex-col gap-0.5">
-                    <span className="font-bold text-white font-mono">Neural Link Notice</span>
-                    <span className="text-[11px] leading-relaxed text-slate-300">{errorMsg}</span>
+              {/* Demo Mode Notice Banner */}
+              {isDemoMode && !errorMsg && (
+                <div className="w-full max-w-xl mb-3 p-3 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs flex items-center justify-between gap-3 backdrop-blur-md animate-fade-in shadow-lg">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+                    <span className="font-mono">
+                      <strong>J.A.R.V.I.S. Demo Mode Active:</strong> Voice synthesis, 4-tier memory banks &amp; Arc-Reactor are running.
+                    </span>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
-                  <button
-                    onClick={() => {
-                      setIsDemoMode(true);
-                      setErrorMsg(null);
-                      setConnectionState('disconnected');
-                    }}
-                    className="px-3 py-1.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 rounded-xl font-bold transition-all text-[11px] shadow-sm font-mono"
-                  >
-                    Use Demo Voice
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (connectionState === 'disconnected' || connectionState === 'error') {
-                        handleStartSession();
-                      } else {
-                        startMicStream();
-                      }
-                    }}
-                    className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl font-medium border border-cyan-500/20 transition-colors flex items-center gap-1 text-[11px] font-mono"
-                  >
-                    <RefreshCw className="w-3 h-3" /> Retry
-                  </button>
+              )}
+
+              {/* Error Banner */}
+              {errorMsg && (
+                <div className="w-full max-w-xl mb-3 p-3.5 rounded-2xl text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 backdrop-blur-md animate-fade-in bg-cyan-950/60 border border-cyan-500/30 text-cyan-200 shadow-xl">
+                  <div className="flex items-start gap-2.5 flex-1">
+                    <AlertCircle className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
+                    <div className="flex flex-col gap-0.5">
+                      <span className="font-bold text-white font-mono">Neural Link Notice</span>
+                      <span className="text-[11px] leading-relaxed text-slate-300">{errorMsg}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                    <button
+                      onClick={() => {
+                        setIsDemoMode(true);
+                        setErrorMsg(null);
+                        setConnectionState('disconnected');
+                      }}
+                      className="px-3 py-1.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 rounded-xl font-bold transition-all text-[11px] shadow-sm font-mono cursor-pointer"
+                    >
+                      Use Demo Voice
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (connectionState === 'disconnected' || connectionState === 'error') {
+                          handleStartSession();
+                        } else {
+                          startMicStream();
+                        }
+                      }}
+                      className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl font-medium border border-cyan-500/20 transition-colors flex items-center gap-1 text-[11px] font-mono cursor-pointer"
+                    >
+                      <RefreshCw className="w-3 h-3" /> Retry
+                    </button>
+                  </div>
                 </div>
+              )}
+
+              {/* Core Interactive Arc Reactor Voice Visualizer */}
+              <VoiceVisualizer
+                connectionState={connectionState}
+                inputVolume={inputVolume}
+                outputVolume={outputVolume}
+                personaName={selectedPersona.name}
+                themeColor={THEMES[currentTheme]?.primary}
+                secondaryColor={THEMES[currentTheme]?.secondary}
+                isMuted={isMuted}
+                onToggleMute={() => setIsMuted(!isMuted)}
+                onStartSession={handleStartSession}
+                onStopSession={handleStopSession}
+                onInterrupt={handleInterrupt}
+                isVisionActive={isVisionActive}
+                visionMode={visionMode}
+                onToggleVision={handleToggleVision}
+              />
+
+              {/* J.A.R.V.I.S. Command Input Bar */}
+              <CommandInputBar
+                onSendPrompt={handleSendPrompt}
+                isProcessing={connectionState === 'speaking' || connectionState === 'connecting'}
+                themeColor={THEMES[currentTheme]?.primary}
+              />
+
+              {/* J.A.R.V.I.S. Dynamic Launch Briefing & Forward Steps Card */}
+              {launchBriefing && (
+                <LaunchBriefingCard
+                  briefing={launchBriefing}
+                  onDismiss={() => setLaunchBriefing(null)}
+                  onExecuteStep={(step) => handleSendPrompt(`Execute step: ${step}`)}
+                />
+              )}
+
+              {/* Active Skill Display Card (Hermes Sub-Agent Response, etc.) */}
+              {selectedDisplayCard && (
+                <SkillDisplayCard
+                  card={selectedDisplayCard}
+                  onDismiss={() => setSelectedDisplayCard(null)}
+                />
+              )}
+
+              {/* Parallel Task Dock for Mobile View */}
+              <div className="w-full lg:hidden">
+                <ParallelTaskDock
+                  activeTasks={activeTasks}
+                  completedTasks={completedTasks}
+                  onCancelTask={handleCancelTask}
+                  onSelectDisplayCard={(card) => setSelectedDisplayCard(card)}
+                  onDismissCompletedTask={handleDismissCompletedTask}
+                />
               </div>
-            )}
+            </main>
 
-            {/* Core Interactive Arc Reactor Voice Visualizer */}
-            <VoiceVisualizer
-              connectionState={connectionState}
-              inputVolume={inputVolume}
-              outputVolume={outputVolume}
-              personaName={selectedPersona.name}
-              personaColor="cyan"
-              isMuted={isMuted}
-              onToggleMute={() => setIsMuted(!isMuted)}
-              onStartSession={handleStartSession}
-              onStopSession={handleStopSession}
-              onInterrupt={handleInterrupt}
-              isVisionActive={isVisionActive}
-              visionMode={visionMode}
-              onToggleVision={handleToggleVision}
-            />
-
-            {/* J.A.R.V.I.S. Command Input Bar */}
-            <CommandInputBar
-              onSendPrompt={handleSendPrompt}
-              isProcessing={connectionState === 'speaking' || connectionState === 'connecting'}
-            />
-
-            {/* J.A.R.V.I.S. Dynamic Launch Briefing & Forward Steps Card */}
-            {launchBriefing && (
-              <LaunchBriefingCard
-                briefing={launchBriefing}
-                onDismiss={() => setLaunchBriefing(null)}
-                onExecuteStep={(step) => handleSendPrompt(`Execute step: ${step}`)}
+            {/* Right Telemetry Wing (Desktop) */}
+            <div className="hidden lg:block shrink-0 sticky top-4">
+              <TelemetryWingRight
+                memoryCount={memoryCount}
+                recentMemories={recentMemories}
+                activeTasks={activeTasks}
+                completedTasks={completedTasks}
+                onOpenMemoryHUD={() => setIsMemoryHUDOpen(true)}
+                onOpenSecurityHUD={() => setIsSecurityHUDOpen(true)}
+                onCancelTask={handleCancelTask}
+                themeColor={THEMES[currentTheme]?.primary}
               />
-            )}
-
-            {/* Active Skill Display Card (Hermes Sub-Agent Response, etc.) */}
-            {selectedDisplayCard && (
-              <SkillDisplayCard
-                card={selectedDisplayCard}
-                onDismiss={() => setSelectedDisplayCard(null)}
-              />
-            )}
-
-            {/* Parallel Task Dock for Sub-Agents & Background Executions */}
-            <ParallelTaskDock
-              activeTasks={activeTasks}
-              completedTasks={completedTasks}
-              onCancelTask={handleCancelTask}
-              onSelectDisplayCard={(card) => setSelectedDisplayCard(card)}
-              onDismissCompletedTask={handleDismissCompletedTask}
-            />
-          </main>
+            </div>
+          </div>
         )}
 
         {activeView === 'agent-space' && (
           <AgentSpace streamLogs={agentStreamLogs} />
         )}
       </div>
+
+      {/* Mobile Left Drawer Overlay */}
+      {isLeftWingOpen && (
+        <div className="fixed inset-0 z-40 bg-black/80 backdrop-blur-md flex lg:hidden animate-fade-in p-4">
+          <div className="w-full max-w-sm h-full flex flex-col gap-3 overflow-y-auto bg-[#060a12]/95 p-4 rounded-2xl border border-cyan-500/30">
+            <div className="flex items-center justify-between pb-2 border-b border-cyan-500/20">
+              <span className="font-mono text-xs font-bold text-cyan-400">TELEMETRY & SQUAD</span>
+              <button onClick={() => setIsLeftWingOpen(false)} className="p-1 rounded text-slate-400 hover:text-white cursor-pointer">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <TelemetryWingLeft
+              connectionState={connectionState}
+              selectedPersona={selectedPersona}
+              onSelectPersona={(p) => {
+                handleSelectPersona(p);
+                setIsLeftWingOpen(false);
+              }}
+              inputVolume={inputVolume}
+              outputVolume={outputVolume}
+              themeColor={THEMES[currentTheme]?.primary}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Mobile Right Drawer Overlay */}
+      {isRightWingOpen && (
+        <div className="fixed inset-0 z-40 bg-black/80 backdrop-blur-md flex justify-end lg:hidden animate-fade-in p-4">
+          <div className="w-full max-w-sm h-full flex flex-col gap-3 overflow-y-auto bg-[#060a12]/95 p-4 rounded-2xl border border-cyan-500/30">
+            <div className="flex items-center justify-between pb-2 border-b border-cyan-500/20">
+              <span className="font-mono text-xs font-bold text-cyan-400">SOVEREIGN MEMORY & OPERATIONS</span>
+              <button onClick={() => setIsRightWingOpen(false)} className="p-1 rounded text-slate-400 hover:text-white cursor-pointer">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <TelemetryWingRight
+              memoryCount={memoryCount}
+              recentMemories={recentMemories}
+              activeTasks={activeTasks}
+              completedTasks={completedTasks}
+              onOpenMemoryHUD={() => {
+                setIsRightWingOpen(false);
+                setIsMemoryHUDOpen(true);
+              }}
+              onOpenSecurityHUD={() => {
+                setIsRightWingOpen(false);
+                setIsSecurityHUDOpen(true);
+              }}
+              onCancelTask={handleCancelTask}
+              themeColor={THEMES[currentTheme]?.primary}
+            />
+          </div>
+        </div>
+      )}
 
       {/* J.A.R.V.I.S. 4-Tier Memory Matrix Hologram HUD */}
       <JarvisMemoryHUD

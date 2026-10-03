@@ -17,6 +17,7 @@ import {
   FileCheck2,
   ChevronRight
 } from 'lucide-react';
+import { sfx } from '../lib/sfx';
 
 interface CeoExecutiveHUDProps {
   isOpen: boolean;
@@ -135,8 +136,12 @@ export const CeoExecutiveHUD: React.FC<CeoExecutiveHUDProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/80 backdrop-blur-md animate-fade-in font-sans">
-      <div className="relative w-full max-w-5xl h-[88vh] bg-slate-900/95 border border-cyan-500/30 rounded-2xl shadow-[0_0_50px_rgba(6,182,212,0.15)] flex flex-col overflow-hidden text-slate-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/80 backdrop-blur-md animate-fade-in font-sans select-none">
+      <div className="relative w-full max-w-5xl h-[88vh] bg-slate-900/95 border border-cyan-500/35 rounded-2xl shadow-[0_0_60px_rgba(0,240,255,0.2)] flex flex-col overflow-hidden text-slate-200 holo-scanline">
+        <div className="corner-bracket-tl" />
+        <div className="corner-bracket-tr" />
+        <div className="corner-bracket-bl" />
+        <div className="corner-bracket-br" />
         
         {/* Top Header Bar */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-cyan-500/20 bg-slate-950/60">

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Shield, Lock, Cpu, Terminal, CheckCircle2, AlertTriangle, X, RefreshCw, Layers } from 'lucide-react';
+import { sfx } from '../lib/sfx';
 
 interface SecurityStatusData {
   status: string;
@@ -94,8 +95,12 @@ export const SecurityHUDModal: React.FC<SecurityHUDModalProps> = ({ isOpen, onCl
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-950/80 backdrop-blur-xl animate-fade-in">
-      <div className="relative w-full max-w-4xl max-h-[90vh] flex flex-col bg-slate-900 border border-emerald-500/30 rounded-2xl shadow-[0_0_50px_rgba(16,185,129,0.15)] overflow-hidden font-mono text-slate-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-950/80 backdrop-blur-xl animate-fade-in select-none">
+      <div className="relative w-full max-w-4xl max-h-[90vh] flex flex-col bg-slate-900/95 border border-emerald-500/35 rounded-2xl shadow-[0_0_60px_rgba(16,185,129,0.22)] overflow-hidden font-mono text-slate-200 holo-scanline">
+        <div className="corner-bracket-tl" style={{ borderColor: '#10b981' }} />
+        <div className="corner-bracket-tr" style={{ borderColor: '#10b981' }} />
+        <div className="corner-bracket-bl" style={{ borderColor: '#10b981' }} />
+        <div className="corner-bracket-br" style={{ borderColor: '#10b981' }} />
         
         {/* Header Bar */}
         <div className="px-6 py-4 border-b border-emerald-500/20 bg-slate-950/60 flex items-center justify-between">

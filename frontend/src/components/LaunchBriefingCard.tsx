@@ -11,6 +11,7 @@ import {
   MessageSquareCode,
   Compass
 } from 'lucide-react';
+import { design } from '@/lib/design-system';
 
 export interface LaunchBriefing {
   signatureGreeting: string;
@@ -27,6 +28,14 @@ interface LaunchBriefingCardProps {
   onExecuteStep?: (step: string) => void;
 }
 
+const CARD_STYLE = `
+  w-full max-w-4xl my-3 animate-fade-in relative z-20
+`;
+
+const CONTAINER_STYLE = `
+  relative rounded-2xl bg-[#09111e]/90 border border-cyan-500/30 backdrop-blur-xl shadow-[0_0_30px_rgba(0,240,255,0.08)] overflow-hidden transition-all duration-300
+`;
+
 export const LaunchBriefingCard: React.FC<LaunchBriefingCardProps> = ({
   briefing,
   onDismiss,
@@ -37,8 +46,8 @@ export const LaunchBriefingCard: React.FC<LaunchBriefingCardProps> = ({
   if (!briefing) return null;
 
   return (
-    <div className="w-full max-w-4xl my-3 animate-fade-in relative z-20">
-      <div className="relative rounded-2xl bg-[#09111e]/90 border border-cyan-500/30 backdrop-blur-xl shadow-[0_0_30px_rgba(0,240,255,0.08)] overflow-hidden transition-all duration-300">
+    <div className={CARD_STYLE}>
+      <div className={CONTAINER_STYLE}>
         {/* Hologram top edge scanner line */}
         <div className="h-[2px] w-full bg-gradient-to-r from-transparent via-cyan-400 to-transparent animate-pulse" />
 

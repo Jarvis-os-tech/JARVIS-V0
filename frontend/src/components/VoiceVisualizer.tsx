@@ -1,13 +1,17 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { ConnectionState } from '../types';
-import { Mic, MicOff, Square, Camera, Monitor, Zap, Cpu } from 'lucide-react';
+import { Mic, MicOff, Square, Camera, Monitor, Zap, Volume2, Sparkles } from 'lucide-react';
+import { ArcReactor3D } from './ArcReactor3D';
+import { sfx } from '../lib/sfx';
 
 interface VoiceVisualizerProps {
   connectionState: ConnectionState;
   inputVolume: number; // 0 - 100
   outputVolume: number; // 0 - 100
   personaName: string;
-  personaColor: string;
+  personaColor?: string;
+  themeColor?: string;
+  secondaryColor?: string;
   isMuted: boolean;
   onToggleMute: () => void;
   onStartSession: () => void;
@@ -23,7 +27,8 @@ export const VoiceVisualizer: React.FC<VoiceVisualizerProps> = ({
   inputVolume,
   outputVolume,
   personaName,
-  personaColor: _personaColor,
+  themeColor = '#00f0ff',
+  secondaryColor = '#38bdf8',
   isMuted,
   onToggleMute,
   onStartSession,
@@ -33,304 +38,265 @@ export const VoiceVisualizer: React.FC<VoiceVisualizerProps> = ({
   visionMode,
   onToggleVision,
 }) => {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [render3D, setRender3D] = useState(true);
 
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+  const isConnected = connectionState !== 'disconnected' && connectionState !== 'connecting';
+  const activeVolume = connectionState === 'speaking' ? outputVolume : inputVolume;
 
-    let animationFrameId: number;
-    let phase = 0;
+  const handleStart = () => {
+    sfx.playReactorHum();
+    onStartSession();
+  };
 
-    const render = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      const width = canvas.width;
-      const height = canvas.height;
-      const centerX = width / 2;
-      const centerY = height / 2;
+  const handleStop = () => {
+    sfx.playWarning();
+    onStopSession();
+  };
 
-      const isConnected = connectionState !== 'disconnected' && connectionState !== 'connecting';
-      const activeVolume = connectionState === 'speaking' ? outputVolume : inputVolume;
-      const baseRadius = Math.min(width, height) * 0.22;
-      const dynamicRadius = baseRadius + (activeVolume * 0.75);
+  const handleMute = () => {
+    sfx.playPip(isMuted ? 1400 : 900);
+    onToggleMute();
+  };
 
-      phase += 0.035;
-
-      // 1. Draw outer Arc Reactor calibration HUD rings
-      const outerRingRadius = baseRadius * 1.85;
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(centerX, centerY, outerRingRadius, 0, Math.PI * 2);
-      ctx.strokeStyle = 'rgba(6, 182, 212, 0.15)';
-      ctx.lineWidth = 1.5;
-      ctx.setLineDash([4, 12]);
-      ctx.stroke();
-      ctx.restore();
-
-      // 2. Rotating Arc Reactor segmented ticks
-      ctx.save();
-      ctx.translate(centerX, centerY);
-      ctx.rotate(phase * 0.2);
-      const tickCount = 24;
-      for (let i = 0; i < tickCount; i++) {
-        const angle = (i / tickCount) * Math.PI * 2;
-        const innerR = outerRingRadius - 8;
-        const outerR = outerRingRadius + (i % 6 === 0 ? 8 : 2);
-
-        ctx.beginPath();
-        ctx.moveTo(Math.cos(angle) * innerR, Math.sin(angle) * innerR);
-        ctx.lineTo(Math.cos(angle) * outerR, Math.sin(angle) * outerR);
-        ctx.strokeStyle = i % 6 === 0 ? 'rgba(6, 182, 212, 0.7)' : 'rgba(6, 182, 212, 0.25)';
-        ctx.lineWidth = i % 6 === 0 ? 2 : 1;
-        ctx.stroke();
-      }
-      ctx.restore();
-
-      // 3. Counter-rotating inner reticle ring
-      ctx.save();
-      ctx.translate(centerX, centerY);
-      ctx.rotate(-phase * 0.4);
-      ctx.beginPath();
-      ctx.arc(0, 0, baseRadius * 1.45, 0, Math.PI * 2);
-      ctx.strokeStyle = 'rgba(56, 189, 248, 0.2)';
-      ctx.lineWidth = 2;
-      ctx.setLineDash([20, 30, 4, 30]);
-      ctx.stroke();
-      ctx.restore();
-
-      // 4. Concentric acoustic pulse waves
-      const ringCount = 3;
-      for (let i = ringCount; i >= 1; i--) {
-        const ringRadius = dynamicRadius + i * 16 + Math.sin(phase + i) * 6;
-        ctx.beginPath();
-        ctx.arc(centerX, centerY, Math.max(10, ringRadius), 0, Math.PI * 2);
-
-        let strokeColor = 'rgba(6, 182, 212, 0.18)';
-        if (connectionState === 'speaking') strokeColor = 'rgba(59, 130, 246, 0.35)';
-        if (connectionState === 'listening') strokeColor = 'rgba(14, 165, 233, 0.45)';
-
-        ctx.strokeStyle = strokeColor;
-        ctx.lineWidth = 2;
-        ctx.stroke();
-      }
-
-      // 5. Draw fluid organic reactive core
-      ctx.beginPath();
-      const points = 64;
-      for (let i = 0; i <= points; i++) {
-        const angle = (i / points) * Math.PI * 2;
-        const wave1 = Math.sin(angle * 4 + phase * 2) * (activeVolume * 0.3 + 4);
-        const wave2 = Math.cos(angle * 6 - phase * 2.5) * (activeVolume * 0.2 + 3);
-        const r = dynamicRadius + wave1 + wave2;
-
-        const x = centerX + Math.cos(angle) * r;
-        const y = centerY + Math.sin(angle) * r;
-
-        if (i === 0) {
-          ctx.moveTo(x, y);
-        } else {
-          ctx.lineTo(x, y);
-        }
-      }
-      ctx.closePath();
-
-      // Gradient Fill (Cyan Arc Reactor)
-      const gradient = ctx.createRadialGradient(centerX, centerY, 5, centerX, centerY, dynamicRadius + 20);
-
-      if (connectionState === 'speaking') {
-        gradient.addColorStop(0, '#93c5fd');
-        gradient.addColorStop(0.4, '#3b82f6');
-        gradient.addColorStop(1, '#1d4ed8');
-      } else if (connectionState === 'listening') {
-        gradient.addColorStop(0, '#a5f3fc');
-        gradient.addColorStop(0.4, '#06b6d4');
-        gradient.addColorStop(1, '#0284c7');
-      } else {
-        gradient.addColorStop(0, '#67e8f9');
-        gradient.addColorStop(0.5, '#0891b2');
-        gradient.addColorStop(1, '#0e7490');
-      }
-
-      ctx.fillStyle = gradient;
-      ctx.shadowColor = connectionState === 'speaking' ? 'rgba(59, 130, 246, 0.6)' : 'rgba(6, 182, 212, 0.6)';
-      ctx.shadowBlur = isConnected ? 30 + activeVolume * 0.4 : 15;
-      ctx.fill();
-
-      // 6. Arc Reactor Core Inner Bright Glow
-      ctx.beginPath();
-      ctx.arc(centerX, centerY, baseRadius * 0.4, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
-      ctx.shadowColor = '#ffffff';
-      ctx.shadowBlur = 20;
-      ctx.fill();
-
-      animationFrameId = requestAnimationFrame(render);
-    };
-
-    render();
-
-    return () => {
-      cancelAnimationFrame(animationFrameId);
-    };
-  }, [connectionState, inputVolume, outputVolume]);
+  const handleVision = (mode: 'camera' | 'screen') => {
+    sfx.playPip(1600);
+    onToggleVision(mode);
+  };
 
   const getStatusText = () => {
     switch (connectionState) {
       case 'connecting':
         return 'Synchronizing J.A.R.V.I.S. neural channels...';
       case 'listening':
-        return `${personaName} is actively listening...`;
+        return `${personaName} audio sensors active`;
       case 'speaking':
-        return `${personaName} is responding...`;
+        return `${personaName} is vocalizing response...`;
       case 'connected':
-        return isMuted ? 'Microphone Sensor Muted' : 'J.A.R.V.I.S. Online — speak freely';
+        return isMuted ? 'Audio sensors muted' : 'J.A.R.V.I.S. Online // Standing by';
       case 'error':
-        return 'Link connection disrupted. Tap reactor to reconnect.';
+        return 'Link connection offline // Tap reactor to reconnect';
       default:
-        return '';
+        return 'ARC REACTOR STANDBY // CLICK TO ENGAGE';
     }
   };
 
   return (
-    <div className="relative flex flex-col items-center justify-center py-6 sm:py-8 px-4 w-full max-w-xl mx-auto">
-      {/* Visualizer Canvas Frame */}
-      <div className="relative w-80 h-80 sm:w-96 sm:h-96 lg:w-[460px] lg:h-[460px] flex items-center justify-center">
-        <canvas
-          ref={canvasRef}
-          width={460}
-          height={460}
-          className="w-full h-full cursor-pointer touch-none filter drop-shadow-[0_0_50px_rgba(6,182,212,0.25)]"
-          onClick={connectionState === 'disconnected' ? onStartSession : undefined}
-        />
+    <div className="relative flex flex-col items-center justify-center py-4 px-2 w-full max-w-xl mx-auto">
+      {/* 3D Holographic Arc-Reactor Stage Frame */}
+      <div className="relative w-72 h-72 sm:w-88 sm:h-88 lg:w-[420px] lg:h-[420px] flex items-center justify-center">
+        
+        {/* Holographic Outer Reticle Rings (CSS Layer) */}
+        <div className="absolute inset-0 pointer-events-none select-none flex items-center justify-center">
+          {/* Outer Dashed Orbit Reticle */}
+          <div 
+            className="w-[96%] h-[96%] rounded-full border border-dashed opacity-30 animate-spin-slow"
+            style={{ borderColor: themeColor }}
+          />
+          {/* Reverse Orbit Reticle */}
+          <div 
+            className="absolute w-[84%] h-[84%] rounded-full border border-dotted opacity-25"
+            style={{ 
+              borderColor: secondaryColor,
+              animation: 'spin-slow 28s linear infinite reverse' 
+            }}
+          />
+          {/* HUD Targeting Ticks */}
+          <div className="absolute top-2 left-1/2 -translate-x-1/2 text-[9px] font-mono tracking-widest uppercase opacity-60 flex items-center gap-1.5" style={{ color: themeColor }}>
+            <span className="w-1.5 h-1.5 rounded-full animate-ping" style={{ backgroundColor: themeColor }} />
+            ARC CORE // {personaName.toUpperCase()}
+          </div>
+          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 text-[9px] font-mono tracking-widest uppercase opacity-50 text-slate-400">
+            PWR: 100% // FLUX: STABLE
+          </div>
+        </div>
 
-        {/* Center Overlay Icon */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          {connectionState === 'disconnected' && (
-            <div
-              className="w-28 h-28 rounded-full bg-slate-950/90 shadow-[0_0_30px_rgba(6,182,212,0.4)] border border-cyan-400/40 flex items-center justify-center transition-transform hover:scale-105 pointer-events-auto cursor-pointer group"
-              onClick={onStartSession}
-            >
-              <Mic className="w-11 h-11 text-cyan-300 group-hover:scale-110 group-hover:text-cyan-200 transition-transform" />
-            </div>
-          )}
-
-          {connectionState === 'connecting' && (
-            <div className="w-24 h-24 rounded-full bg-slate-950/90 shadow-[0_0_30px_rgba(6,182,212,0.5)] border border-cyan-400/40 flex items-center justify-center">
-              <Zap className="w-10 h-10 text-cyan-400 animate-spin" />
+        {/* 3D Arc Reactor Canvas */}
+        <div 
+          className="w-full h-full relative z-10"
+          onClick={connectionState === 'disconnected' ? handleStart : undefined}
+        >
+          {render3D ? (
+            <ArcReactor3D
+              connectionState={connectionState}
+              volume={activeVolume}
+              themeColor={themeColor}
+              secondaryColor={secondaryColor}
+              isMuted={isMuted}
+            />
+          ) : (
+            /* Fallback 2D Radial Glow */
+            <div className="w-full h-full flex items-center justify-center">
+              <div 
+                className="w-48 h-48 rounded-full border-2 border-cyan-400/50 flex items-center justify-center animate-pulse"
+                style={{ boxShadow: `0 0 50px ${themeColor}` }}
+              >
+                <Zap className="w-16 h-16 text-cyan-300" />
+              </div>
             </div>
           )}
         </div>
+
+        {/* Standby Engage Button Overlay */}
+        {connectionState === 'disconnected' && (
+          <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
+            <button
+              onClick={handleStart}
+              className="pointer-events-auto flex flex-col items-center gap-2 group transition-transform active:scale-95 cursor-pointer"
+            >
+              <div 
+                className="w-24 h-24 rounded-full bg-slate-950/85 backdrop-blur-md border border-cyan-400/50 flex items-center justify-center shadow-[0_0_35px_rgba(0,240,255,0.45)] group-hover:scale-105 group-hover:border-cyan-300 transition-all"
+                style={{ borderColor: themeColor }}
+              >
+                <Mic className="w-9 h-9 text-cyan-300 group-hover:scale-110 transition-transform" />
+              </div>
+              <span className="text-[10px] font-mono font-bold tracking-[0.2em] text-cyan-300/80 group-hover:text-cyan-200 uppercase bg-slate-950/80 px-2.5 py-0.5 rounded-full border border-cyan-500/20 backdrop-blur-sm">
+                INITIALIZE
+              </span>
+            </button>
+          </div>
+        )}
+
+        {/* Synchronizing Spinner Overlay */}
+        {connectionState === 'connecting' && (
+          <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
+            <div 
+              className="w-20 h-20 rounded-full bg-slate-950/90 border border-cyan-400/50 flex items-center justify-center shadow-[0_0_30px_rgba(0,240,255,0.5)]"
+              style={{ borderColor: themeColor }}
+            >
+              <Zap className="w-8 h-8 text-cyan-300 animate-spin" />
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Dynamic Status Text */}
-      {connectionState !== 'disconnected' && getStatusText() && (
-        <div className="mt-5 text-center">
-          <p className="text-base sm:text-lg font-bold text-slate-100 font-['Rajdhani',sans-serif] tracking-wider uppercase flex items-center justify-center gap-2.5 drop-shadow-[0_0_12px_rgba(0,240,255,0.45)]">
-            {connectionState === 'speaking' && <span className="w-2.5 h-2.5 rounded-full bg-blue-400 animate-ping" />}
-            {connectionState === 'listening' && <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping" />}
+      {/* Dynamic Status Readout & Audio Reactive Decibel Meter */}
+      <div className="mt-3 text-center z-20">
+        <div className="flex items-center justify-center gap-2">
+          {connectionState === 'speaking' && (
+            <span className="w-2 h-2 rounded-full bg-blue-400 animate-ping" />
+          )}
+          {connectionState === 'listening' && (
+            <span className="w-2 h-2 rounded-full animate-ping" style={{ backgroundColor: themeColor }} />
+          )}
+          <p 
+            className="text-xs sm:text-sm font-bold font-['Rajdhani',sans-serif] tracking-wider uppercase drop-shadow-[0_0_10px_rgba(0,240,255,0.4)]"
+            style={{ color: connectionState === 'speaking' ? '#93c5fd' : themeColor }}
+          >
             {getStatusText()}
           </p>
-
-          {connectionState === 'speaking' && (
-            <button
-              onClick={onInterrupt}
-              className="mt-3 text-xs font-mono font-bold text-cyan-300 hover:text-white bg-cyan-950/70 hover:bg-cyan-900/80 px-5 py-1.5 rounded-full border border-cyan-500/50 transition-all shadow-[0_0_18px_rgba(0,240,255,0.25)] active:scale-95"
-            >
-              Interrupt J.A.R.V.I.S.
-            </button>
-          )}
         </div>
-      )}
 
-      {/* Controls Dock */}
-      <div className="mt-6 flex items-center gap-3.5 bg-[#09101d]/90 backdrop-blur-2xl p-3 px-6 rounded-2xl border border-cyan-500/35 shadow-[0_16px_45px_rgba(0,0,0,0.65),0_0_30px_rgba(0,240,255,0.14)]">
+        {/* Decibel Level Ticker */}
+        {isConnected && (
+          <div className="flex items-center justify-center gap-1.5 mt-1 text-[10px] font-mono text-slate-400">
+            <Volume2 className="w-3 h-3 text-cyan-400" />
+            <span>LEVEL: {Math.round(activeVolume)} dB</span>
+            <span className="text-slate-600">//</span>
+            <span className="text-emerald-400">60 FPS REALTIME</span>
+          </div>
+        )}
+
+        {/* Interrupt Button */}
+        {connectionState === 'speaking' && (
+          <button
+            onClick={() => {
+              sfx.playPip(1600);
+              onInterrupt();
+            }}
+            className="mt-2 text-[11px] font-mono font-bold text-cyan-300 hover:text-white bg-cyan-950/70 hover:bg-cyan-900/80 px-4 py-1 rounded-full border border-cyan-500/50 transition-all shadow-[0_0_15px_rgba(0,240,255,0.25)] active:scale-95 cursor-pointer"
+          >
+            Interrupt J.A.R.V.I.S. (Esc)
+          </button>
+        )}
+      </div>
+
+      {/* Futuristic Tactical Controls Dock */}
+      <div className="mt-4 flex items-center gap-3 bg-[#09101d]/90 backdrop-blur-2xl p-2.5 px-5 rounded-2xl border border-cyan-500/30 shadow-[0_12px_40px_rgba(0,0,0,0.65),0_0_25px_rgba(0,240,255,0.12)] z-20">
         {connectionState !== 'disconnected' ? (
           <>
-            {/* Mute Mic button */}
+            {/* Mute Mic Sensor Button */}
             <button
-              onClick={onToggleMute}
-              className={`p-3.5 rounded-xl transition-all active:scale-95 ${
+              onClick={handleMute}
+              className={`p-3 rounded-xl transition-all active:scale-95 cursor-pointer ${
                 isMuted
-                  ? 'bg-amber-500/20 text-amber-300 border border-amber-400/50 shadow-[0_0_18px_rgba(245,158,11,0.25)]'
-                  : 'bg-slate-900/80 text-cyan-300 hover:bg-cyan-950/80 border border-cyan-500/30 hover:border-cyan-400 hover:shadow-[0_0_14px_rgba(0,240,255,0.25)]'
+                  ? 'bg-amber-500/20 text-amber-300 border border-amber-400/50 shadow-[0_0_15px_rgba(245,158,11,0.25)]'
+                  : 'bg-slate-900/80 text-cyan-300 hover:bg-cyan-950/80 border border-cyan-500/30 hover:border-cyan-400'
               }`}
               title={isMuted ? 'Unmute Sensors' : 'Mute Sensors'}
             >
-              {isMuted ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+              {isMuted ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
             </button>
 
-            {/* Camera Vision Button */}
+            {/* Camera Optical Ingestion Button */}
             <button
-              onClick={() => onToggleVision('camera')}
-              className={`p-3.5 rounded-xl transition-all active:scale-95 ${
+              onClick={() => handleVision('camera')}
+              className={`p-3 rounded-xl transition-all active:scale-95 cursor-pointer ${
                 isVisionActive && visionMode === 'camera'
-                  ? 'bg-cyan-400 text-slate-950 font-bold shadow-[0_0_24px_rgba(0,240,255,0.6)] border border-cyan-200'
-                  : 'bg-slate-900/80 text-slate-300 hover:bg-cyan-950/80 hover:text-cyan-300 border border-cyan-500/25 hover:border-cyan-400/60'
+                  ? 'bg-cyan-400 text-slate-950 font-bold shadow-[0_0_20px_rgba(0,240,255,0.6)] border border-cyan-200'
+                  : 'bg-slate-900/80 text-slate-300 hover:bg-cyan-950/80 hover:text-cyan-300 border border-cyan-500/25'
               }`}
-              title="Toggle Camera Optical Sensor"
+              title="Camera Optical Stream"
             >
-              <Camera className="w-5 h-5" />
+              <Camera className="w-4 h-4" />
             </button>
 
-            {/* Screen Share Vision Button */}
+            {/* Screen Telemetry Ingestion Button */}
             <button
-              onClick={() => onToggleVision('screen')}
-              className={`p-3.5 rounded-xl transition-all active:scale-95 ${
+              onClick={() => handleVision('screen')}
+              className={`p-3 rounded-xl transition-all active:scale-95 cursor-pointer ${
                 isVisionActive && visionMode === 'screen'
-                  ? 'bg-blue-500 text-white font-bold shadow-[0_0_24px_rgba(59,130,246,0.6)] border border-blue-200'
-                  : 'bg-slate-900/80 text-slate-300 hover:bg-cyan-950/80 hover:text-cyan-300 border border-cyan-500/25 hover:border-cyan-400/60'
+                  ? 'bg-blue-500 text-white font-bold shadow-[0_0_20px_rgba(59,130,246,0.6)] border border-blue-200'
+                  : 'bg-slate-900/80 text-slate-300 hover:bg-cyan-950/80 hover:text-cyan-300 border border-cyan-500/25'
               }`}
-              title="Toggle Screen Telemetry Stream"
+              title="Screen Telemetry Stream"
             >
-              <Monitor className="w-5 h-5" />
+              <Monitor className="w-4 h-4" />
             </button>
 
             {/* End Call / Stop Session */}
             <button
-              onClick={onStopSession}
-              className="p-3.5 rounded-xl bg-rose-600/90 hover:bg-rose-500 text-white transition-all shadow-[0_0_22px_rgba(225,29,72,0.45)] border border-rose-400/60 ml-1 active:scale-95"
+              onClick={handleStop}
+              className="p-3 rounded-xl bg-rose-600/90 hover:bg-rose-500 text-white transition-all shadow-[0_0_20px_rgba(225,29,72,0.45)] border border-rose-400/60 ml-1 active:scale-95 cursor-pointer"
               title="Disconnect J.A.R.V.I.S. Core"
             >
-              <Square className="w-5 h-5 fill-current" />
+              <Square className="w-4 h-4 fill-current" />
             </button>
           </>
         ) : (
           <>
-            {/* Start Conversation Call */}
+            {/* Engage J.A.R.V.I.S. Button */}
             <button
-              onClick={onStartSession}
-              className="flex items-center gap-2.5 px-6 py-3.5 rounded-xl bg-gradient-to-r from-cyan-400 via-sky-400 to-blue-500 text-slate-950 font-black text-sm tracking-wider font-['Orbitron',sans-serif] hover:opacity-95 shadow-[0_0_30px_rgba(0,240,255,0.5)] transition-all hover:scale-[1.03] active:scale-95 border border-cyan-200"
+              onClick={handleStart}
+              className="flex items-center gap-2.5 px-6 py-3 rounded-xl bg-gradient-to-r from-cyan-400 via-sky-400 to-blue-500 text-slate-950 font-black text-xs tracking-wider font-['Orbitron',sans-serif] hover:opacity-95 shadow-[0_0_25px_rgba(0,240,255,0.45)] transition-all hover:scale-[1.02] active:scale-95 border border-cyan-200 cursor-pointer"
             >
               <Zap className="w-4 h-4 fill-current text-slate-950 animate-pulse" />
               <span>ENGAGE J.A.R.V.I.S.</span>
             </button>
 
-            {/* Camera Vision Button */}
+            {/* Camera Test Button */}
             <button
-              onClick={() => onToggleVision('camera')}
-              className={`p-3.5 rounded-xl transition-all active:scale-95 ${
+              onClick={() => handleVision('camera')}
+              className={`p-3 rounded-xl transition-all active:scale-95 cursor-pointer ${
                 isVisionActive && visionMode === 'camera'
-                  ? 'bg-cyan-400 text-slate-950 font-bold shadow-[0_0_24px_rgba(0,240,255,0.6)] border border-cyan-200'
-                  : 'bg-slate-900/80 text-slate-300 hover:bg-cyan-950/80 hover:text-cyan-300 border border-cyan-500/25 hover:border-cyan-400/60'
+                  ? 'bg-cyan-400 text-slate-950 font-bold shadow-[0_0_20px_rgba(0,240,255,0.6)] border border-cyan-200'
+                  : 'bg-slate-900/80 text-slate-300 hover:bg-cyan-950/80 hover:text-cyan-300 border border-cyan-500/25'
               }`}
-              title="Test Camera Optical Sensor"
+              title="Optical Camera Stream"
             >
-              <Camera className="w-5 h-5" />
+              <Camera className="w-4 h-4" />
             </button>
 
-            {/* Screen Share Button */}
+            {/* Screen Test Button */}
             <button
-              onClick={() => onToggleVision('screen')}
-              className={`p-3.5 rounded-xl transition-all active:scale-95 ${
+              onClick={() => handleVision('screen')}
+              className={`p-3 rounded-xl transition-all active:scale-95 cursor-pointer ${
                 isVisionActive && visionMode === 'screen'
-                  ? 'bg-blue-500 text-white font-bold shadow-[0_0_24px_rgba(59,130,246,0.6)] border border-blue-200'
-                  : 'bg-slate-900/80 text-slate-300 hover:bg-cyan-950/80 hover:text-cyan-300 border border-cyan-500/25 hover:border-cyan-400/60'
+                  ? 'bg-blue-500 text-white font-bold shadow-[0_0_20px_rgba(59,130,246,0.6)] border border-blue-200'
+                  : 'bg-slate-900/80 text-slate-300 hover:bg-cyan-950/80 hover:text-cyan-300 border border-cyan-500/25'
               }`}
-              title="Test Screen Telemetry Stream"
+              title="Screen Telemetry Stream"
             >
-              <Monitor className="w-5 h-5" />
+              <Monitor className="w-4 h-4" />
             </button>
           </>
         )}
@@ -339,3 +305,4 @@ export const VoiceVisualizer: React.FC<VoiceVisualizerProps> = ({
   );
 };
 
+export default VoiceVisualizer;

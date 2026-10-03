@@ -3075,7 +3075,7 @@ For a multi-action desktop request, call execute_continuous_plan with ordered GU
     process.exit(1);
   });
 
-  server.listen(PORT, BIND_HOST, () => {
+  server.listen(PORT, BIND_HOST, async () => {
     const localUrl = `http://localhost:${PORT}`;
     console.log(`Server running on ${localUrl} (bound to ${BIND_HOST}:${PORT})`);
     autoLaunchBrowser(localUrl);
@@ -3117,11 +3117,12 @@ For a multi-action desktop request, call execute_continuous_plan with ordered GU
     });
 
     // Initialize Agent Space: discover host CLI agents and wire real-time WS broadcasts
-    cliAgentRegistry.initialize().then(() => {
+    try {
+      await cliAgentRegistry.initialize();
       console.log('[Server] Agent Space CLI registry initialized successfully.');
-    }).catch(err => {
+    } catch (err: any) {
       console.warn('[Server] Agent Space initialization warning:', err.message);
-    });
+    }
 
     // Wire delegation executor for DELEGATION_PATH
     dualPathOrchestrator.setDelegationExecutor(async ({ agentId, prompt, clientWs }) => {

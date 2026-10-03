@@ -4,6 +4,8 @@ import App from './App.tsx';
 import './index.css';
 import { register as registerServiceWorker } from './serviceWorkerRegistration';
 import { Toaster } from 'sonner';
+import { TooltipProvider } from '@/components/ui/tooltip';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 function RootApp() {
   useEffect(() => {
@@ -13,10 +15,12 @@ function RootApp() {
   }, []);
 
   return (
-    <>
-      <App />
-      <Toaster position="bottom-right" richColors />
-    </>
+    <ErrorBoundary>
+      <TooltipProvider delayDuration={150}>
+        <App />
+        <Toaster position="bottom-right" richColors />
+      </TooltipProvider>
+    </ErrorBoundary>
   );
 }
 
