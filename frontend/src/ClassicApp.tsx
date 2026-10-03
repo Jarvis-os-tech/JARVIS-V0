@@ -50,6 +50,8 @@ export default function App() {
 
   const selectedPersonaRef = useRef<VoicePersona>(selectedPersona);
   const isDemoModeRef = useRef(isDemoMode);
+  const connectionStateRef = useRef<ConnectionState>(connectionState);
+  const lastInterruptTimeRef = useRef<number>(0);
 
   useEffect(() => {
     selectedPersonaRef.current = selectedPersona;
@@ -58,6 +60,10 @@ export default function App() {
   useEffect(() => {
     isDemoModeRef.current = isDemoMode;
   }, [isDemoMode]);
+
+  useEffect(() => {
+    connectionStateRef.current = connectionState;
+  }, [connectionState]);
 
   const refreshMemoryStats = () => {
     setMemoryCount(jarvisMemoryEngine.getStats().totalItems);
@@ -502,6 +508,8 @@ export default function App() {
       const workletNode = new AudioWorkletNode(inputAudioCtx, 'audio-capture-processor');
       processorRef.current = workletNode;
 
+      let consecutiveVoiceFrames = 0;
+
       // Handle audio chunks from the worklet
       workletNode.port.onmessage = (event: MessageEvent) => {
         if (isMutedRef.current) {
@@ -513,6 +521,22 @@ export default function App() {
           const inputData = event.data.data as Float32Array;
           const vol = calculateVolume(inputData);
           setInputVolume(vol);
+
+          // Fast natural interruption (barge-in):
+          if (connectionStateRef.current === 'speaking') {
+            if (vol > 16) {
+              consecutiveVoiceFrames++;
+              if (consecutiveVoiceFrames >= 2) {
+                console.log(`[Barge-in] User speech detected (vol: ${vol}), interrupting assistant playback`);
+                handleInterrupt();
+                consecutiveVoiceFrames = 0;
+              }
+            } else {
+              consecutiveVoiceFrames = 0;
+            }
+          } else {
+            consecutiveVoiceFrames = 0;
+          }
 
           const base64Pcm = float32ToInt16Base64(inputData);
           if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
@@ -599,15 +623,24 @@ export default function App() {
         }
 
         if (msg.type === 'audio' && msg.audio) {
+          // If recently interrupted, drop trailing in-flight audio chunks from the interrupted turn
+          if (Date.now() - lastInterruptTimeRef.current < 500) {
+            console.log('[Audio] Suppressing trailing audio chunk after interrupt');
+            return;
+          }
           setConnectionState('speaking');
           audioQueuePlayerRef.current?.enqueueChunk(msg.audio);
         }
 
         if ((msg.type === 'output_transcription' || msg.type === 'outputTranscript') && msg.text) {
+          if (Date.now() - lastInterruptTimeRef.current < 500) {
+            return;
+          }
           appendTranscriptChunk('agent', msg.text);
         }
 
         if ((msg.type === 'input_transcription' || msg.type === 'inputTranscript') && msg.text) {
+          lastInterruptTimeRef.current = 0;
           appendTranscriptChunk('user', msg.text);
           jarvisMemoryEngine.recordTurn('user', msg.text);
           jarvisMemoryEngine.extractAndMemorize(msg.text, 'user');
@@ -804,6 +837,7 @@ export default function App() {
   };
 
   const handleInterrupt = () => {
+    lastInterruptTimeRef.current = Date.now();
     if (isDemoMode) {
       demoVoiceInstance.stop();
       setOutputVolume(0);
@@ -818,6 +852,7 @@ export default function App() {
   };
 
   const handleSendPrompt = (promptText: string) => {
+    lastInterruptTimeRef.current = 0;
     audioQueuePlayerRef.current?.prewarm();
 
     const trimmed = promptText.trim();

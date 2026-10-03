@@ -15,10 +15,14 @@ import { CommandInputBar } from './components/CommandInputBar';
 import { ParallelTaskDock } from './components/ParallelTaskDock';
 import { SkillDisplayCard } from './components/SkillDisplayCard';
 import { jarvisMemoryEngine } from './services/memoryEngine';
-import { AudioQueuePlayer, float32ToInt16Base64, calculateVolume } from './utils/audio';
+import { AudioQueuePlayer, float32ToInt16Base64, calculateVolume, playStarkChime } from './utils/audio';
 import { demoVoiceInstance } from './services/demoVoiceService';
 import { initAuthListener } from './services/authService';
 import { AlertCircle, RefreshCw, Cpu, Zap } from 'lucide-react';
+import { Scene } from './scene/Scene';
+import { Hud } from './ui/Hud';
+import { initMagneticSound } from './lib/magneticSound';
+import { useStore } from './store';
 
 export default function App() {
   const [selectedPersona, setSelectedPersona] = useState<VoicePersona>(PERSONAS[0]);
@@ -56,6 +60,8 @@ export default function App() {
 
   const selectedPersonaRef = useRef<VoicePersona>(selectedPersona);
   const isDemoModeRef = useRef(isDemoMode);
+  const connectionStateRef = useRef<ConnectionState>(connectionState);
+  const lastInterruptTimeRef = useRef<number>(0);
 
   useEffect(() => {
     selectedPersonaRef.current = selectedPersona;
@@ -65,9 +71,64 @@ export default function App() {
     isDemoModeRef.current = isDemoMode;
   }, [isDemoMode]);
 
+  useEffect(() => {
+    connectionStateRef.current = connectionState;
+  }, [connectionState]);
+
+  // Pre-warm Web Audio DAC & Speech Synthesis on first user interaction
+  useEffect(() => {
+    const handleFirstInteraction = () => {
+      audioQueuePlayerRef.current?.prewarm();
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.resume();
+      }
+    };
+    window.addEventListener('click', handleFirstInteraction, { once: true });
+    window.addEventListener('touchstart', handleFirstInteraction, { once: true });
+    window.addEventListener('keydown', handleFirstInteraction, { once: true });
+    return () => {
+      window.removeEventListener('click', handleFirstInteraction);
+      window.removeEventListener('touchstart', handleFirstInteraction);
+      window.removeEventListener('keydown', handleFirstInteraction);
+    };
+  }, []);
+
   const refreshMemoryStats = () => {
     setMemoryCount(jarvisMemoryEngine.getStats().totalItems);
   };
+
+  // J.A.R.V.I.S. Ambient Magnetic Sound & 3D Holographic Matrix Sync
+  useEffect(() => {
+    initMagneticSound(true);
+  }, []);
+
+  // Sync Live Audio Volume with 3D Holographic Arc Reactor & Particle Cloud
+  useEffect(() => {
+    const activeVol = connectionState === 'speaking' ? outputVolume : inputVolume;
+    const normalized = Math.min(1, Math.max(0, activeVol / 60));
+    useStore.getState().setLevel(normalized);
+  }, [inputVolume, outputVolume, connectionState]);
+
+  // Sync Neural Connection State with HUD Phase
+  useEffect(() => {
+    if (connectionState === 'speaking') {
+      useStore.getState().setPhase('processing');
+    } else if (connectionState === 'listening') {
+      useStore.getState().setPhase('analyzing');
+    } else if (connectionState === 'connected') {
+      useStore.getState().setPhase('online');
+    } else if (connectionState === 'disconnected') {
+      useStore.getState().setPhase('standby');
+    }
+  }, [connectionState]);
+
+  // Sync Fast Actuation Alert with Holographic Tool Badge
+  useEffect(() => {
+    if (fastActuationAlert) {
+      useStore.getState().setActiveTool(fastActuationAlert.tool);
+      useStore.getState().triggerEffect('pulse');
+    }
+  }, [fastActuationAlert]);
 
   // Initial API Key, Server Health Check & Auth Listener
   useEffect(() => {
@@ -122,6 +183,12 @@ export default function App() {
       if (e.key === 'Escape' && connectionState === 'speaking') {
         e.preventDefault();
         handleInterrupt();
+        return;
+      }
+
+      if (e.code === 'Space' && connectionState === 'disconnected') {
+        e.preventDefault();
+        handleStartSession();
         return;
       }
 
@@ -240,7 +307,7 @@ export default function App() {
     micSensitivity: 5,
     enableTranscription: true,
     enableNoiseFilter: true,
-    model: 'gemini-3.1-flash-live-preview'
+    model: 'gemini-2.5-flash-native-audio-latest'
   });
 
   const wsRef = useRef<WebSocket | null>(null);
@@ -408,7 +475,7 @@ export default function App() {
   }, []);
 
   const handleAssistantSpeak = (text: string, returnState?: ConnectionState) => {
-    const priorState = connectionState;
+    const priorState = connectionStateRef.current;
     setConnectionState('speaking');
     jarvisMemoryEngine.recordTurn('jarvis', text);
     refreshMemoryStats();
@@ -421,7 +488,7 @@ export default function App() {
       },
       onStopSpeaking: () => {
         setOutputVolume(0);
-        const nextState = returnState ?? (priorState === 'disconnected' ? 'disconnected' : 'listening');
+        const nextState = returnState ?? (priorState === 'disconnected' ? 'listening' : priorState);
         setConnectionState(nextState);
         finalizeLastMessage();
       },
@@ -519,6 +586,8 @@ export default function App() {
       const workletNode = new AudioWorkletNode(inputAudioCtx, 'audio-capture-processor');
       processorRef.current = workletNode;
 
+      let consecutiveVoiceFrames = 0;
+
       // Handle audio chunks from the worklet
       workletNode.port.onmessage = (event: MessageEvent) => {
         if (isMutedRef.current) {
@@ -530,6 +599,24 @@ export default function App() {
           const inputData = event.data.data as Float32Array;
           const vol = calculateVolume(inputData);
           setInputVolume(vol);
+
+          // Fast natural interruption (barge-in):
+          // When the assistant is speaking, if the user starts talking,
+          // instantly interrupt local playback and notify the backend.
+          if (connectionStateRef.current === 'speaking') {
+            if (vol > 16) {
+              consecutiveVoiceFrames++;
+              if (consecutiveVoiceFrames >= 2) {
+                console.log(`[Barge-in] User speech detected (vol: ${vol}), interrupting assistant playback`);
+                handleInterrupt();
+                consecutiveVoiceFrames = 0;
+              }
+            } else {
+              consecutiveVoiceFrames = 0;
+            }
+          } else {
+            consecutiveVoiceFrames = 0;
+          }
 
           const base64Pcm = float32ToInt16Base64(inputData);
           if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
@@ -595,7 +682,7 @@ export default function App() {
         type: 'init',
         voiceName: 'Puck', // Default Puck Voice
         systemInstruction: combinedInstruction,
-        model: 'gemini-3.1-flash-live-preview'
+        model: 'gemini-2.5-flash-native-audio-latest'
       }));
     };
 
@@ -616,15 +703,24 @@ export default function App() {
         }
 
         if (msg.type === 'audio' && msg.audio) {
+          // If recently interrupted, drop trailing in-flight audio chunks from the interrupted turn
+          if (Date.now() - lastInterruptTimeRef.current < 500) {
+            console.log('[Audio] Suppressing trailing audio chunk after interrupt');
+            return;
+          }
           setConnectionState('speaking');
           audioQueuePlayerRef.current?.enqueueChunk(msg.audio);
         }
 
         if ((msg.type === 'output_transcription' || msg.type === 'outputTranscript') && msg.text) {
+          if (Date.now() - lastInterruptTimeRef.current < 500) {
+            return;
+          }
           appendTranscriptChunk('agent', msg.text);
         }
 
         if ((msg.type === 'input_transcription' || msg.type === 'inputTranscript') && msg.text) {
+          lastInterruptTimeRef.current = 0;
           appendTranscriptChunk('user', msg.text);
           jarvisMemoryEngine.recordTurn('user', msg.text);
           jarvisMemoryEngine.extractAndMemorize(msg.text, 'user');
@@ -697,6 +793,36 @@ export default function App() {
           setAgentStreamLogs(prev => [...prev.slice(-400), msg.chunk]);
         }
 
+        if (msg.type === 'parallel_agent_stream' && msg.chunk) {
+          const prefix = msg.agentName ? `[${msg.agentName}] ` : '';
+          setAgentStreamLogs(prev => [...prev.slice(-400), `${prefix}${msg.chunk}`]);
+        }
+
+        if (msg.type === 'parallel_batch_started') {
+          const agentNames = msg.tasks?.map((t: any) => t.agentName).join(', ') || 'Agents';
+          setAgentStreamLogs(prev => [...prev.slice(-400), `\n⚡ [PARALLEL MULTI-AGENT SQUAD DEPLOYED: ${agentNames}]\n`]);
+          setAgentSupervisorStatus({
+            status: 'running',
+            goal: `Parallel Execution (${msg.tasks?.length || 0} agents)`
+          });
+        }
+
+        if (msg.type === 'parallel_agent_status') {
+          if (msg.task?.status === 'completed') {
+            setAgentStreamLogs(prev => [...prev.slice(-400), `\n✅ [${msg.task.agentName}] Completed successfully (${msg.task.durationMs || 0}ms)`]);
+          } else if (msg.task?.status === 'failed') {
+            setAgentStreamLogs(prev => [...prev.slice(-400), `\n❌ [${msg.task.agentName}] Failed: ${msg.task.error || 'Unknown error'}`]);
+          }
+        }
+
+        if (msg.type === 'parallel_batch_completed') {
+          setAgentStreamLogs(prev => [...prev.slice(-400), `\n🎉 [ALL PARALLEL TASKS COMPLETED] Succeeded: ${msg.summary?.completed || 0}, Failed: ${msg.summary?.failed || 0}\n`]);
+          setAgentSupervisorStatus({
+            status: 'completed',
+            details: `Completed ${msg.summary?.completed || 0}/${msg.summary?.totalAgents || 0} agents`
+          });
+        }
+
         if (msg.type === 'continuous_plan_started') {
           setContinuousPlan({ ...msg, status: 'running' });
         }
@@ -737,6 +863,7 @@ export default function App() {
 
         if (msg.type === 'task_started' && msg.task) {
           console.log(`[ParallelTask] Task started: ${msg.task.title}`);
+          playStarkChime('start');
           setActiveTasks(prev => {
             const filtered = prev.filter(t => t.id !== msg.task.id);
             return [msg.task, ...filtered];
@@ -765,17 +892,38 @@ export default function App() {
 
         if (msg.type === 'task_completed' && msg.task) {
           console.log(`[ParallelTask] Task completed: ${msg.task.title} (${msg.durationMs}ms)`);
+          playStarkChime('complete');
           setActiveTasks(prev => prev.filter(t => t.id !== msg.task.id));
           setCompletedTasks(prev => [msg.task, ...prev.filter(t => t.id !== msg.task.id)]);
           if (msg.displayCard) {
             setSelectedDisplayCard(msg.displayCard);
           }
+          if (connectionState === 'disconnected') {
+            const agentLabel = msg.task.type === 'hermes' ? 'Hermes' : (msg.task.type === 'prime_agent' ? 'Prime Agent' : msg.task.title);
+            const summary = msg.task.speechSummary || (msg.task.result?.text ? msg.task.result.text.slice(0, 200) : 'Task completed successfully.');
+            handleAssistantSpeak(`Sir, ${agentLabel} has finished the work. ${summary}`);
+          }
         }
 
         if (msg.type === 'task_failed' && msg.task) {
           console.warn(`[ParallelTask] Task failed: ${msg.task.title}`, msg.error);
+          playStarkChime('alert');
           setActiveTasks(prev => prev.filter(t => t.id !== msg.task.id));
           setCompletedTasks(prev => [msg.task, ...prev.filter(t => t.id !== msg.task.id)]);
+          if (connectionState === 'disconnected') {
+            const agentLabel = msg.task.type === 'hermes' ? 'Hermes' : msg.task.title;
+            handleAssistantSpeak(`Sir, ${agentLabel} encountered an issue: ${msg.error || 'Execution failed'}`);
+          }
+        }
+
+        if (msg.type === 'proactive_notification' && msg.task) {
+          console.log(`[ParallelTask] Proactive notification:`, msg.task.title);
+          if (msg.displayCard) {
+            setSelectedDisplayCard(msg.displayCard);
+          }
+          if (connectionState === 'disconnected' && msg.spokenText) {
+            handleAssistantSpeak(msg.spokenText);
+          }
         }
 
         if (msg.type === 'task_cancelled') {
@@ -876,7 +1024,7 @@ export default function App() {
       setConnectionState('listening');
       startMicStream();
       const greeting = `J.A.R.V.I.S. online, Sir. 4-tier cognitive memory matrix is initialized and ready for your directives.`;
-      handleAssistantSpeak(greeting);
+      handleAssistantSpeak(greeting, 'listening');
       return;
     }
     connectWebSocket();
@@ -902,6 +1050,7 @@ export default function App() {
   };
 
   const handleInterrupt = () => {
+    lastInterruptTimeRef.current = Date.now();
     if (isDemoMode) {
       demoVoiceInstance.stop();
       setOutputVolume(0);
@@ -916,6 +1065,7 @@ export default function App() {
   };
 
   const handleSendPrompt = (promptText: string) => {
+    lastInterruptTimeRef.current = 0;
     audioQueuePlayerRef.current?.prewarm();
 
     const trimmed = promptText.trim();
@@ -1108,11 +1258,10 @@ export default function App() {
       }));
     } else {
       // Disconnected / Offline query: Answer prompt without forcibly activating live voice session or mic
-      const wasDisconnected = connectionState === 'disconnected';
       if (isDemoMode) {
         setConnectionState('speaking');
         const response = demoVoiceInstance.generateResponse(promptText, 'J.A.R.V.I.S.');
-        handleAssistantSpeak(response, wasDisconnected ? 'disconnected' : undefined);
+        handleAssistantSpeak(response, 'listening');
       } else {
         (async () => {
           try {
@@ -1126,15 +1275,15 @@ export default function App() {
             });
             const data = await res.json();
             if (data && data.text) {
-              handleAssistantSpeak(data.text, wasDisconnected ? 'disconnected' : undefined);
+              handleAssistantSpeak(data.text, 'listening');
             } else {
               const fallback = demoVoiceInstance.generateResponse(promptText, 'J.A.R.V.I.S.');
-              handleAssistantSpeak(fallback, wasDisconnected ? 'disconnected' : undefined);
+              handleAssistantSpeak(fallback, 'listening');
             }
           } catch (err) {
             console.warn('[Text Command] Fallback to demo voice response:', err);
             const fallback = demoVoiceInstance.generateResponse(promptText, 'J.A.R.V.I.S.');
-            handleAssistantSpeak(fallback, wasDisconnected ? 'disconnected' : undefined);
+            handleAssistantSpeak(fallback, 'listening');
           }
         })();
       }
@@ -1142,128 +1291,106 @@ export default function App() {
   };
 
   return (
-    <div className="h-screen w-screen bg-[#030712] text-slate-100 flex flex-col font-sans antialiased relative overflow-hidden selection:bg-cyan-500/30 selection:text-cyan-200">
-      
-      {/* Background Arc-Reactor Ambient Glow */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-gradient-to-tr from-cyan-600/10 via-blue-600/10 to-transparent rounded-full blur-3xl" />
-        <div className="absolute -top-32 left-1/4 w-96 h-96 bg-cyan-500/5 rounded-full blur-3xl" />
-      </div>
+    <div className="h-screen w-screen bg-[#01060c] text-slate-100 relative overflow-hidden selection:bg-cyan-500/30 selection:text-cyan-200 font-sans">
+      {/* 1. Full 3D Three.js Holographic Arc Reactor Scene */}
+      <Scene />
 
-      {/* J.A.R.V.I.S. Header */}
-      <Header
-        connectionState={connectionState}
-        selectedPersonaName={selectedPersona.name}
-        isDemoMode={isDemoMode}
+      {/* 2. Cybernetic Stark HUD (Corner reticles, telemetry rails, blades, typing console, sound engine control) */}
+      <Hud
+        onSendPrompt={handleSendPrompt}
+        onAssistantSpeak={handleAssistantSpeak}
+        onInterrupt={handleInterrupt}
         onOpenMemoryHUD={() => setIsMemoryHUDOpen(true)}
+        memoryCount={memoryCount}
         onOpenCeoHUD={() => setIsCeoHUDOpen(true)}
         onOpenSecurityHUD={() => setIsSecurityHUDOpen(true)}
         onToggleAgentSpace={() => setActiveView(prev => prev === 'agent-space' ? 'main' : 'agent-space')}
-        memoryCount={memoryCount}
-        currentUser={currentUser}
         onOpenConnectors={() => setActiveView('connectors')}
+        onOpenAgentSquad={() => setIsAgentSquadOpen(true)}
+        connectionState={connectionState}
+        isMuted={isMuted}
+        onToggleMute={() => setIsMuted(!isMuted)}
+        onStartSession={handleStartSession}
+        onStopSession={handleStopSession}
+        onToggleVision={handleToggleVision}
+        isVisionActive={isVisionActive}
+        visionMode={visionMode}
       />
 
-      {/* Main Workspace Layout */}
-      <div className="flex-1 min-h-0 w-full relative z-10 flex flex-col items-center justify-between overflow-y-auto">
-        {activeView === 'main' && (
-          <main className="w-full max-w-4xl flex-1 flex flex-col items-center justify-center p-4 sm:p-6 relative">
+      {/* Demo Mode Notice Toast if active */}
+      {isDemoMode && !errorMsg && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-30 pointer-events-auto">
+          <div className="px-4 py-1.5 rounded-full bg-cyan-950/80 border border-cyan-400/40 text-cyan-300 text-xs flex items-center gap-2 backdrop-blur-md shadow-[0_0_15px_rgba(0,240,255,0.25)]">
+            <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+            <span className="font-mono text-[11px]">
+              DEMO VOICE ACTIVE // 3D ARC REACTOR &amp; 4-TIER MEMORY ENGAGED
+            </span>
+          </div>
+        </div>
+      )}
 
-            {/* Demo Mode Notice Banner */}
-            {isDemoMode && !errorMsg && (
-              <div className="w-full max-w-xl mb-3 p-3 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs flex items-center justify-between gap-3 backdrop-blur-md animate-fade-in shadow-lg">
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
-                  <span className="font-mono">
-                    <strong>J.A.R.V.I.S. Demo Mode Active:</strong> Voice synthesis, 4-tier memory banks &amp; Arc-Reactor are running.
-                  </span>
-                </div>
-              </div>
-            )}
+      {/* Error Banner */}
+      {errorMsg && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-30 pointer-events-auto max-w-lg w-full px-4">
+          <div className="p-3 rounded-xl text-xs flex items-center justify-between gap-3 backdrop-blur-md bg-cyan-950/90 border border-cyan-400/50 text-cyan-200 shadow-2xl">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-cyan-400 shrink-0" />
+              <span className="text-[11px] font-mono">{errorMsg}</span>
+            </div>
+            <button
+              onClick={() => {
+                setIsDemoMode(true);
+                setErrorMsg(null);
+                setConnectionState('disconnected');
+              }}
+              className="px-2.5 py-1 bg-cyan-500 hover:bg-cyan-400 text-slate-950 rounded font-bold text-[10px] font-mono shrink-0"
+            >
+              Demo Voice
+            </button>
+          </div>
+        </div>
+      )}
 
-            {/* Error Banner */}
-            {errorMsg && (
-              <div className="w-full max-w-xl mb-3 p-3.5 rounded-2xl text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 backdrop-blur-md animate-fade-in bg-cyan-950/60 border border-cyan-500/30 text-cyan-200 shadow-xl">
-                <div className="flex items-start gap-2.5 flex-1">
-                  <AlertCircle className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
-                  <div className="flex flex-col gap-0.5">
-                    <span className="font-bold text-white font-mono">Neural Link Notice</span>
-                    <span className="text-[11px] leading-relaxed text-slate-300">{errorMsg}</span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
-                  <button
-                    onClick={() => {
-                      setIsDemoMode(true);
-                      setErrorMsg(null);
-                      setConnectionState('disconnected');
-                    }}
-                    className="px-3 py-1.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 rounded-xl font-bold transition-all text-[11px] shadow-sm font-mono"
-                  >
-                    Use Demo Voice
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (connectionState === 'disconnected' || connectionState === 'error') {
-                        handleStartSession();
-                      } else {
-                        startMicStream();
-                      }
-                    }}
-                    className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl font-medium border border-cyan-500/20 transition-colors flex items-center gap-1 text-[11px] font-mono"
-                  >
-                    <RefreshCw className="w-3 h-3" /> Retry
-                  </button>
-                </div>
-              </div>
-            )}
+      {/* Active Skill Display Card (Hermes Sub-Agent Response, etc.) */}
+      {selectedDisplayCard && (
+        <div className="fixed top-24 right-28 z-40 max-w-md w-full animate-fade-in pointer-events-auto">
+          <SkillDisplayCard
+            card={selectedDisplayCard}
+            onDismiss={() => setSelectedDisplayCard(null)}
+          />
+        </div>
+      )}
 
-            {/* Core Interactive Arc Reactor Voice Visualizer */}
-            <VoiceVisualizer
-              connectionState={connectionState}
-              inputVolume={inputVolume}
-              outputVolume={outputVolume}
-              personaName={selectedPersona.name}
-              personaColor="cyan"
-              isMuted={isMuted}
-              onToggleMute={() => setIsMuted(!isMuted)}
-              onStartSession={handleStartSession}
-              onStopSession={handleStopSession}
-              onInterrupt={handleInterrupt}
-              isVisionActive={isVisionActive}
-              visionMode={visionMode}
-              onToggleVision={handleToggleVision}
-            />
+      {/* Parallel Task Dock for Sub-Agents & Background Executions */}
+      {(activeTasks.length > 0 || completedTasks.length > 0) && (
+        <div className="fixed bottom-28 right-28 z-30 pointer-events-auto max-w-md w-full">
+          <ParallelTaskDock
+            activeTasks={activeTasks}
+            completedTasks={completedTasks}
+            onCancelTask={handleCancelTask}
+            onSelectDisplayCard={(card) => setSelectedDisplayCard(card)}
+            onDismissCompletedTask={handleDismissCompletedTask}
+          />
+        </div>
+      )}
 
-            {/* J.A.R.V.I.S. Command Input Bar */}
-            <CommandInputBar
-              onSendPrompt={handleSendPrompt}
-              isProcessing={connectionState === 'speaking' || connectionState === 'connecting'}
-            />
-
-            {/* Active Skill Display Card (Hermes Sub-Agent Response, etc.) */}
-            {selectedDisplayCard && (
-              <SkillDisplayCard
-                card={selectedDisplayCard}
-                onDismiss={() => setSelectedDisplayCard(null)}
-              />
-            )}
-
-            {/* Parallel Task Dock for Sub-Agents & Background Executions */}
-            <ParallelTaskDock
-              activeTasks={activeTasks}
-              completedTasks={completedTasks}
-              onCancelTask={handleCancelTask}
-              onSelectDisplayCard={(card) => setSelectedDisplayCard(card)}
-              onDismissCompletedTask={handleDismissCompletedTask}
-            />
-          </main>
-        )}
-
-        {activeView === 'agent-space' && (
-          <AgentSpace streamLogs={agentStreamLogs} />
-        )}
-      </div>
+      {/* Full-Screen Agent Space View */}
+      {activeView === 'agent-space' && (
+        <div className="fixed inset-0 z-40 bg-[#060a12]/95 backdrop-blur-2xl p-4 sm:p-8 overflow-y-auto pt-24 animate-in fade-in duration-200">
+          <div className="max-w-7xl mx-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-mono font-bold text-cyan-400">AGENT SPACE // MULTI-AGENT SWARM</h2>
+              <button
+                onClick={() => setActiveView('main')}
+                className="px-4 py-1.5 rounded-lg border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/20 font-mono text-xs"
+              >
+                RETURN TO HUD ↵
+              </button>
+            </div>
+            <AgentSpace streamLogs={agentStreamLogs} />
+          </div>
+        </div>
+      )}
 
       {/* J.A.R.V.I.S. 4-Tier Memory Matrix Hologram HUD */}
       <JarvisMemoryHUD

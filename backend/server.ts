@@ -4,7 +4,7 @@ import path from 'path';
 import { exec, execFile } from 'child_process';
 import { WebSocketServer, WebSocket } from 'ws';
 import { createServer as createViteServer } from 'vite';
-import { GoogleGenAI, Modality, LiveServerMessage, Type } from '@google/genai';
+import { GoogleGenAI, Modality, LiveServerMessage, Type, StartSensitivity, EndSensitivity, ActivityHandling } from '@google/genai';
 import fs from 'fs';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
@@ -61,6 +61,8 @@ import { cliAgentBridge } from './system_modules/intelligent_system/cli_agent_br
 import { agentSessionManager } from './system_modules/intelligent_system/agent_session_manager';
 import { a2aHub } from './system_modules/intelligent_system/a2a_hub';
 import { cliSupervisorLoop } from './system_modules/intelligent_system/cli_supervisor_loop';
+import { parallelAgentOrchestrator } from './system_modules/intelligent_system/parallel_agent_orchestrator';
+import { tmuxSessionBus } from './system_modules/intelligent_system/tmux_session_bus';
 
 // ─── Parallel Task Manager & Hermes Sub-Agent Suite ───────────────────────
 import { parallelTaskManager } from './parallel_task_manager';
@@ -273,6 +275,16 @@ async function startServer() {
   let activeWss: WebSocketServer | null = null;
 
   openShellRuntime.setBroadcaster((payload) => {
+    if (!activeWss) return;
+    const msg = JSON.stringify(payload);
+    activeWss.clients.forEach((client) => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(msg);
+      }
+    });
+  });
+
+  parallelAgentOrchestrator.setBroadcaster((payload) => {
     if (!activeWss) return;
     const msg = JSON.stringify(payload);
     activeWss.clients.forEach((client) => {
@@ -562,6 +574,112 @@ async function startServer() {
         }
       });
       res.json({ result });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // ─── Parallel Multi-Agent Orchestration & Tmux Endpoints ──────────────────
+
+  // Dispatch multi-agents at a time concurrently (AGY, OMH, Codex, Hermes, OpenClaw)
+  app.post('/api/agents/parallel/dispatch', async (req, res) => {
+    try {
+      const { tasks, mode } = req.body;
+      if (!Array.isArray(tasks) || tasks.length === 0) {
+        return res.status(400).json({ error: 'tasks array is required and must not be empty.' });
+      }
+
+      const formatted = tasks.map((t: any) => ({
+        agentId: t.agentId,
+        prompt: t.prompt,
+        mode: t.mode || mode || (tmuxSessionBus.checkInstallation() ? 'tmux' : 'direct'),
+        cwd: t.cwd,
+        timeoutMs: t.timeoutMs,
+        openShellEnabled: t.openShellEnabled !== false
+      }));
+
+      const batch = await parallelAgentOrchestrator.dispatchParallelBatch(formatted);
+      res.json({
+        success: true,
+        batchId: batch.batchId,
+        tasks: batch.tasks,
+        tmuxAvailable: tmuxSessionBus.checkInstallation()
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Get active and recent parallel multi-agent tasks
+  app.get('/api/agents/parallel/tasks', (_req, res) => {
+    try {
+      res.json({
+        active: parallelAgentOrchestrator.getActiveTasks(),
+        all: parallelAgentOrchestrator.getAllTasks()
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Cancel an active parallel agent task
+  app.post('/api/agents/parallel/cancel/:taskId', (req, res) => {
+    try {
+      const { taskId } = req.params;
+      const cancelled = parallelAgentOrchestrator.cancelTask(taskId);
+      res.json({ success: cancelled });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Cancel all active parallel tasks
+  app.post('/api/agents/parallel/cancel-all', (_req, res) => {
+    try {
+      parallelAgentOrchestrator.cancelAll();
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Query active Tmux sessions
+  app.get('/api/agents/tmux/sessions', async (_req, res) => {
+    try {
+      const sessions = await tmuxSessionBus.listJarvisSessions();
+      res.json({
+        tmuxAvailable: tmuxSessionBus.checkInstallation(),
+        tmuxPath: tmuxSessionBus.getTmuxPath(),
+        sessions
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Capture output of a specific Tmux session
+  app.post('/api/agents/tmux/capture', async (req, res) => {
+    try {
+      const { sessionName, lines } = req.body;
+      if (!sessionName) {
+        return res.status(400).json({ error: 'sessionName is required.' });
+      }
+      const output = await tmuxSessionBus.capturePaneOutput(sessionName, lines || 300);
+      res.json({ sessionName, output });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Send input to an active Tmux session
+  app.post('/api/agents/tmux/send', async (req, res) => {
+    try {
+      const { sessionName, input } = req.body;
+      if (!sessionName || input === undefined) {
+        return res.status(400).json({ error: 'sessionName and input are required.' });
+      }
+      const sent = await tmuxSessionBus.sendInput(sessionName, input);
+      res.json({ success: sent });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
@@ -1026,6 +1144,109 @@ For multiple desktop actions in one request, call execute_continuous_plan with o
     let session: any = null;
     let currentTurnModelText = '';
     let currentTurnUserText = '';
+    let isModelSpeaking = false;
+    let isInterrupted = false;
+    let lastUserAudioTime = 0;
+    let lastModelAudioTime = 0;
+    const cadenceQueue: { task: any; type: 'completed' | 'failed' }[] = [];
+    let cadenceTimer: NodeJS.Timeout | null = null;
+
+    function drainCadenceQueue() {
+      if (cadenceQueue.length === 0) return;
+      if (!session) return;
+      if (clientWs.readyState !== WebSocket.OPEN) return;
+
+      const now = Date.now();
+      // Wait until model is not speaking and user hasn't sent audio for at least 800ms
+      if (isModelSpeaking || (now - lastUserAudioTime < 800)) {
+        if (!cadenceTimer) {
+          cadenceTimer = setTimeout(() => {
+            cadenceTimer = null;
+            drainCadenceQueue();
+          }, 350);
+        }
+        return;
+      }
+
+      const item = cadenceQueue.shift();
+      if (!item) return;
+
+      const task = item.task;
+      const agentName = task.type === 'hermes' ? 'Hermes' : (task.type === 'prime_agent' ? 'Prime Agent' : (task.type === 'ultron' ? 'Ultron' : task.type.toUpperCase()));
+      const rawOutcome = task.speechSummary || (task.result?.text ? task.result.text.slice(0, 300) : (item.type === 'completed' ? 'Task completed successfully.' : (task.error || 'Execution encountered an error.')));
+      const cleanOutcome = String(rawOutcome).replace(/\n+/g, ' ').slice(0, 250);
+
+      const proactivePrompt = `[PROACTIVE SUB-AGENT MISSION UPDATE]
+Sub-Agent: ${agentName}
+Task: ${task.title}
+Status: ${item.type === 'completed' ? 'COMPLETED' : 'FAILED'}
+Duration: ${Math.round((task.durationMs || 0) / 1000)} seconds
+Summary of Results:
+${cleanOutcome}
+
+DIRECTIVE FOR J.A.R.V.I.S.:
+Proactively announce to ${OPERATOR_NAME} in your signature polite, refined British persona that ${agentName} has completed the delegated task "${task.title}".
+Concisely deliver the key findings or results in 1-2 natural sentences, and let him know the full technical details are available on his screen.`;
+
+      try {
+        if (typeof session.sendClientContent === 'function') {
+          session.sendClientContent({
+            turns: [
+              {
+                role: 'user',
+                parts: [{ text: proactivePrompt }]
+              }
+            ],
+            turnComplete: true
+          });
+          console.log(`[Proactive Cadence] Injected live announcement for ${agentName} into Gemini Live (${task.id})`);
+        } else if (typeof session.sendRealtimeInput === 'function') {
+          session.sendRealtimeInput({ text: proactivePrompt });
+          console.log(`[Proactive Cadence] Injected realtime text for ${agentName} into Gemini Live (${task.id})`);
+        }
+      } catch (err) {
+        console.warn('[Proactive Cadence] Could not inject proactive notification into Gemini Live:', err);
+      }
+    }
+
+    function scheduleCadenceDrain(delayMs = 500) {
+      if (cadenceTimer) clearTimeout(cadenceTimer);
+      cadenceTimer = setTimeout(() => {
+        cadenceTimer = null;
+        drainCadenceQueue();
+      }, delayMs);
+    }
+
+    const unsubscribeTaskDone = parallelTaskManager.onTaskCompleted((evt) => {
+      if (!evt.clientWs || evt.clientWs === clientWs) {
+        cadenceQueue.push({ task: evt.task, type: 'completed' });
+        if (clientWs.readyState === WebSocket.OPEN) {
+          clientWs.send(JSON.stringify({
+            type: 'proactive_notification',
+            task: evt.task,
+            speechSummary: evt.speechSummary,
+            displayCard: evt.displayCard,
+            spokenText: `Sir, ${evt.task.type === 'hermes' ? 'Hermes' : evt.task.title} has completed the delegated task.`
+          }));
+        }
+        scheduleCadenceDrain(300);
+      }
+    });
+
+    const unsubscribeTaskFail = parallelTaskManager.onTaskFailed((evt) => {
+      if (!evt.clientWs || evt.clientWs === clientWs) {
+        cadenceQueue.push({ task: evt.task, type: 'failed' });
+        if (clientWs.readyState === WebSocket.OPEN) {
+          clientWs.send(JSON.stringify({
+            type: 'proactive_notification',
+            task: evt.task,
+            error: evt.error,
+            spokenText: `Sir, ${evt.task.type === 'hermes' ? 'Hermes' : evt.task.title} encountered an issue: ${evt.error || 'Failed'}`
+          }));
+        }
+        scheduleCadenceDrain(300);
+      }
+    });
 
     clientWs.on('error', (err) => {
       console.error('[Live WS] Client socket error:', err);
@@ -1051,11 +1272,11 @@ For multiple desktop actions in one request, call execute_continuous_plan with o
         const voiceName = config.voiceName || 'Puck';
         dualPathOrchestrator.setVoiceName(voiceName);
         const candidateModels = [
+          'gemini-2.5-flash-native-audio-latest',
           config.model,
-          'gemini-8-flash-live',
-          'gemini-3.1-flash-live-preview',
-          'gemini-2.5-flash-native-audio-preview-12-2025'
-        ].filter(m => m && m !== 'gemini-3.8-live') as string[];
+          'gemini-2.5-flash-native-audio-preview-12-2025',
+          'gemini-3.1-flash-live-preview'
+        ].filter(m => m && m !== 'gemini-3.8-live' && m !== 'gemini-8-flash-live' && m !== 'gemini-2.0-flash-exp') as string[];
         const uniqueModels = Array.from(new Set(candidateModels));
 
         const memRes = await runMemoryBridge(['context', 'jarvis-prime']);
@@ -1573,77 +1794,98 @@ For a multi-action desktop request, call execute_continuous_plan with ordered GU
             session = await ai.live.connect({
               model: modelToTry,
               config: {
-            responseModalities: [Modality.AUDIO],
-            speechConfig: {
-              voiceConfig: { prebuiltVoiceConfig: { voiceName } }
+              responseModalities: [Modality.AUDIO],
+              speechConfig: {
+                voiceConfig: { prebuiltVoiceConfig: { voiceName } }
+              },
+              systemInstruction,
+              tools: toolsList,
+              outputAudioTranscription: {},
+              inputAudioTranscription: {},
+              realtimeInputConfig: {
+                automaticActivityDetection: {
+                  disabled: false,
+                  startOfSpeechSensitivity: StartSensitivity.START_SENSITIVITY_HIGH,
+                  endOfSpeechSensitivity: EndSensitivity.END_SENSITIVITY_HIGH,
+                  prefixPaddingMs: 20,
+                  silenceDurationMs: 140
+                },
+                activityHandling: ActivityHandling.START_OF_ACTIVITY_INTERRUPTS
+              }
             },
-            systemInstruction,
-            tools: toolsList,
-            outputAudioTranscription: {},
-            inputAudioTranscription: {},
-          },
-          callbacks: {
-            onmessage: async (message: LiveServerMessage) => {
-              if (clientWs.readyState !== WebSocket.OPEN) return;
+            callbacks: {
+              onmessage: async (message: LiveServerMessage) => {
+                if (clientWs.readyState !== WebSocket.OPEN) return;
 
-              try {
-                // Handle server content parts
-                const parts = message.serverContent?.modelTurn?.parts;
-                if (parts && parts.length > 0) {
-                  for (const part of parts) {
-                    if (part.inlineData?.data) {
-                      clientWs.send(JSON.stringify({
-                        type: 'audio',
-                        audio: part.inlineData.data
-                      }));
-                    }
-                    if (part.text) {
-                      currentTurnModelText += part.text;
-                      clientWs.send(JSON.stringify({
-                        type: 'output_transcription',
-                        text: part.text
-                      }));
+                try {
+                  // Handle server content parts
+                  const parts = message.serverContent?.modelTurn?.parts;
+                  if (parts && parts.length > 0) {
+                    if (isInterrupted) {
+                      console.log('[Live WS] Suppressing model audio/parts due to active interrupt');
+                    } else {
+                      isModelSpeaking = true;
+                      lastModelAudioTime = Date.now();
+                      for (const part of parts) {
+                        if (part.inlineData?.data) {
+                          clientWs.send(JSON.stringify({
+                            type: 'audio',
+                            audio: part.inlineData.data
+                          }));
+                        }
+                        if (part.text) {
+                          currentTurnModelText += part.text;
+                          clientWs.send(JSON.stringify({
+                            type: 'output_transcription',
+                            text: part.text
+                          }));
+                        }
+                      }
                     }
                   }
-                }
 
-                // Handle output transcription stream from serverContent (synthesized voice text)
-                const outputTranscript = (message as any).serverContent?.outputTranscription?.text || (message as any).outputTranscription?.text;
-                if (outputTranscript) {
-                  currentTurnModelText += outputTranscript;
-                  clientWs.send(JSON.stringify({
-                    type: 'output_transcription',
-                    text: outputTranscript
-                  }));
-                }
+                  // Handle output transcription stream from serverContent (synthesized voice text)
+                  const outputTranscript = (message as any).serverContent?.outputTranscription?.text || (message as any).outputTranscription?.text;
+                  if (outputTranscript && !isInterrupted) {
+                    currentTurnModelText += outputTranscript;
+                    clientWs.send(JSON.stringify({
+                      type: 'output_transcription',
+                      text: outputTranscript
+                    }));
+                  }
 
-                // Handle input audio transcription if emitted
-                const inputTranscript = (message as any).serverContent?.inputTranscription?.text || (message as any).inputTranscription?.text;
-                if (inputTranscript) {
-                  currentTurnUserText += ' ' + inputTranscript;
-                  clientWs.send(JSON.stringify({
-                    type: 'input_transcription',
-                    text: inputTranscript
-                  }));
+                  // Handle input audio transcription if emitted
+                  const inputTranscript = (message as any).serverContent?.inputTranscription?.text || (message as any).inputTranscription?.text;
+                  if (inputTranscript) {
+                    isInterrupted = false; // User has spoken a new utterance, clear interruption
+                    currentTurnUserText += ' ' + inputTranscript;
+                    clientWs.send(JSON.stringify({
+                      type: 'input_transcription',
+                      text: inputTranscript
+                    }));
 
-                  // Mid-sentence fast tool triggering via Groq (Ultra-low latency, sub-100ms)
-                  groqFastActuator.processStreamingSpeech(currentTurnUserText, clientWs, runMemoryBridge);
+                    // Mid-sentence fast tool triggering via Groq (Ultra-low latency, sub-100ms)
+                    groqFastActuator.processStreamingSpeech(currentTurnUserText, clientWs, runMemoryBridge);
+                  }
 
-                  // J.A.R.V.I.S. Dual-Path Execution Engine (<100ms routing, sub-300ms instant vocal filler, and async agent handoff)
-                  dualPathOrchestrator.processUtterance(currentTurnUserText, clientWs, { runMemoryBridge });
-                }
+                  // Handle Interrupted
+                  if (message.serverContent?.interrupted) {
+                    console.log('[Live WS] Gemini Live reported generation interrupted');
+                    isInterrupted = true;
+                    isModelSpeaking = false;
+                    currentTurnModelText = '';
+                    groqFastActuator.resetTurn();
+                    dualPathOrchestrator.handleInterruption(clientWs);
+                    clientWs.send(JSON.stringify({ type: 'interrupted' }));
+                    scheduleCadenceDrain(400);
+                  }
 
-                // Handle Interrupted
-                if (message.serverContent?.interrupted) {
-                  currentTurnModelText = '';
-                  groqFastActuator.resetTurn();
-                  dualPathOrchestrator.handleInterruption(clientWs);
-                  clientWs.send(JSON.stringify({ type: 'interrupted' }));
-                }
-
-                // Handle Turn Complete and Trigger Dynamic Self-Improving Memory Mining
-                if (message.serverContent?.turnComplete) {
-                  clientWs.send(JSON.stringify({ type: 'turn_complete' }));
+                  // Handle Turn Complete and Trigger Dynamic Self-Improving Memory Mining
+                  if (message.serverContent?.turnComplete) {
+                    isModelSpeaking = false;
+                    isInterrupted = false;
+                    clientWs.send(JSON.stringify({ type: 'turn_complete' }));
+                    scheduleCadenceDrain(600);
 
                   const userTurn = currentTurnUserText.trim();
                   const modelTurn = currentTurnModelText.trim();
@@ -2318,7 +2560,7 @@ For a multi-action desktop request, call execute_continuous_plan with ordered GU
                             id: callId,
                             name,
                             response: {
-                              output: {
+                              result: {
                                 status: 'completed',
                                 result: fastResult.result,
                                 displayCard: fastResult.displayCard
@@ -2333,10 +2575,9 @@ For a multi-action desktop request, call execute_continuous_plan with ordered GU
                           id: callId,
                           name,
                           response: {
-                            output: {
+                            result: {
                               status: 'in_progress',
-                              verbal_directive: `I have delegated "${prompt.slice(0, 50)}" to Hermes in the background, Sir. Announce to ${OPERATOR_NAME} in one concise, natural sentence that Hermes is on it, and remain listening.`,
-                              message: 'Executing in background via ParallelTaskManager.'
+                              message: `Task delegated to Hermes sub-agent in background. Directive: Inform operator ${OPERATOR_NAME} in one brief, natural sentence that Hermes has begun working on "${prompt.slice(0, 50)}", and you will proactively report back the moment it completes.`
                             }
                           }
                         };
@@ -2348,7 +2589,7 @@ For a multi-action desktop request, call execute_continuous_plan with ordered GU
                         return {
                           id: callId,
                           name,
-                          response: { output: syncRes }
+                          response: { result: syncRes }
                         };
                       }
 
@@ -2359,7 +2600,7 @@ For a multi-action desktop request, call execute_continuous_plan with ordered GU
                         return {
                           id: callId,
                           name,
-                          response: { output: repair.result, repaired: true, strategy: repair.strategy }
+                          response: { result: { output: repair.result, repaired: true, strategy: repair.strategy } }
                         };
                       }
 
@@ -2367,7 +2608,7 @@ For a multi-action desktop request, call execute_continuous_plan with ordered GU
                       return {
                         id: callId,
                         name,
-                        response: { output: { error: `Tool ${name} not recognized` } }
+                        response: { error: `Tool ${name} not recognized` }
                       };
                     } catch (toolErr: any) {
                       console.error(`[Live WS] Tool execution error in '${name}':`, toolErr);
@@ -2376,13 +2617,13 @@ For a multi-action desktop request, call execute_continuous_plan with ordered GU
                         return {
                           id: callId,
                           name,
-                          response: { output: repair.result, repaired: true, strategy: repair.strategy }
+                          response: { result: { output: repair.result, repaired: true, strategy: repair.strategy } }
                         };
                       }
                       return {
                         id: callId,
                         name,
-                        response: { output: { error: toolErr?.message || 'Execution error' } }
+                        response: { error: toolErr?.message || 'Execution error' }
                       };
                     }
                   }));
@@ -2390,7 +2631,11 @@ For a multi-action desktop request, call execute_continuous_plan with ordered GU
                   // Reply with all function responses simultaneously in one frame
                   if (session && functionResponses.length > 0) {
                     session.sendToolResponse({
-                      functionResponses
+                      functionResponses: functionResponses.map((fr: any) => ({
+                        ...(fr.id ? { id: fr.id } : {}),
+                        name: fr.name,
+                        response: fr.response
+                      }))
                     });
                   }
                 }
@@ -2474,10 +2719,11 @@ For a multi-action desktop request, call execute_continuous_plan with ordered GU
         }
 
         if (msg.type === 'audio' && msg.audio) {
+          lastUserAudioTime = Date.now();
           if (session) {
             try {
               session.sendRealtimeInput({
-                audio: {
+                media: {
                   data: msg.audio,
                   mimeType: 'audio/pcm;rate=16000'
                 }
@@ -2488,18 +2734,34 @@ For a multi-action desktop request, call execute_continuous_plan with ordered GU
           }
         }
 
+        if (msg.type === 'interrupt') {
+          console.log('[Live WS] Client requested instant interruption');
+          isInterrupted = true;
+          isModelSpeaking = false;
+          currentTurnModelText = '';
+          groqFastActuator.resetTurn();
+          dualPathOrchestrator.handleInterruption(clientWs);
+          if (clientWs.readyState === WebSocket.OPEN) {
+            clientWs.send(JSON.stringify({ type: 'interrupted' }));
+          }
+          return;
+        }
+
         if (msg.type === 'text' && msg.text) {
+          isInterrupted = false;
           currentTurnUserText += ' ' + msg.text;
           groqFastActuator.processStreamingSpeech(currentTurnUserText, clientWs, runMemoryBridge);
-          dualPathOrchestrator.processUtterance(msg.text, clientWs, { runMemoryBridge });
           if (session) {
             try {
-              session.sendRealtimeInput({
-                text: msg.text
+              session.sendClientContent({
+                turns: [{ role: 'user', parts: [{ text: msg.text }] }],
+                turnComplete: true
               });
             } catch (err) {
-              console.error('[Live WS] Error sending text input:', err);
+              console.error('[Live WS] Error sending text content:', err);
             }
+          } else {
+            dualPathOrchestrator.processUtterance(msg.text, clientWs, { runMemoryBridge });
           }
         }
 
@@ -2507,7 +2769,7 @@ For a multi-action desktop request, call execute_continuous_plan with ordered GU
           if (session) {
             try {
               session.sendRealtimeInput({
-                video: {
+                media: {
                   data: msg.image,
                   mimeType: msg.mimeType || 'image/jpeg'
                 }
@@ -2574,6 +2836,12 @@ For a multi-action desktop request, call execute_continuous_plan with ordered GU
     clientWs.on('close', () => {
       console.log('[Live WS] Client disconnected');
       parallelTaskManager.unsubscribe(clientWs);
+      unsubscribeTaskDone();
+      unsubscribeTaskFail();
+      if (cadenceTimer) {
+        clearTimeout(cadenceTimer);
+        cadenceTimer = null;
+      }
       continuousExecutionQueue.cancelForClient(clientWs);
       dualPathOrchestrator.handleInterruption(clientWs);
       if (session) {
@@ -2622,10 +2890,12 @@ For a multi-action desktop request, call execute_continuous_plan with ordered GU
 
     // Start zero-overhead autonomous AGI background pulse
     autonomousEngine.start(10000, (alert, data) => {
-      console.log(`[Autonomous Alert] ${alert}`);
+      if (alert !== 'heartbeat_telemetry') {
+        console.log(`[Autonomous Alert] ${alert}`);
+      }
       if (activeWss) {
         const payload = JSON.stringify({
-          type: data?.type || 'proactive_notification',
+          type: data?.type || (alert === 'heartbeat_telemetry' ? 'autonomous_heartbeat' : 'proactive_notification'),
           text: alert,
           data,
           timestamp: Date.now()
