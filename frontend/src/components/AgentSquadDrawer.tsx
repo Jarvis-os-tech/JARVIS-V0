@@ -12,8 +12,10 @@ import {
   Cpu,
   Globe,
   Radio,
-  Send,
-  Trash2
+  Trash2,
+  Shield,
+  Zap,
+  CheckSquare
 } from 'lucide-react';
 
 interface AgentCardItem {
@@ -23,6 +25,13 @@ interface AgentCardItem {
   version: string;
   domain: 'cli' | 'ide' | 'web' | 'core';
   status?: string;
+  capabilities?: {
+    openShell?: {
+      enabled: boolean;
+      mode?: string;
+      policy?: string;
+    };
+  };
   skills: Array<{ id: string; name: string; description: string }>;
 }
 
@@ -51,7 +60,10 @@ export const AgentSquadDrawer: React.FC<AgentSquadDrawerProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'cli' | 'ide' | 'web' | 'a2a'>('cli');
   const [agents, setAgents] = useState<AgentCardItem[]>([]);
-  const [selectedAgent, setSelectedAgent] = useState<string>('claude');
+  const [selectedAgent, setSelectedAgent] = useState<string>('agy');
+  const [selectedParallelAgents, setSelectedParallelAgents] = useState<string[]>(['agy', 'omh', 'codex', 'hermes', 'openclaw']);
+  const [isParallelMode, setIsParallelMode] = useState<boolean>(true);
+  const [executionMode, setExecutionMode] = useState<'tmux' | 'direct'>('tmux');
   const [goalInput, setGoalInput] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const terminalEndRef = useRef<HTMLDivElement>(null);
@@ -77,21 +89,52 @@ export const AgentSquadDrawer: React.FC<AgentSquadDrawerProps> = ({
     terminalEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [streamLogs]);
 
-  const handleLaunchSupervisor = async () => {
+  const getAgentId = (agent: AgentCardItem): string => {
+    return agent.url.split('/').pop() || agent.name.toLowerCase().split(' ')[0];
+  };
+
+  const toggleParallelAgent = (agentId: string) => {
+    setSelectedParallelAgents(prev =>
+      prev.includes(agentId)
+        ? prev.filter(id => id !== agentId)
+        : [...prev, agentId]
+    );
+  };
+
+  const handleLaunch = async () => {
     if (!goalInput.trim()) return;
     setIsLoading(true);
+
     try {
-      await fetch('/api/a2a/supervisor/run', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          goal: goalInput,
-          primaryAgentId: selectedAgent
-        })
-      });
+      if (isParallelMode && selectedParallelAgents.length > 0) {
+        // True Parallel Multi-Agent Dispatch
+        await fetch('/api/agents/parallel/dispatch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            tasks: selectedParallelAgents.map(agentId => ({
+              agentId,
+              prompt: goalInput,
+              mode: executionMode,
+              openShellEnabled: true
+            })),
+            mode: executionMode
+          })
+        });
+      } else {
+        // Single Agent Supervisor Loop
+        await fetch('/api/a2a/supervisor/run', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            goal: goalInput,
+            primaryAgentId: selectedAgent
+          })
+        });
+      }
       setGoalInput('');
     } catch (e) {
-      console.error('Failed to trigger supervisor:', e);
+      console.error('Failed to trigger agent execution:', e);
     } finally {
       setIsLoading(false);
     }
@@ -99,11 +142,14 @@ export const AgentSquadDrawer: React.FC<AgentSquadDrawerProps> = ({
 
   const handleAbort = async () => {
     try {
-      await fetch('/api/a2a/supervisor/abort', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({})
-      });
+      await Promise.allSettled([
+        fetch('/api/agents/parallel/cancel-all', { method: 'POST' }),
+        fetch('/api/a2a/supervisor/abort', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({})
+        })
+      ]);
     } catch (e) {
       console.error('Failed to abort:', e);
     }
@@ -123,12 +169,15 @@ export const AgentSquadDrawer: React.FC<AgentSquadDrawerProps> = ({
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-base font-bold text-white tracking-wide">AGENT SQUAD & A2A HUB</h2>
+              <h2 className="text-base font-bold text-white tracking-wide">AGENT SQUAD & PARALLEL HUB</h2>
               <span className="px-2 py-0.5 text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 rounded-full flex items-center gap-1">
                 <Radio className="w-2.5 h-2.5 animate-pulse" /> A2A v2.0
               </span>
+              <span className="px-2 py-0.5 text-[10px] font-semibold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 rounded-full flex items-center gap-1">
+                <Shield className="w-2.5 h-2.5 text-cyan-400" /> OpenShell Secured
+              </span>
             </div>
-            <p className="text-xs text-slate-400">Inter-Agent Protocol Bridge & Autonomous Supervisor</p>
+            <p className="text-xs text-slate-400">Multi-Agent Parallel Orchestrator & OpenShell Governance</p>
           </div>
         </div>
         <button
@@ -137,6 +186,53 @@ export const AgentSquadDrawer: React.FC<AgentSquadDrawerProps> = ({
         >
           <X className="w-5 h-5" />
         </button>
+      </div>
+
+      {/* Mode Controls Bar */}
+      <div className="px-4 py-2 bg-slate-900/40 border-b border-cyan-500/15 flex items-center justify-between text-xs">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setIsParallelMode(true)}
+            className={`px-2.5 py-1 rounded-md flex items-center gap-1.5 font-medium transition-all ${
+              isParallelMode
+                ? 'bg-cyan-500 text-black font-semibold shadow-[0_0_10px_rgba(6,182,212,0.4)]'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800'
+            }`}
+          >
+            <Zap className="w-3 h-3 fill-current" /> Parallel Squad Mode ({selectedParallelAgents.length})
+          </button>
+          <button
+            onClick={() => setIsParallelMode(false)}
+            className={`px-2.5 py-1 rounded-md flex items-center gap-1.5 font-medium transition-all ${
+              !isParallelMode
+                ? 'bg-cyan-500 text-black font-semibold shadow-[0_0_10px_rgba(6,182,212,0.4)]'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800'
+            }`}
+          >
+            <Bot className="w-3 h-3" /> Single Supervisor
+          </button>
+        </div>
+
+        {isParallelMode && (
+          <div className="flex items-center gap-1.5 bg-slate-950 px-2 py-0.5 rounded border border-slate-800 text-[11px]">
+            <span className="text-slate-500">Mode:</span>
+            <button
+              onClick={() => setExecutionMode('tmux')}
+              className={`px-1.5 py-0.5 rounded ${executionMode === 'tmux' ? 'bg-cyan-500/20 text-cyan-300 font-semibold' : 'text-slate-400'}`}
+              title="Runs inside detached, persistent tmux panes"
+            >
+              Tmux Panes
+            </button>
+            <span className="text-slate-700">|</span>
+            <button
+              onClick={() => setExecutionMode('direct')}
+              className={`px-1.5 py-0.5 rounded ${executionMode === 'direct' ? 'bg-cyan-500/20 text-cyan-300 font-semibold' : 'text-slate-400'}`}
+              title="Runs via direct process spawn"
+            >
+              Direct
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Domain Navigation Tabs */}
@@ -189,7 +285,7 @@ export const AgentSquadDrawer: React.FC<AgentSquadDrawerProps> = ({
         <div>
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs uppercase tracking-wider text-slate-400 font-semibold">
-              Available {activeTab.toUpperCase()} Squad Members
+              {isParallelMode ? 'Select Squad Members to Run Simultaneously' : `Available ${activeTab.toUpperCase()} Squad Members`}
             </span>
             <button
               onClick={fetchAgents}
@@ -206,21 +302,39 @@ export const AgentSquadDrawer: React.FC<AgentSquadDrawerProps> = ({
               </div>
             ) : (
               filteredAgents.map((agent) => {
-                const agentKey = agent.name.toLowerCase().split(' ')[0];
-                const isSelected = selectedAgent.toLowerCase().includes(agentKey);
+                const agentId = getAgentId(agent);
+                const isSelectedInSingle = selectedAgent === agentId;
+                const isCheckedInParallel = selectedParallelAgents.includes(agentId);
 
                 return (
                   <div
                     key={agent.name}
-                    onClick={() => setSelectedAgent(agentKey)}
+                    onClick={() => {
+                      if (isParallelMode) {
+                        toggleParallelAgent(agentId);
+                      } else {
+                        setSelectedAgent(agentId);
+                      }
+                    }}
                     className={`p-3 rounded-lg border cursor-pointer transition-all ${
-                      isSelected
+                      (isParallelMode && isCheckedInParallel) || (!isParallelMode && isSelectedInSingle)
                         ? 'border-cyan-400 bg-cyan-950/30 shadow-[0_0_15px_rgba(6,182,212,0.2)]'
                         : 'border-slate-800 bg-slate-900/40 hover:border-slate-700'
                     }`}
                   >
                     <div className="flex items-center justify-between mb-1">
-                      <span className="font-semibold text-xs text-white">{agent.name}</span>
+                      <div className="flex items-center gap-2">
+                        {isParallelMode ? (
+                          <input
+                            type="checkbox"
+                            checked={isCheckedInParallel}
+                            onChange={() => toggleParallelAgent(agentId)}
+                            className="rounded border-slate-700 text-cyan-500 focus:ring-cyan-500 bg-slate-900"
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        ) : null}
+                        <span className="font-semibold text-xs text-white">{agent.name}</span>
+                      </div>
                       <span
                         className={`w-2 h-2 rounded-full ${
                           agent.status === 'active' ? 'bg-emerald-400 shadow-[0_0_6px_#10B981]' : 'bg-slate-600'
@@ -231,7 +345,9 @@ export const AgentSquadDrawer: React.FC<AgentSquadDrawerProps> = ({
                       {agent.description}
                     </p>
                     <div className="mt-2 flex items-center justify-between text-[10px] text-slate-500">
-                      <span>v{agent.version}</span>
+                      <span className="text-emerald-400/90 flex items-center gap-1 font-mono">
+                        <Shield className="w-2.5 h-2.5" /> OpenShell
+                      </span>
                       <span className="text-cyan-400/80 uppercase">{agent.domain}</span>
                     </div>
                   </div>
@@ -246,7 +362,7 @@ export const AgentSquadDrawer: React.FC<AgentSquadDrawerProps> = ({
           <div className="flex items-center justify-between text-xs">
             <span className="text-slate-400 flex items-center gap-1.5">
               <Bot className="w-3.5 h-3.5 text-cyan-400" />
-              Autonomous Supervisor Status:
+              {isParallelMode ? 'Parallel Multi-Agent Hub:' : 'Autonomous Supervisor Status:'}
             </span>
             <span
               className={`px-2 py-0.5 rounded text-[10px] font-semibold uppercase ${
@@ -287,7 +403,7 @@ export const AgentSquadDrawer: React.FC<AgentSquadDrawerProps> = ({
           <div className="flex items-center justify-between text-xs text-slate-400">
             <span className="flex items-center gap-1.5">
               <Terminal className="w-3.5 h-3.5 text-slate-300" />
-              Live Telemetry & Token Stream
+              Live Telemetry & Simultaneous Streams
             </span>
             <button
               onClick={onClearLogs}
@@ -299,7 +415,7 @@ export const AgentSquadDrawer: React.FC<AgentSquadDrawerProps> = ({
 
           <div className="h-56 bg-black/80 rounded-lg border border-slate-800 p-3 overflow-y-auto text-[11px] font-mono leading-relaxed space-y-1 select-text">
             {streamLogs.length === 0 ? (
-              <span className="text-slate-600 italic">Awaiting task stream or agent dispatch...</span>
+              <span className="text-slate-600 italic">Awaiting task stream or multi-agent dispatch...</span>
             ) : (
               streamLogs.map((log, idx) => (
                 <div key={idx} className="text-slate-300 whitespace-pre-wrap break-all">
@@ -319,22 +435,26 @@ export const AgentSquadDrawer: React.FC<AgentSquadDrawerProps> = ({
             type="text"
             value={goalInput}
             onChange={(e) => setGoalInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleLaunchSupervisor()}
-            placeholder={`Instruct ${selectedAgent} (e.g. "Refactor auth middleware to strict TypeScript")...`}
+            onKeyDown={(e) => e.key === 'Enter' && handleLaunch()}
+            placeholder={
+              isParallelMode
+                ? `Broadcast directive to ${selectedParallelAgents.length} agents simultaneously (e.g. "Audit security & refactor")...`
+                : `Instruct ${selectedAgent} (e.g. "Refactor auth middleware to strict TypeScript")...`
+            }
             className="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
           />
           <button
-            onClick={handleLaunchSupervisor}
-            disabled={isLoading || !goalInput.trim()}
-            className="px-3 py-2 rounded-lg bg-cyan-500 text-black font-semibold text-xs hover:bg-cyan-400 transition-colors disabled:opacity-50 flex items-center gap-1.5"
+            onClick={handleLaunch}
+            disabled={isLoading || !goalInput.trim() || (isParallelMode && selectedParallelAgents.length === 0)}
+            className="px-3 py-2 rounded-lg bg-cyan-500 text-black font-semibold text-xs hover:bg-cyan-400 transition-colors disabled:opacity-50 flex items-center gap-1.5 whitespace-nowrap"
           >
             <Play className="w-3.5 h-3.5 fill-current" />
-            Launch
+            {isParallelMode ? `Deploy (${selectedParallelAgents.length})` : 'Launch'}
           </button>
           <button
             onClick={handleAbort}
             className="px-3 py-2 rounded-lg bg-rose-500/20 text-rose-300 border border-rose-500/40 font-semibold text-xs hover:bg-rose-500/30 transition-colors flex items-center gap-1.5"
-            title="Emergency Abort Active Agent"
+            title="Emergency Abort All Running Agents"
           >
             <Square className="w-3.5 h-3.5 fill-current" />
             Stop

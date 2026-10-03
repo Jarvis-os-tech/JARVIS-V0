@@ -50,7 +50,7 @@ agents:
       - "cli_execution"
       - "actuator_tools"
       - "multi_turn_session"
-      - "kanban_management"
+      - "openshell_governed"
     bridge:
       type: "cli"
       script: "backend/hermes_bridge.ts"
@@ -62,41 +62,94 @@ agents:
       - "subagent-driven-development"
       - "finishing-a-development-branch"
 
+  agy:
+    id: "agy"
+    name: "AGY (Gemini)"
+    title: "Principal Architecture & Antigravity Systems Engineer"
+    status: "ACTIVE_WORKER"
+    primary: true
+    description: "Google Antigravity CLI powered by Gemini for codebase understanding, code generation, refactoring, and deep reasoning under OpenShell governance."
+    capabilities:
+      - "antigravity_architect"
+      - "gemini_deep_reasoning"
+      - "cli_execution"
+      - "openshell_governed"
+    bridge:
+      type: "cli"
+      binary: "/home/g0pi/.local/bin/agy"
+      timeout_seconds: 180
+    skills:
+      - "speckit-plan"
+      - "speckit-tasks"
+
+  omh:
+    id: "omh"
+    name: "OMH (Omarchy)"
+    title: "Omarchy Quattro Workflow Specialist"
+    status: "ACTIVE_WORKER"
+    primary: true
+    description: "Omarchy Quattro CLI agent for multi-skill workflow coordination, system diagnostics, and workstation automation under OpenShell governance."
+    capabilities:
+      - "workflow_orchestration"
+      - "hardware_diagnostics"
+      - "cli_execution"
+      - "openshell_governed"
+    bridge:
+      type: "cli"
+      binary: "/home/g0pi/.local/bin/omh"
+      timeout_seconds: 180
+    skills: []
+
   opencode:
     id: "opencode"
-    name: "OpenCode Agent"
-    title: "Browser & System Actuator"
-    status: "PLANNED"
-    primary: false
-    description: "Autonomous browser interaction, web scraping, visual validation, and external documentation discovery."
+    name: "OMH (OpenCode)"
+    title: "Full-Stack System Engineer"
+    status: "ACTIVE_WORKER"
+    primary: true
+    description: "Autonomous full-stack engineering agent with multi-turn session tracking and ACP/MCP toolset interoperability under OpenShell governance."
     capabilities:
-      - "browser_automation"
-      - "web_scraping"
-      - "cross_agent_communication"
+      - "system_integration"
+      - "acp_connectivity"
+      - "code_implementation"
+      - "openshell_governed"
+    bridge:
+      type: "cli"
+      binary: "/home/g0pi/.local/bin/opencode"
+      timeout_seconds: 180
     skills: []
 
-  ultron:
-    id: "ultron"
-    name: "Ultron / OpenClaw"
-    title: "COO / Operations & Desktop Automation"
-    status: "PLANNED"
-    primary: false
-    description: "System diagnostics, hardware toggles, and OS desktop automation."
+  codex:
+    id: "codex"
+    name: "Codex (CloudCode)"
+    title: "Senior Implementation Specialist"
+    status: "ACTIVE_WORKER"
+    primary: true
+    description: "Codex CLI / CloudCode specialized in rapid automated feature implementation, test creation, and code generation under OpenShell governance."
     capabilities:
+      - "feature_codegen"
+      - "automated_review"
+      - "cli_execution"
+      - "openshell_governed"
+    bridge:
+      type: "cli"
+      binary: "/home/g0pi/.local/bin/codex"
+      timeout_seconds: 180
+    skills: []
+
+  openclaw:
+    id: "openclaw"
+    name: "OpenClaw"
+    title: "Autonomous Multi-Channel & Desktop Actuator"
+    status: "ACTIVE_WORKER"
+    primary: true
+    description: "System diagnostics, channel messaging, and OS desktop automation under OpenShell governance."
+    capabilities:
+      - "multi_channel_action"
       - "desktop_actuation"
-      - "hardware_diagnostics"
       - "system_monitoring"
-    skills: []
-
-  qa_auditor:
-    id: "qa_auditor"
-    name: "QA Auditor"
-    title: "Chief Quality Assurance & Evidence Verification"
-    status: "PLANNED"
-    primary: false
-    description: "Enforces zero-fluff validation, screenshots, lint checks, and test runner proof."
-    capabilities:
-      - "static_analysis"
-      - "type_verification"
-      - "evidence_collection"
+      - "openshell_governed"
+    bridge:
+      type: "cli"
+      binary: "/usr/bin/openclaw"
+      timeout_seconds: 180
     skills: []

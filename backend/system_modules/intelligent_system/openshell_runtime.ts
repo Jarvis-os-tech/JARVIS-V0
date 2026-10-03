@@ -51,6 +51,8 @@ export class OpenShellRuntime {
    */
   public detectOpenShellBinary(): string | null {
     const candidates = [
+      path.resolve(process.cwd(), 'openshell/bin/openshell'),
+      path.resolve(__dirname, '../../../openshell/bin/openshell'),
       path.resolve(process.cwd(), 'scratch/bin/openshell'),
       path.resolve(__dirname, '../../../scratch/bin/openshell'),
       '/usr/local/bin/openshell',
@@ -84,11 +86,14 @@ export class OpenShellRuntime {
     }
 
     if (this.openshellBinPath) {
-      this.isGatewayReady = true;
+      const hasActiveGateway = await this.checkGatewayActive();
+      this.isGatewayReady = hasActiveGateway;
       return {
         available: true,
-        mode,
-        message: `OpenShell runtime active with binary at ${this.openshellBinPath}`
+        mode: hasActiveGateway ? 'kernel_openshell' : 'process_scrubbed',
+        message: hasActiveGateway
+          ? `OpenShell runtime active with kernel gateway (${this.openshellBinPath})`
+          : `OpenShell runtime active with process-scrubbed security profile (${this.openshellBinPath})`
       };
     }
 
@@ -109,6 +114,19 @@ export class OpenShellRuntime {
     };
   }
 
+  private checkGatewayActive(): Promise<boolean> {
+    return new Promise((resolve) => {
+      if (!this.openshellBinPath) return resolve(false);
+      execFile(this.openshellBinPath, ['status'], { timeout: 1500 }, (err, stdout) => {
+        if (!err && stdout && !stdout.includes('No gateway configured') && !stdout.includes('No active gateway')) {
+          resolve(true);
+        } else {
+          resolve(false);
+        }
+      });
+    });
+  }
+
   private checkDockerAvailability(): Promise<boolean> {
     return new Promise((resolve) => {
       exec('docker --version', (err) => {
@@ -127,6 +145,82 @@ export class OpenShellRuntime {
       activeBackgroundTasksCount: this.backgroundTasks.size,
       activeBackgroundTasks: Array.from(this.backgroundTasks.values())
     };
+  }
+
+  /**
+   * Queries sandboxes via openshell sandbox list.
+   */
+  public async listSandboxes(): Promise<{ success: boolean; output: string }> {
+    return new Promise((resolve) => {
+      if (!this.openshellBinPath) {
+        return resolve({ success: false, output: 'OpenShell binary not available.' });
+      }
+      execFile(this.openshellBinPath, ['sandbox', 'list'], { timeout: 5000 }, (err, stdout, stderr) => {
+        if (err) {
+          resolve({ success: false, output: (stderr || err.message).trim() });
+        } else {
+          resolve({ success: true, output: stdout.trim() || 'No sandboxes currently running.' });
+        }
+      });
+    });
+  }
+
+  /**
+   * Creates a new sandbox via OpenShell CLI.
+   */
+  public async createSandbox(name?: string): Promise<{ success: boolean; output: string }> {
+    return new Promise((resolve) => {
+      if (!this.openshellBinPath) {
+        return resolve({ success: false, output: 'OpenShell binary not available.' });
+      }
+      const args = ['sandbox', 'create'];
+      if (name) {
+        args.push('--name', name);
+      }
+      execFile(this.openshellBinPath, args, { timeout: 15000 }, (err, stdout, stderr) => {
+        if (err) {
+          resolve({ success: false, output: (stderr || err.message).trim() });
+        } else {
+          resolve({ success: true, output: stdout.trim() });
+        }
+      });
+    });
+  }
+
+  /**
+   * Deletes a sandbox via OpenShell CLI.
+   */
+  public async deleteSandbox(name: string): Promise<{ success: boolean; output: string }> {
+    return new Promise((resolve) => {
+      if (!this.openshellBinPath) {
+        return resolve({ success: false, output: 'OpenShell binary not available.' });
+      }
+      execFile(this.openshellBinPath, ['sandbox', 'delete', name], { timeout: 15000 }, (err, stdout, stderr) => {
+        if (err) {
+          resolve({ success: false, output: (stderr || err.message).trim() });
+        } else {
+          resolve({ success: true, output: stdout.trim() || `Sandbox ${name} deleted successfully.` });
+        }
+      });
+    });
+  }
+
+  /**
+   * Returns gateway status via openshell status.
+   */
+  public async getGatewayInfo(): Promise<{ success: boolean; output: string }> {
+    return new Promise((resolve) => {
+      if (!this.openshellBinPath) {
+        return resolve({ success: false, output: 'OpenShell binary not available.' });
+      }
+      execFile(this.openshellBinPath, ['status'], { timeout: 5000 }, (err, stdout, stderr) => {
+        if (err) {
+          resolve({ success: false, output: (stderr || err.message).trim() });
+        } else {
+          resolve({ success: true, output: stdout.trim() });
+        }
+      });
+    });
   }
 
   /**
@@ -250,13 +344,11 @@ export class OpenShellRuntime {
     const timeout = options.timeoutMs || 30000;
 
     return new Promise((resolve) => {
-      // If native OpenShell CLI exists, invoke via openshell sandbox exec
-      if (this.openshellBinPath && fs.existsSync(this.openshellBinPath)) {
+      // If native OpenShell CLI exists and gateway is active, invoke via openshell sandbox exec
+      if (this.openshellBinPath && fs.existsSync(this.openshellBinPath) && this.isGatewayReady) {
         const openshellCmd = [
           'sandbox',
-          'run',
-          '--policy',
-          path.resolve(__dirname, 'openshell_policy.json'),
+          'exec',
           '--',
           executable,
           ...args

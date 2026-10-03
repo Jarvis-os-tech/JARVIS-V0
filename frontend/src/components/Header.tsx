@@ -91,29 +91,33 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   return (
-    <header className="sticky top-0 z-30 w-full border-b border-cyan-500/20 bg-slate-950/85 backdrop-blur-2xl px-4 sm:px-8 py-3.5 flex items-center justify-between transition-all shadow-[0_10px_30px_rgba(0,0,0,0.6)]">
+    <header className="sticky top-0 z-30 w-full border-b border-cyan-500/25 bg-[#060a12]/90 backdrop-blur-2xl px-4 sm:px-8 py-3.5 flex items-center justify-between transition-all shadow-[0_12px_36px_rgba(0,0,0,0.65)]">
       {/* Brand Identity */}
       <div className="flex items-center gap-3.5">
-        <div className="relative w-11 h-11 rounded-2xl bg-gradient-to-tr from-cyan-600 via-blue-600 to-indigo-700 p-0.5 shadow-[0_0_20px_rgba(6,182,212,0.3)] flex items-center justify-center group cursor-pointer" onClick={onOpenMemoryHUD}>
-          <div className="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center overflow-hidden relative">
-            <div className="absolute inset-0 bg-cyan-500/10 rounded-full animate-pulse" />
-            <Cpu className="w-5 h-5 text-cyan-400 relative z-10" />
+        <div
+          className="relative w-11 h-11 rounded-2xl bg-gradient-to-tr from-cyan-500 via-blue-600 to-indigo-600 p-0.5 shadow-[0_0_20px_rgba(0,240,255,0.35)] flex items-center justify-center group cursor-pointer active:scale-95 transition-transform"
+          onClick={onOpenMemoryHUD}
+          title="Open Sovereign Memory Core"
+        >
+          <div className="w-full h-full bg-[#060a12] rounded-[14px] flex items-center justify-center overflow-hidden relative">
+            <div className="absolute inset-0 bg-cyan-500/15 rounded-full animate-pulse" />
+            <Cpu className="w-5 h-5 text-cyan-400 relative z-10 drop-shadow-[0_0_8px_rgba(0,240,255,0.6)]" />
           </div>
         </div>
 
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-lg sm:text-xl font-extrabold tracking-wider text-white font-mono flex items-center gap-2">
-              <span className="bg-gradient-to-r from-cyan-400 via-sky-300 to-blue-400 bg-clip-text text-transparent">
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-lg sm:text-xl font-black tracking-[0.25em] text-white font-['Orbitron',sans-serif] flex items-center gap-2">
+              <span className="bg-gradient-to-r from-cyan-300 via-sky-200 to-blue-400 bg-clip-text text-transparent drop-shadow-[0_0_12px_rgba(0,240,255,0.4)]">
                 J.A.R.V.I.S.
               </span>
             </h1>
-            <span className="hidden sm:inline-flex text-[10px] uppercase font-mono font-bold tracking-widest px-2 py-0.5 bg-cyan-500/15 text-cyan-300 rounded border border-cyan-400/30 items-center gap-1">
-              <Globe className="w-3 h-3 text-cyan-400" /> Auto-Lang
+            <span className="hidden sm:inline-flex text-[9.5px] uppercase font-mono font-bold tracking-widest px-2 py-0.5 bg-cyan-500/15 text-cyan-300 rounded-md border border-cyan-400/30 items-center gap-1 shadow-[0_0_8px_rgba(0,240,255,0.15)]">
+              <Globe className="w-3 h-3 text-cyan-400" /> AGI Core
             </span>
           </div>
-          <p className="text-xs text-slate-400 font-mono flex items-center gap-1.5 mt-0.5">
-            Voice: <span className="text-cyan-300 font-semibold">Puck</span>
+          <p className="text-[11px] text-slate-400 font-mono flex items-center gap-1.5 mt-0.5 tracking-wide">
+            Persona: <span className="text-cyan-300 font-semibold">{selectedPersonaName || 'J.A.R.V.I.S.'}</span>
             <span className="text-slate-600">•</span>
             <span className="text-slate-400">Autonomous OS</span>
           </p>
@@ -121,7 +125,7 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       {/* Right Action Controls */}
-      <div className="flex items-center gap-2.5 sm:gap-3">
+      <div className="flex items-center gap-2 sm:gap-3">
         {getStatusBadge()}
 
         {/* PWA Install Button for Mobile & Linux */}
@@ -134,7 +138,7 @@ export const Header: React.FC<HeaderProps> = ({
         {onOpenCeoHUD && (
           <button
             onClick={onOpenCeoHUD}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold text-cyan-300 bg-blue-950/40 hover:bg-blue-900/40 border border-cyan-500/30 hover:border-cyan-400 transition-all shadow-[0_0_15px_rgba(6,182,212,0.15)] group"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold text-cyan-300 bg-blue-950/40 hover:bg-blue-900/50 border border-cyan-500/30 hover:border-cyan-400 transition-all shadow-[0_0_15px_rgba(0,240,255,0.15)] active:scale-95 group"
             title="Open J.A.R.V.I.S. CEO Executive Orchestration HUD"
           >
             <Shield className="w-4 h-4 text-cyan-400 group-hover:scale-110 transition-transform" />
@@ -146,7 +150,7 @@ export const Header: React.FC<HeaderProps> = ({
         {onOpenSecurityHUD && (
           <button
             onClick={onOpenSecurityHUD}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold text-emerald-300 bg-emerald-950/40 hover:bg-emerald-900/40 border border-emerald-500/30 hover:border-emerald-400 transition-all shadow-[0_0_15px_rgba(16,185,129,0.15)] group"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold text-emerald-300 bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-500/30 hover:border-emerald-400 transition-all shadow-[0_0_15px_rgba(16,185,129,0.15)] active:scale-95 group"
             title="Open NVIDIA OpenShell Security & Sandbox Matrix"
           >
             <Shield className="w-4 h-4 text-emerald-400 group-hover:scale-110 transition-transform animate-pulse" />
@@ -158,7 +162,7 @@ export const Header: React.FC<HeaderProps> = ({
         {onToggleAgentSpace && (
           <button
             onClick={onToggleAgentSpace}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold text-cyan-300 bg-cyan-950/40 hover:bg-cyan-900/40 border border-cyan-500/30 hover:border-cyan-400 transition-all shadow-[0_0_15px_rgba(6,182,212,0.15)] group"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold text-cyan-300 bg-cyan-950/40 hover:bg-cyan-900/50 border border-cyan-500/30 hover:border-cyan-400 transition-all shadow-[0_0_15px_rgba(0,240,255,0.15)] active:scale-95 group"
             title="Open J.A.R.V.I.S. Agent Space"
           >
             <Bot className="w-4 h-4 text-cyan-400 group-hover:scale-110 transition-transform animate-pulse" />
@@ -169,12 +173,12 @@ export const Header: React.FC<HeaderProps> = ({
         {/* J.A.R.V.I.S. Memory Matrix Button */}
         <button
           onClick={onOpenMemoryHUD}
-          className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold text-cyan-300 bg-cyan-950/40 hover:bg-cyan-900/40 border border-cyan-500/30 hover:border-cyan-400 transition-all shadow-[0_0_15px_rgba(6,182,212,0.15)] group"
+          className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold text-cyan-300 bg-cyan-950/40 hover:bg-cyan-900/50 border border-cyan-500/30 hover:border-cyan-400 transition-all shadow-[0_0_15px_rgba(0,240,255,0.15)] active:scale-95 group"
           title="Open J.A.R.V.I.S. 4-Tier Memory Matrix Core"
         >
           <Brain className="w-4 h-4 text-cyan-400 group-hover:scale-110 transition-transform" />
-          <span className="hidden sm:inline font-mono">Memory Core</span>
-          <span className="px-1.5 py-0.2 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 text-[10px] font-mono font-bold">
+          <span className="hidden sm:inline font-mono">Memory</span>
+          <span className="px-1.5 py-0.2 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 text-[10px] font-mono font-bold tabular-nums">
             {memoryCount}
           </span>
         </button>

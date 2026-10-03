@@ -1,5 +1,124 @@
 @import "tailwindcss";
 
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-cyan-hud: var(--cyan-hud);
+  --color-blue-hud: var(--blue-hud);
+  --color-violet-hud: var(--violet-hud);
+  --color-emerald-hud: var(--emerald-hud);
+  --color-amber-hud: var(--amber-hud);
+  --color-pink-hud: var(--pink-hud);
+  --color-panel: var(--panel);
+  --color-hairline: var(--hairline);
+
+  --font-display: "Orbitron", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-hud: "Rajdhani", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-sans: "Outfit", "Rajdhani", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+:root {
+  --radius: 0.85rem;
+
+  /* Stark Aerospace Graphite Chassis */
+  --background: #060a12;
+  --foreground: #e6edf8;
+  --panel: #0a1120;
+  --card: #0d1527;
+  --card-foreground: #e6edf8;
+  --popover: #0a1120;
+  --popover-foreground: #e6edf8;
+
+  /* Primary Stark Arc Blue & Electric Cyan */
+  --primary: #00f0ff;
+  --primary-foreground: #020b14;
+  --secondary: #111a2d;
+  --secondary-foreground: #cbd5e1;
+  --muted: #0e172a;
+  --muted-foreground: #7e8c9f;
+  --accent: #38bdf8;
+  --accent-foreground: #020b14;
+  --destructive: #f43f5e;
+  --destructive-foreground: #ffffff;
+
+  --border: rgba(0, 240, 255, 0.12);
+  --input: rgba(4, 9, 18, 0.7);
+  --ring: rgba(0, 240, 255, 0.45);
+  --hairline: rgba(255, 255, 255, 0.08);
+
+  /* Tactical HUD Spectrum */
+  --cyan-hud: #00f0ff;
+  --blue-hud: #38bdf8;
+  --violet-hud: #a855f7;
+  --emerald-hud: #10b981;
+  --amber-hud: #f59e0b;
+  --pink-hud: #ec4899;
+
+  /* Physical Neumorphic Relief */
+  --neu-light: rgba(255, 255, 255, 0.06);
+  --neu-dark: rgba(0, 0, 0, 0.65);
+  --shadow-raised: -4px -4px 12px var(--neu-light), 6px 8px 18px var(--neu-dark);
+  --shadow-raised-sm: -2px -2px 6px var(--neu-light), 3px 4px 10px var(--neu-dark);
+  --shadow-inset: inset 3px 4px 10px var(--neu-dark), inset -2px -2px 6px var(--neu-light);
+  --shadow-press: inset 2px 3px 8px var(--neu-dark), inset -1px -1px 4px var(--neu-light);
+
+  /* Skeuomorphic Machined Surfaces */
+  --metal: linear-gradient(
+    160deg,
+    #172338 0%,
+    #101a2c 40%,
+    #0c1424 70%,
+    #131e33 100%
+  );
+  --metal-soft: linear-gradient(170deg, #121c2e, #0c1422);
+  --glass-tint: linear-gradient(
+    155deg,
+    rgba(255, 255, 255, 0.08),
+    rgba(255, 255, 255, 0.02) 48%,
+    rgba(0, 240, 255, 0.03) 100%
+  );
+  --screen: radial-gradient(
+    120% 130% at 20% 0%,
+    #0d172a 0%,
+    #09101e 60%,
+    #050a14 100%
+  );
+  --gradient-aurora: linear-gradient(
+    115deg,
+    #00f0ff 0%,
+    #38bdf8 45%,
+    #818cf8 80%,
+    #c084fc 100%
+  );
+  --glow-cyan: 0 0 28px rgba(0, 240, 255, 0.28);
+}
+
 @layer base {
   html, body, #root {
     min-height: 100%;
@@ -8,11 +127,40 @@
   }
 
   body {
-    @apply bg-zinc-950 text-zinc-100 font-sans antialiased selection:bg-cyan-500/30 selection:text-cyan-200 overflow-x-hidden;
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    selection-background-color: rgba(0, 240, 255, 0.25);
+    selection-color: #a5f3fc;
+    overflow-x: hidden;
     padding-top: env(safe-area-inset-top, 0px);
     padding-bottom: env(safe-area-inset-bottom, 0px);
     padding-left: env(safe-area-inset-left, 0px);
     padding-right: env(safe-area-inset-right, 0px);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    text-wrap: balance;
+  }
+
+  /* Smooth Custom Scrollbar */
+  ::-webkit-scrollbar {
+    width: 7px;
+    height: 7px;
+  }
+  ::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #172439;
+    border-radius: 999px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #00f0ff;
+    box-shadow: 0 0 10px rgba(0, 240, 255, 0.4);
   }
 }
 
@@ -23,24 +171,285 @@
   }
 }
 
+/* ---------------- High-End HUD & Glass Utilities ---------------- */
+
 .glass-panel {
-  background: rgba(24, 24, 27, 0.7);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+  background: rgba(10, 17, 32, 0.75);
+  backdrop-filter: blur(28px) saturate(160%);
+  -webkit-backdrop-filter: blur(28px) saturate(160%);
+  border: 1px solid rgba(0, 240, 255, 0.18);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.4),
+    0 24px 60px rgba(0, 0, 0, 0.55),
+    0 0 30px rgba(0, 240, 255, 0.08);
 }
 
 .glass-card {
-  background: rgba(39, 39, 42, 0.45);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(14, 22, 40, 0.55);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 10px 30px rgba(0, 0, 0, 0.4);
 }
 
 .glass-pill {
   background: rgba(255, 255, 255, 0.06);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(0, 240, 255, 0.2);
+  box-shadow: 0 0 12px rgba(0, 240, 255, 0.1);
 }
 
+@utility glass {
+  background: var(--glass-tint);
+  backdrop-filter: blur(26px) saturate(160%);
+  -webkit-backdrop-filter: blur(26px) saturate(160%);
+  border: 1px solid var(--hairline);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.4),
+    0 20px 40px rgba(0, 0, 0, 0.5);
+}
+
+@utility glass-soft {
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(16px) saturate(130%);
+  -webkit-backdrop-filter: blur(16px) saturate(130%);
+  border: 1px solid var(--hairline);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 8px 18px rgba(0, 0, 0, 0.35);
+}
+
+@utility neu {
+  background: var(--metal-soft);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: var(--shadow-raised);
+}
+
+@utility neu-sm {
+  background: var(--metal-soft);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: var(--shadow-raised-sm);
+}
+
+@utility neu-inset {
+  background: #09101d;
+  border: 1px solid rgba(0, 0, 0, 0.45);
+  box-shadow: var(--shadow-inset);
+}
+
+@utility bezel {
+  background: var(--metal);
+  border: 1px solid rgba(0, 240, 255, 0.15);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.5),
+    0 12px 28px rgba(0, 0, 0, 0.55);
+}
+
+@utility key {
+  background: var(--metal);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    var(--shadow-raised-sm);
+  transition: box-shadow 0.15s ease, transform 0.15s ease, color 0.15s ease;
+  &:hover {
+    transform: translateY(-1px);
+    border-color: rgba(0, 240, 255, 0.35);
+  }
+  &:active {
+    transform: translateY(1px) scale(0.98);
+    box-shadow: var(--shadow-press);
+  }
+}
+
+@utility screen {
+  position: relative;
+  background: var(--screen);
+  border: 1px solid rgba(0, 0, 0, 0.5);
+  box-shadow:
+    var(--shadow-inset),
+    inset 0 0 60px rgba(0, 240, 255, 0.06);
+  overflow: hidden;
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+      to bottom,
+      rgba(255, 255, 255, 0.02) 0px,
+      rgba(255, 255, 255, 0.02) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+  }
+}
+
+@utility gloss {
+  position: relative;
+  overflow: hidden;
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 44%;
+    background: linear-gradient(to bottom, rgba(255, 255, 255, 0.1), transparent);
+    pointer-events: none;
+  }
+}
+
+@utility led {
+  border-radius: 999px;
+  box-shadow:
+    0 0 8px currentColor,
+    0 0 18px currentColor,
+    inset 0 0 3px rgba(255, 255, 255, 0.6);
+}
+
+@utility etched {
+  text-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.7),
+    0 -1px 0 rgba(255, 255, 255, 0.08);
+}
+
+@utility text-aurora {
+  background: var(--gradient-aurora);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+@utility hud-grid {
+  background-image:
+    linear-gradient(to right, rgba(0, 240, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 240, 255, 0.04) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+@utility brushed {
+  background-image: repeating-linear-gradient(
+    92deg,
+    rgba(255, 255, 255, 0.025) 0px,
+    rgba(255, 255, 255, 0.025) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+}
+
+@utility glow-ring {
+  box-shadow:
+    0 0 0 1px rgba(0, 240, 255, 0.4),
+    var(--glow-cyan),
+    var(--shadow-raised-sm);
+}
+
+/* ---------------- Dynamic Keyframes ---------------- */
+
+@keyframes drift-a {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(50px, 35px) scale(1.08);
+  }
+}
+
+@keyframes drift-b {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(-45px, -25px) scale(1.05);
+  }
+}
+
+@keyframes spin-slow {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes core-pulse {
+  0%, 100% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+}
+
+@keyframes ping-ring {
+  0% {
+    transform: scale(0.85);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+
+@keyframes sweep {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(320%);
+  }
+}
+
+@utility animate-drift-a {
+  animation: drift-a 26s ease-in-out infinite;
+}
+@utility animate-drift-b {
+  animation: drift-b 32s ease-in-out infinite;
+}
+@utility animate-spin-slow {
+  animation: spin-slow 40s linear infinite;
+}
+@utility animate-core-pulse {
+  animation: core-pulse 3.2s ease-in-out infinite;
+}
+@utility animate-ping-ring {
+  animation: ping-ring 2.8s ease-out infinite;
+}
+@utility animate-sweep {
+  animation: sweep 3.4s ease-in-out infinite;
+}
+
+/* Sonner Toast HUD Styling */
+[data-sonner-toaster] {
+  font-family: var(--font-sans);
+  z-index: 99999 !important;
+}
+
+[data-sonner-toast] {
+  background: rgba(10, 17, 32, 0.95) !important;
+  border: 1px solid rgba(0, 240, 255, 0.25) !important;
+  color: var(--foreground) !important;
+  backdrop-filter: blur(20px) !important;
+  box-shadow:
+    0 16px 40px rgba(0, 0, 0, 0.6),
+    0 0 20px rgba(0, 240, 255, 0.15) !important;
+  border-radius: var(--radius-xl) !important;
+}
+
+[data-sonner-toast] [data-title] {
+  font-weight: 700 !important;
+  color: var(--cyan-hud) !important;
+  font-family: var(--font-display) !important;
+  letter-spacing: 0.05em;
+}
+
+[data-sonner-toast] [data-description] {
+  color: var(--muted-foreground) !important;
+  font-size: 12px !important;
+}

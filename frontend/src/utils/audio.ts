@@ -195,3 +195,12 @@ export class AudioQueuePlayer {
     this.isWarmedUp = false;
   }
 }
+
+/**
+ * Synthesizes futuristic Stark HUD notification audio cues using native Web Audio API oscillators.
+ * Zero external asset files or network latency.
+ * NOTE: Beep sound removed per user directive.
+ */
+export function playStarkChime(_type: 'start' | 'complete' | 'alert' = 'complete'): void {
+  // Beep sound removed per user request
+}

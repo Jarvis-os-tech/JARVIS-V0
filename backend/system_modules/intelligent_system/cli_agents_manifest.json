@@ -1,6 +1,231 @@
 {
   "agents": [
     {
+      "id": "agy",
+      "name": "AGY (Gemini)",
+      "binary": "agy",
+      "role": "Antigravity Systems Architect (Gemini)",
+      "domain": "cli",
+      "description": "Google Antigravity CLI powered by Gemini for codebase understanding, code generation, refactoring, and deep reasoning.",
+      "color": "#4285F4",
+      "preferredPaths": [
+        "/home/g0pi/.local/bin/agy",
+        "~/.local/bin/agy"
+      ],
+      "healthArgs": ["--version"],
+      "commandTemplate": {
+        "initial": ["-p", "{prompt}", "--dangerously-skip-permissions"],
+        "resume": ["--continue", "-p", "{prompt}", "--dangerously-skip-permissions"]
+      },
+      "openShell": {
+        "enabled": true,
+        "mode": "hybrid",
+        "policy": "jarvis-default-agent-policy"
+      },
+      "skills": [
+        {
+          "id": "antigravity_architect",
+          "name": "Antigravity Architecture Synthesis",
+          "description": "Large-scale code refactoring and architecture generation via Gemini Antigravity."
+        },
+        {
+          "id": "gemini_deep_reasoning",
+          "name": "Gemini Deep Reasoning",
+          "description": "Multi-file structural problem solving and root cause diagnosis."
+        }
+      ]
+    },
+    {
+      "id": "gemini",
+      "name": "Gemini CLI",
+      "binary": "gemini",
+      "role": "Gemini Reasoning & Code Agent",
+      "domain": "cli",
+      "description": "Google Gemini CLI for fast multi-modal analysis, autonomous coding, and terminal automation.",
+      "color": "#34A853",
+      "preferredPaths": [
+        "/home/g0pi/.local/bin/gemini",
+        "~/.local/bin/gemini"
+      ],
+      "healthArgs": ["--version"],
+      "commandTemplate": {
+        "initial": ["-p", "{prompt}", "-y", "--skip-trust"],
+        "resume": ["-p", "{prompt}", "-y", "--skip-trust"]
+      },
+      "openShell": {
+        "enabled": true,
+        "mode": "hybrid",
+        "policy": "jarvis-default-agent-policy"
+      },
+      "skills": [
+        {
+          "id": "gemini_code",
+          "name": "Gemini Code Generation",
+          "description": "Fast headless Gemini code generation and file actuation."
+        }
+      ]
+    },
+    {
+      "id": "omh",
+      "name": "OMH (Omarchy)",
+      "binary": "omh",
+      "role": "Omarchy Quattro Workflow Specialist",
+      "domain": "cli",
+      "description": "Omarchy Quattro CLI agent for multi-skill workflow coordination, system diagnostics, and workstation automation.",
+      "color": "#E11D48",
+      "preferredPaths": [
+        "/home/g0pi/.local/bin/omh",
+        "~/.local/bin/omh"
+      ],
+      "healthArgs": ["--version"],
+      "commandTemplate": {
+        "initial": ["recommend", "{prompt}"],
+        "resume": ["recommend", "{prompt}"]
+      },
+      "openShell": {
+        "enabled": true,
+        "mode": "hybrid",
+        "policy": "jarvis-default-agent-policy"
+      },
+      "skills": [
+        {
+          "id": "omarchy_quattro_skills",
+          "name": "Omarchy Quattro Skill Coordination",
+          "description": "Coordinates 367+ system skills, hardware toggles, and OS workflows."
+        }
+      ]
+    },
+    {
+      "id": "opencode",
+      "name": "OMH (OpenCode)",
+      "binary": "opencode",
+      "role": "Full-Stack System Engineer",
+      "domain": "cli",
+      "description": "Autonomous full-stack engineering agent with multi-turn session tracking and ACP/MCP toolset interoperability.",
+      "color": "#0284C7",
+      "preferredPaths": [
+        "/home/g0pi/.local/bin/opencode",
+        "~/.local/bin/opencode"
+      ],
+      "healthArgs": ["--version"],
+      "commandTemplate": {
+        "initial": ["run", "{prompt}"],
+        "resume": ["run", "{prompt}"]
+      },
+      "openShell": {
+        "enabled": true,
+        "mode": "hybrid",
+        "policy": "jarvis-default-agent-policy"
+      },
+      "skills": [
+        {
+          "id": "system_integration",
+          "name": "System Integration",
+          "description": "Implements end-to-end full-stack integration across services and database layers."
+        },
+        {
+          "id": "acp_connectivity",
+          "name": "ACP Interoperability",
+          "description": "Interoperates with local Agent Client Protocol daemons."
+        }
+      ]
+    },
+    {
+      "id": "codex",
+      "name": "Codex (CloudCode)",
+      "binary": "codex",
+      "role": "Senior Implementation Specialist",
+      "domain": "cli",
+      "description": "OpenAI / CloudCode Codex CLI specialized in rapid automated feature implementation, test creation, and code generation.",
+      "color": "#10B981",
+      "preferredPaths": [
+        "/home/g0pi/.local/bin/codex",
+        "~/.local/bin/codex"
+      ],
+      "healthArgs": ["--version"],
+      "commandTemplate": {
+        "initial": ["exec", "{prompt}"],
+        "resume": ["exec", "{prompt}"]
+      },
+      "openShell": {
+        "enabled": true,
+        "mode": "hybrid",
+        "policy": "jarvis-default-agent-policy"
+      },
+      "skills": [
+        {
+          "id": "feature_codegen",
+          "name": "Rapid Code Generation",
+          "description": "Generates clean TypeScript/Python/Rust implementations for specified modules and endpoints."
+        },
+        {
+          "id": "automated_review",
+          "name": "Automated Code Review",
+          "description": "Conducts non-interactive static code review audits."
+        }
+      ]
+    },
+    {
+      "id": "hermes",
+      "name": "Hermes CLI",
+      "binary": "hermes",
+      "role": "Autonomous DevOps & Shell Actuator",
+      "domain": "cli",
+      "description": "Autonomous DevOps & system agent for OS-level tool manipulation, bash automation, and Linux server actions.",
+      "color": "#8B5CF6",
+      "preferredPaths": [
+        "/home/g0pi/.local/bin/hermes",
+        "~/.local/bin/hermes"
+      ],
+      "healthArgs": ["--version"],
+      "commandTemplate": {
+        "initial": ["-p", "default", "chat", "--create-if-missing", "--query-file", "{queryFile}", "--oneshot", "-Q", "--max-turns", "8", "--yolo"],
+        "resume": ["-p", "default", "chat", "--continue", "{sessionId}", "--create-if-missing", "--query-file", "{queryFile}", "--oneshot", "-Q", "--max-turns", "8", "--yolo"]
+      },
+      "openShell": {
+        "enabled": true,
+        "mode": "hybrid",
+        "policy": "jarvis-default-agent-policy"
+      },
+      "skills": [
+        {
+          "id": "shell_actuation",
+          "name": "Linux OS Shell Actuation",
+          "description": "Executes complex system administration, file pipeline transformations, and container management."
+        }
+      ]
+    },
+    {
+      "id": "openclaw",
+      "name": "OpenClaw",
+      "binary": "openclaw",
+      "role": "Autonomous Multi-Channel & System Actuator",
+      "domain": "cli",
+      "description": "Autonomous multi-channel and desktop/system actuation agent connected with OpenShell security governance.",
+      "color": "#F97316",
+      "preferredPaths": [
+        "/usr/bin/openclaw",
+        "/home/g0pi/.local/bin/openclaw"
+      ],
+      "healthArgs": ["--version"],
+      "commandTemplate": {
+        "initial": ["agent", "--local", "-m", "{prompt}"],
+        "resume": ["agent", "--local", "-m", "{prompt}"]
+      },
+      "openShell": {
+        "enabled": true,
+        "mode": "hybrid",
+        "policy": "jarvis-default-agent-policy"
+      },
+      "skills": [
+        {
+          "id": "multi_channel_action",
+          "name": "Multi-Channel & Desktop Action",
+          "description": "Executes local actuation across system services, channels, and connected devices."
+        }
+      ]
+    },
+    {
       "id": "claude",
       "name": "Claude Code",
       "binary": "claude",
@@ -17,6 +242,11 @@
         "initial": ["-p", "{prompt}", "--dangerously-skip-permissions"],
         "resume": ["--resume", "{sessionId}", "-p", "{prompt}", "--dangerously-skip-permissions"]
       },
+      "openShell": {
+        "enabled": true,
+        "mode": "hybrid",
+        "policy": "jarvis-default-agent-policy"
+      },
       "skills": [
         {
           "id": "architecture_refactor",
@@ -27,91 +257,6 @@
           "id": "deep_diagnosis",
           "name": "Deep Diagnostic Analysis",
           "description": "Diagnoses subtle race conditions, memory leaks, and architectural anti-patterns."
-        }
-      ]
-    },
-    {
-      "id": "codex",
-      "name": "Codex CLI",
-      "binary": "codex",
-      "role": "Senior Implementation Specialist",
-      "domain": "cli",
-      "description": "OpenAI Codex CLI specialized in rapid automated feature implementation, test creation, and code generation.",
-      "color": "#10B981",
-      "preferredPaths": [
-        "/home/g0pi/.local/bin/codex",
-        "~/.local/bin/codex"
-      ],
-      "healthArgs": ["--version"],
-      "commandTemplate": {
-        "initial": ["exec", "{prompt}"],
-        "resume": ["exec", "{prompt}"]
-      },
-      "skills": [
-        {
-          "id": "feature_codegen",
-          "name": "Rapid Code Generation",
-          "description": "Generates clean TypeScript/Python/Rust implementations for specified modules and endpoints."
-        },
-        {
-          "id": "automated_review",
-          "name": "Automated Code Review",
-          "description": "Conducts non-interactive static code review audits."
-        }
-      ]
-    },
-    {
-      "id": "opencode",
-      "name": "OpenCode",
-      "binary": "opencode",
-      "role": "Full-Stack System Engineer",
-      "domain": "cli",
-      "description": "Autonomous full-stack engineering agent with multi-turn session tracking and ACP/MCP toolset interoperability.",
-      "color": "#3B82F6",
-      "preferredPaths": [
-        "/home/g0pi/.local/bin/opencode",
-        "~/.local/bin/opencode"
-      ],
-      "healthArgs": ["--version"],
-      "commandTemplate": {
-        "initial": ["run", "--auto", "--prompt", "{prompt}"],
-        "resume": ["run", "--auto", "--session", "{sessionId}", "--prompt", "{prompt}"]
-      },
-      "skills": [
-        {
-          "id": "system_integration",
-          "name": "System Integration",
-          "description": "Implements end-to-end full-stack integration across services and database layers."
-        },
-        {
-          "id": "acp_connectivity",
-          "name": "ACP Interoperability",
-          "description": "Interoperates with local Agent Client Protocol daemons."
-        }
-      ]
-    },
-    {
-      "id": "hermes",
-      "name": "Hermes Agent",
-      "binary": "hermes",
-      "role": "DevOps & OS Shell Actuator",
-      "domain": "cli",
-      "description": "Autonomous DevOps & system agent for OS-level tool manipulation, bash automation, and Linux server actions.",
-      "color": "#8B5CF6",
-      "preferredPaths": [
-        "/home/g0pi/.local/bin/hermes",
-        "~/.local/bin/hermes"
-      ],
-      "healthArgs": ["--version"],
-      "commandTemplate": {
-        "initial": ["-p", "default", "chat", "--create-if-missing", "--query-file", "{queryFile}", "--oneshot", "-Q", "--max-turns", "5", "--yolo"],
-        "resume": ["-p", "default", "chat", "--continue", "{sessionId}", "--create-if-missing", "--query-file", "{queryFile}", "--oneshot", "-Q", "--max-turns", "5", "--yolo"]
-      },
-      "skills": [
-        {
-          "id": "shell_actuation",
-          "name": "Linux OS Shell Actuation",
-          "description": "Executes complex system administration, file pipeline transformations, and container management."
         }
       ]
     },
@@ -129,6 +274,11 @@
       ],
       "endpointUrl": "http://127.0.0.1:10000",
       "healthArgs": ["--help"],
+      "openShell": {
+        "enabled": true,
+        "mode": "hybrid",
+        "policy": "jarvis-default-agent-policy"
+      },
       "skills": [
         {
           "id": "multi_step_planning",

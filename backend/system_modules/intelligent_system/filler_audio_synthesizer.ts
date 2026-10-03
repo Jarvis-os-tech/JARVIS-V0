@@ -15,6 +15,7 @@ export class FillerAudioSynthesizer {
   private geminiKeyRotator: KeyPoolRotator;
   private voiceName: string;
   private preRenderedSnippets: Map<TaskDomain, FillerAudioSnippet[]> = new Map();
+  private hasWarnedNoKey = false;
 
   constructor(voiceName: string = 'Puck') {
     this.voiceName = voiceName;
@@ -23,28 +24,13 @@ export class FillerAudioSynthesizer {
   }
 
   /**
-   * Generates a smooth, audible acoustic chime / confirmation tone in 24kHz 16-bit linear PCM.
-   * Provides immediate acoustic feedback in <1ms without network roundtrip.
+   * Generates silent 24kHz 16-bit linear PCM buffer.
+   * Completely silent (no beep/chime tone) while preserving PCM buffer integrity and contract.
    */
-  private generateChimePcm(frequencies: number[] = [440, 554.37, 659.25], durationSec: number = 0.4): string {
+  private generateChimePcm(_frequencies: number[] = [440, 554.37, 659.25], durationSec: number = 0.4): string {
     const sampleRate = 24000;
     const numSamples = Math.floor(sampleRate * durationSec);
-    const buffer = Buffer.alloc(numSamples * 2); // 16-bit = 2 bytes per sample
-
-    for (let i = 0; i < numSamples; i++) {
-      const t = i / sampleRate;
-      // Exponential decay envelope
-      const envelope = Math.exp(-4 * (i / numSamples));
-      let sample = 0;
-
-      for (const freq of frequencies) {
-        sample += Math.sin(2 * Math.PI * freq * t) * (1 / frequencies.length);
-      }
-
-      const int16Val = Math.max(-32768, Math.min(32767, Math.floor(sample * envelope * 24000)));
-      buffer.writeInt16LE(int16Val, i * 2);
-    }
-
+    const buffer = Buffer.alloc(numSamples * 2, 0); // 16-bit = 2 bytes per sample (all zeros = complete silence)
     return buffer.toString('base64');
   }
 
@@ -83,6 +69,10 @@ export class FillerAudioSynthesizer {
       os_control: [
         "Adjusting system settings immediately, Sir.",
         "Command executed, Sir."
+      ],
+      delegation: [
+        "Delegating to specialized agent now, Sir.",
+        "Dispatching task to autonomous specialist, please stand by, Sir."
       ]
     };
 
@@ -119,11 +109,14 @@ export class FillerAudioSynthesizer {
     text: string,
     voiceNameOverride?: string
   ): Promise<{ audioBase64: string; format: string; sampleRate: number }> {
-    const key = this.geminiKeyRotator.getActiveKey();
+    const key = this.geminiKeyRotator.getActiveKey() || process.env.GEMINI_API_KEY || '';
     const voice = voiceNameOverride || this.voiceName;
 
-    if (!key) {
-      console.warn('[FillerAudioSynthesizer] No GEMINI_API_KEY available for dynamic speech synthesis.');
+    if (process.env.NODE_ENV === 'test' || !key || key.startsWith('MY_')) {
+      if (!this.hasWarnedNoKey && process.env.NODE_ENV !== 'test') {
+        this.hasWarnedNoKey = true;
+        console.log('[FillerAudioSynthesizer] Note: GEMINI_API_KEY on standby. Using acoustic chime feedback for dynamic speech.');
+      }
       return {
         audioBase64: this.generateChimePcm([440, 660, 880], 0.3),
         format: 'audio/pcm;rate=24000',
@@ -141,7 +134,7 @@ export class FillerAudioSynthesizer {
       const audioModels = ['gemini-2.5-flash-native-audio-preview-12-2025', 'gemini-2.0-flash'];
       for (const modelToTry of audioModels) {
         try {
-          const response = await ai.models.generateContent({
+          const fetchPromise = ai.models.generateContent({
             model: modelToTry,
             contents: text,
             config: {
@@ -153,6 +146,10 @@ export class FillerAudioSynthesizer {
               }
             }
           });
+          const timeoutPromise = new Promise<never>((_, reject) => 
+            setTimeout(() => reject(new Error('TTS synthesis timeout')), 3000)
+          );
+          const response = await Promise.race([fetchPromise, timeoutPromise]);
 
           const parts = response.candidates?.[0]?.content?.parts;
           if (parts && parts.length > 0) {

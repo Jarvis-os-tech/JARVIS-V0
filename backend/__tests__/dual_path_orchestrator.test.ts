@@ -16,7 +16,9 @@ import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+process.env.NODE_ENV = 'test';
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+process.env.NODE_ENV = 'test';
 
 import { ExecutionPath, TaskStatus, AgentRole } from '../system_modules/intelligent_system/dual_path_types';
 import { KeyPoolRotator } from '../system_modules/intelligent_system/key_pool_rotator';

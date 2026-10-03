@@ -31,6 +31,11 @@ export interface ManifestAgentEntry {
     initial: string[];
     resume: string[];
   };
+  openShell?: {
+    enabled: boolean;
+    mode?: string;
+    policy?: string;
+  };
   skills: Array<{
     id: string;
     name: string;
@@ -99,7 +104,8 @@ export class CLIAgentRegistry {
             streaming: true,
             pushNotifications: true,
             statePersistence: true,
-            multiTurn: true
+            multiTurn: true,
+            ...(entry.openShell ? { openShell: entry.openShell } : { openShell: { enabled: true, mode: 'hybrid' } })
           },
           skills: entry.skills.map(s => ({
             id: s.id,

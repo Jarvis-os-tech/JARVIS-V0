@@ -74,16 +74,16 @@ export const CommandInputBar: React.FC<CommandInputBarProps> = ({
     <div className="w-full max-w-xl mx-auto mt-4 px-2 sm:px-0 flex flex-col items-center z-20 relative">
       {/* Suggestions Floating Tactical HUD Panel */}
       {showSuggestions && (
-        <div className="w-full mb-2 bg-slate-950/95 border border-cyan-500/40 rounded-xl p-2.5 shadow-[0_0_30px_rgba(6,182,212,0.25)] backdrop-blur-2xl animate-in fade-in slide-in-from-bottom-2 duration-200">
-          <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-cyan-500/20 px-1">
+        <div className="w-full mb-2 bg-[#09101d]/95 border border-cyan-500/40 rounded-2xl p-3 shadow-[0_16px_40px_rgba(0,0,0,0.65),0_0_25px_rgba(0,240,255,0.18)] backdrop-blur-2xl animate-in fade-in slide-in-from-bottom-2 duration-200">
+          <div className="flex items-center justify-between pb-2 mb-2 border-b border-cyan-500/20 px-1">
             <div className="flex items-center gap-1.5 text-xs font-mono text-cyan-400 font-bold uppercase tracking-wider">
               <Sparkles className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
-              <span>J.A.R.V.I.S. Command &amp; Skills Shortcuts</span>
+              <span>J.A.R.V.I.S. Command &amp; Skills Matrix</span>
             </div>
             <button
               type="button"
               onClick={() => setShowSuggestions(false)}
-              className="text-slate-500 hover:text-slate-300 text-xs px-1"
+              className="text-slate-500 hover:text-slate-300 text-xs px-1.5 py-0.5 rounded hover:bg-slate-800/50 transition-colors"
             >
               ✕
             </button>
@@ -94,15 +94,15 @@ export const CommandInputBar: React.FC<CommandInputBarProps> = ({
                 key={idx}
                 type="button"
                 onClick={() => handleSelectSuggestion(item.cmd)}
-                className="w-full text-left flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-slate-900/60 hover:bg-cyan-950/50 border border-slate-800/80 hover:border-cyan-500/50 transition-all group"
+                className="w-full text-left flex items-center justify-between px-3 py-2 rounded-xl bg-slate-900/60 hover:bg-cyan-950/60 border border-slate-800/80 hover:border-cyan-500/50 transition-all group active:scale-[0.98]"
               >
-                <div className="flex items-center gap-2 overflow-hidden">
+                <div className="flex items-center gap-2.5 overflow-hidden">
                   <Box className="w-3.5 h-3.5 text-cyan-400/70 group-hover:text-cyan-300 shrink-0" />
                   <span className="font-mono text-xs text-slate-200 group-hover:text-cyan-200 truncate">
                     {item.cmd}
                   </span>
                 </div>
-                <span className="text-[10px] text-slate-500 group-hover:text-slate-400 shrink-0 font-sans ml-2">
+                <span className="text-[10px] text-slate-400 group-hover:text-cyan-300 shrink-0 font-mono tracking-wider ml-2 px-1.5 py-0.5 rounded bg-slate-800/50 border border-slate-700/50">
                   {item.title}
                 </span>
               </button>
@@ -117,16 +117,16 @@ export const CommandInputBar: React.FC<CommandInputBarProps> = ({
         className="w-full relative group"
       >
         {/* HUD Tactical Corner Accents */}
-        <div className={`absolute -top-1 -left-1 w-2.5 h-2.5 border-t-2 border-l-2 pointer-events-none rounded-tl-sm transition-all group-focus-within:scale-110 ${isSkillCommand ? 'border-purple-400 group-focus-within:border-purple-300' : 'border-cyan-400/70 group-focus-within:border-cyan-300'}`} />
-        <div className={`absolute -top-1 -right-1 w-2.5 h-2.5 border-t-2 border-r-2 pointer-events-none rounded-tr-sm transition-all group-focus-within:scale-110 ${isSkillCommand ? 'border-purple-400 group-focus-within:border-purple-300' : 'border-cyan-400/70 group-focus-within:border-cyan-300'}`} />
-        <div className={`absolute -bottom-1 -left-1 w-2.5 h-2.5 border-b-2 border-l-2 pointer-events-none rounded-bl-sm transition-all group-focus-within:scale-110 ${isSkillCommand ? 'border-purple-400 group-focus-within:border-purple-300' : 'border-cyan-400/70 group-focus-within:border-cyan-300'}`} />
-        <div className={`absolute -bottom-1 -right-1 w-2.5 h-2.5 border-b-2 border-r-2 pointer-events-none rounded-br-sm transition-all group-focus-within:scale-110 ${isSkillCommand ? 'border-purple-400 group-focus-within:border-purple-300' : 'border-cyan-400/70 group-focus-within:border-cyan-300'}`} />
+        <div className={`absolute -top-1 -left-1 w-3 h-3 border-t-2 border-l-2 pointer-events-none rounded-tl-sm transition-all group-focus-within:scale-110 group-focus-within:drop-shadow-[0_0_6px_rgba(0,240,255,0.8)] ${isSkillCommand ? 'border-purple-400 group-focus-within:border-purple-300' : 'border-cyan-400/80 group-focus-within:border-cyan-300'}`} />
+        <div className={`absolute -top-1 -right-1 w-3 h-3 border-t-2 border-r-2 pointer-events-none rounded-tr-sm transition-all group-focus-within:scale-110 group-focus-within:drop-shadow-[0_0_6px_rgba(0,240,255,0.8)] ${isSkillCommand ? 'border-purple-400 group-focus-within:border-purple-300' : 'border-cyan-400/80 group-focus-within:border-cyan-300'}`} />
+        <div className={`absolute -bottom-1 -left-1 w-3 h-3 border-b-2 border-l-2 pointer-events-none rounded-bl-sm transition-all group-focus-within:scale-110 group-focus-within:drop-shadow-[0_0_6px_rgba(0,240,255,0.8)] ${isSkillCommand ? 'border-purple-400 group-focus-within:border-purple-300' : 'border-cyan-400/80 group-focus-within:border-cyan-300'}`} />
+        <div className={`absolute -bottom-1 -right-1 w-3 h-3 border-b-2 border-r-2 pointer-events-none rounded-br-sm transition-all group-focus-within:scale-110 group-focus-within:drop-shadow-[0_0_6px_rgba(0,240,255,0.8)] ${isSkillCommand ? 'border-purple-400 group-focus-within:border-purple-300' : 'border-cyan-400/80 group-focus-within:border-cyan-300'}`} />
 
         {/* Input Bar Shell */}
-        <div className={`flex items-center gap-2.5 bg-slate-950/85 backdrop-blur-2xl border rounded-2xl px-4 py-2 transition-all duration-300 ${
+        <div className={`flex items-center gap-3 bg-[#0a1120]/90 backdrop-blur-2xl border rounded-2xl px-4 py-2.5 transition-all duration-300 ${
           isSkillCommand
-            ? 'border-purple-500/50 shadow-[0_0_30px_rgba(168,85,247,0.2)] focus-within:border-purple-400 focus-within:shadow-[0_0_35px_rgba(168,85,247,0.35)]'
-            : 'border-cyan-500/35 shadow-[0_0_30px_rgba(6,182,212,0.12)] focus-within:border-cyan-400 focus-within:shadow-[0_0_35px_rgba(6,182,212,0.28)]'
+            ? 'border-purple-500/50 shadow-[0_10px_35px_rgba(0,0,0,0.5),0_0_25px_rgba(168,85,247,0.2)] focus-within:border-purple-400 focus-within:shadow-[0_12px_40px_rgba(0,0,0,0.6),0_0_35px_rgba(168,85,247,0.35)]'
+            : 'border-cyan-500/35 shadow-[0_10px_35px_rgba(0,0,0,0.5),0_0_25px_rgba(0,240,255,0.14)] focus-within:border-cyan-400 focus-within:shadow-[0_12px_40px_rgba(0,0,0,0.6),0_0_35px_rgba(0,240,255,0.3)]'
         }`}>
           {/* Terminal / HUD Prefix */}
           <div className="flex items-center gap-1.5 shrink-0 select-none">
@@ -140,8 +140,8 @@ export const CommandInputBar: React.FC<CommandInputBarProps> = ({
             ) : (
               <>
                 <Terminal className="w-4 h-4 text-cyan-400 animate-pulse" />
-                <span className="font-mono text-xs font-bold text-cyan-400/80 hidden sm:inline tracking-wider">
-                  COMMAND &gt;
+                <span className="font-mono text-xs font-bold text-cyan-400/90 hidden sm:inline tracking-wider">
+                  DIRECTIVE &gt;
                 </span>
               </>
             )}
@@ -173,7 +173,7 @@ export const CommandInputBar: React.FC<CommandInputBarProps> = ({
                 setInput('');
                 setShowSuggestions(false);
               }}
-              className="p-1 text-slate-500 hover:text-slate-300 rounded-lg hover:bg-slate-800/60 transition-colors"
+              className="p-1 text-slate-400 hover:text-slate-200 rounded-lg hover:bg-slate-800/60 transition-colors"
               title="Clear input"
             >
               <X className="w-3.5 h-3.5" />
@@ -184,12 +184,12 @@ export const CommandInputBar: React.FC<CommandInputBarProps> = ({
           <button
             type="submit"
             disabled={!input.trim() || disabled}
-            className={`p-2 rounded-xl flex items-center justify-center transition-all ${
+            className={`p-2.5 rounded-xl flex items-center justify-center transition-all active:scale-95 ${
               input.trim() && !disabled
                 ? isSkillCommand
                   ? 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white font-bold hover:scale-105 shadow-[0_0_20px_rgba(168,85,247,0.5)] cursor-pointer'
-                  : 'bg-gradient-to-r from-cyan-500 to-blue-500 text-slate-950 font-bold hover:scale-105 shadow-[0_0_20px_rgba(6,182,212,0.5)] cursor-pointer'
-                : 'bg-slate-900/70 text-slate-600 border border-slate-800/80 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-cyan-400 via-sky-400 to-blue-500 text-slate-950 font-black hover:scale-105 shadow-[0_0_22px_rgba(0,240,255,0.55)] cursor-pointer'
+                : 'bg-slate-900/80 text-slate-600 border border-slate-800/80 cursor-not-allowed'
             }`}
             title="Transmit directive"
           >

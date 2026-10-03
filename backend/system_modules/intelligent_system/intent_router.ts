@@ -78,21 +78,28 @@ export class IntentRouter {
    * Deterministic pattern matching for fast OS commands.
    */
   private evaluateTier1Rules(text: string): Omit<IntentClassificationResult, 'latencyMs'> | null {
-    const lower = text.toLowerCase();
+    const lower = text.trim().toLowerCase();
 
-    // 1. Definite SLOW_PATH indicators (Heavy reasoning, coding, refactoring, script pipelines)
+    // 0. Explicit Agent Delegation Commands (DELEGATION_PATH) - check FIRST before general coding patterns
+    // Matches: "delegate to hermes...", "handoff to claude...", "send to codex...", "assign to opencode...", "dispatch to hermes..."
+    // Also matches: "hermes analyze...", "claude fix...", "codex write...", "opencode debug..." (agent name as command prefix)
     if (
-      /(refactor|write a (script|program|class|function|unit test)|build a (pipeline|module|service)|(analyze|review|audit|inspect|optimize)\s+.*(codebase|repository|server|architecture|schema|database|memory)|(architecture|code|security|performance)\s*(review|audit|analysis|inspection)|docker|git (rebase|merge|bisect)|benchmark|find all memory leaks|complex workflow)/i.test(
-        lower
-      )
+      (/\b(delegate|handoff|hand\s*off|assign|dispatch|send\s+to)\b/i.test(lower) &&
+       /\b(hermes|claude|codex|opencode|openmanus|agent|subagent|sub\s*agent)\b/i.test(lower)) ||
+      /^\s*(hermes|claude|codex|opencode|openmanus)\b/i.test(lower)
     ) {
+      const targetMatch = lower.match(/\b(hermes|claude|codex|opencode|openmanus)\b/i);
+      const targetAgent = targetMatch ? targetMatch[1].toLowerCase() : 'hermes';
       return {
-        path: ExecutionPath.SLOW_PATH,
-        domain: 'code',
+        path: ExecutionPath.DELEGATION_PATH,
+        domain: 'delegation',
         confidence: 0.98,
-        reason: 'Explicit multi-step software engineering directive'
+        reason: `Explicit delegation to ${targetAgent}`,
+        targetAgent
       };
     }
+
+    // 1. Definite SLOW_PATH indicators (Heavy reasoning, coding, refactoring, script pipelines)
 
     // 2. Hardware Volume Controls
     if (/\b(set|turn|change|crank|raise|lower|reduce|get|check)?\s*(system\s*)?(volume|sound|audio)\b/i.test(lower) || /\b(mute|unmute)\b/i.test(lower)) {
@@ -177,7 +184,21 @@ export class IntentRouter {
         reason: 'Immediate sovereign memory core purge'
       };
     }
-
+    // 10. Explicit Agent Delegation Commands (DELEGATION_PATH)
+    if (
+      /\b(delegate|handoff|hand\s*off|assign|dispatch|send\s+to)\b/i.test(lower) &&
+      /\b(hermes|claude|codex|opencode|openmanus|agent|subagent|sub\s*agent)\b/i.test(lower)
+    ) {
+      const targetMatch = lower.match(/\b(hermes|claude|codex|opencode|openmanus)\b/i);
+      const targetAgent = targetMatch ? targetMatch[1].toLowerCase() : 'hermes';
+      return {
+        path: ExecutionPath.DELEGATION_PATH,
+        domain: 'delegation',
+        confidence: 0.98,
+        reason: `Explicit delegation to ${targetAgent}`,
+        targetAgent
+      };
+    }
     return null;
   }
 

@@ -83,6 +83,16 @@ export class KeyPoolRotator {
 
   public getActiveKey(): string {
     if (this.keys.length === 0) {
+      this.discoverEnvironmentKeys();
+      if (this.keys.length === 0) {
+        const direct = process.env[this.poolName.toUpperCase()];
+        if (direct && !direct.startsWith('MY_')) {
+          this.addKey(direct);
+        }
+      }
+    }
+
+    if (this.keys.length === 0) {
       return '';
     }
 

@@ -16,6 +16,7 @@ import {
   DualPathConfig,
   DualPathExecutionResponse,
   ExecutionPath,
+  IntentClassificationResult,
   TaskDomain,
   SecondarySynthesisPayload
 } from './dual_path_types';
@@ -24,23 +25,33 @@ import { FillerAudioSynthesizer } from './filler_audio_synthesizer';
 import { MultiAgentPool } from './multi_agent_pool';
 import { dispatchSystemControl, isSystemControl } from './system_controls';
 
+export type DelegationExecutor = (params: {
+  agentId: string;
+  prompt: string;
+  sessionId?: string;
+  clientWs: WebSocket;
+}) => Promise<any>;
+
 export class DualPathOrchestrator {
   private intentRouter: IntentRouter;
   private fillerSynthesizer: FillerAudioSynthesizer;
   private agentPool: MultiAgentPool;
   private personaVoice: string;
   private activeTaskByWs: Map<WebSocket, string> = new Map();
+  private delegationExecutor: DelegationExecutor | null = null;
 
   constructor(options?: {
     intentRouter?: IntentRouter;
     fillerSynth?: FillerAudioSynthesizer;
     agentPool?: MultiAgentPool;
     config?: DualPathConfig;
+    delegationExecutor?: DelegationExecutor;
   }) {
     this.personaVoice = options?.config?.personaVoice || 'Puck';
     this.intentRouter = options?.intentRouter || new IntentRouter();
     this.fillerSynthesizer = options?.fillerSynth || new FillerAudioSynthesizer(this.personaVoice);
     this.agentPool = options?.agentPool || new MultiAgentPool({ maxConcurrent: options?.config?.maxConcurrentAgents || 2 });
+    this.delegationExecutor = options?.delegationExecutor || null;
   }
 
   /**
@@ -84,6 +95,69 @@ export class DualPathOrchestrator {
         path: ExecutionPath.FAST_PATH,
         classification,
         fastPathResult: fastResult
+      };
+    }
+
+    // =================================================================
+    // PATH C: DELEGATION_PATH PIPELINE (Explicit Agent Delegation)
+    // =================================================================
+    if (classification.path === ExecutionPath.DELEGATION_PATH) {
+      if (!clientWs || clientWs.readyState !== WebSocket.OPEN) {
+        return {
+          path: ExecutionPath.DELEGATION_PATH,
+          classification,
+          taskId: `delegation_${Date.now()}`,
+          error: 'No active WebSocket for delegation'
+        };
+      }
+
+      if (!this.delegationExecutor) {
+        console.warn('[DualPathOrchestrator] DELEGATION_PATH triggered but no delegationExecutor configured');
+        return {
+          path: ExecutionPath.DELEGATION_PATH,
+          classification,
+          taskId: `delegation_${Date.now()}`,
+          error: 'Delegation executor not configured'
+        };
+      }
+
+      const classificationWithTarget = classification as IntentClassificationResult & { targetAgent?: string };
+      const targetAgent = classificationWithTarget.targetAgent || 'hermes';
+      const taskId = `delegation_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+
+      // Inject instant vocal filler (<300ms SLA)
+      let fillerSent = false;
+      fillerSent = await this.injectInstantVocalFiller(classification.domain, text, clientWs);
+
+      // Execute delegation asynchronously
+      this.delegationExecutor({
+        agentId: targetAgent,
+        prompt: text,
+        clientWs
+      }).then(async (result) => {
+        await this.deliverSecondarySynthesis(taskId, text, {
+          output: result,
+          durationMs: result.durationMs || 0,
+          agentRole: AgentRole.ENGINEER,
+          providerUsed: targetAgent
+        }, clientWs);
+      }).catch(async (err) => {
+        console.error('[DualPathOrchestrator] Delegation failed:', err);
+        if (clientWs && clientWs.readyState === WebSocket.OPEN) {
+          clientWs.send(JSON.stringify({
+            type: 'delegation_failed',
+            taskId,
+            agentId: targetAgent,
+            error: err?.message || String(err)
+          }));
+        }
+      });
+
+      return {
+        path: ExecutionPath.DELEGATION_PATH,
+        classification,
+        taskId,
+        vocalFillerSent: fillerSent
       };
     }
 
@@ -340,7 +414,15 @@ export class DualPathOrchestrator {
   public getIntentRouter(): IntentRouter {
     return this.intentRouter;
   }
-}
 
-// Global Singleton for the backend server
-export const dualPathOrchestrator = new DualPathOrchestrator();
+  public setDelegationExecutor(executor: DelegationExecutor): void {
+    this.delegationExecutor = executor;
+  }
+}
+export const dualPathOrchestrator = new DualPathOrchestrator({
+  delegationExecutor: async (params) => {
+    // This will be overridden by server.ts after initialization
+    console.warn('[DualPathOrchestrator] delegationExecutor not wired — delegation will fail');
+    return { error: 'Delegation not wired' };
+  }
+});

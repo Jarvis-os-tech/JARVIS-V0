@@ -38,11 +38,23 @@
           "timestamp": 1790905738839,
           "durationMs": 30979,
           "exitCode": 0
+        },
+        {
+          "role": "user",
+          "content": "Checking system status. Please respond if active.",
+          "timestamp": 1790952992490
+        },
+        {
+          "role": "agent",
+          "content": "Active and ready. What do you need?",
+          "timestamp": 1790953011755,
+          "durationMs": 19264,
+          "exitCode": 0
         }
       ],
       "createdAt": 1790905707855,
-      "lastActiveAt": 1790905738839,
-      "commandCount": 1
+      "lastActiveAt": 1790953011755,
+      "commandCount": 2
     },
     "jarvis-hermes-1790922167446": {
       "sessionId": "jarvis-hermes-1790922167446",
@@ -88,6 +100,254 @@
       ],
       "createdAt": 1790923585682,
       "lastActiveAt": 1790923593100,
+      "commandCount": 1
+    },
+    "jarvis-claude-1790952992463": {
+      "sessionId": "jarvis-claude-1790952992463",
+      "agentId": "claude",
+      "agentName": "Claude Code",
+      "status": "active",
+      "history": [
+        {
+          "role": "user",
+          "content": "Checking system status. Please respond if active.",
+          "timestamp": 1790952992464
+        },
+        {
+          "role": "agent",
+          "content": "Active. Ready when you are.",
+          "timestamp": 1790953004547,
+          "durationMs": 12083,
+          "exitCode": 0
+        }
+      ],
+      "createdAt": 1790952992463,
+      "lastActiveAt": 1790953004547,
+      "commandCount": 1
+    },
+    "jarvis-codex-1790952992469": {
+      "sessionId": "jarvis-codex-1790952992469",
+      "agentId": "codex",
+      "agentName": "Codex CLI",
+      "status": "busy",
+      "history": [
+        {
+          "role": "user",
+          "content": "Checking system status. Please respond if active.",
+          "timestamp": 1790952992469
+        }
+      ],
+      "createdAt": 1790952992469,
+      "lastActiveAt": 1790952992469,
+      "commandCount": 0
+    },
+    "jarvis-opencode-1790952992472": {
+      "sessionId": "jarvis-opencode-1790952992472",
+      "agentId": "opencode",
+      "agentName": "OpenCode",
+      "status": "active",
+      "history": [
+        {
+          "role": "user",
+          "content": "Checking system status. Please respond if active.",
+          "timestamp": 1790952992472
+        },
+        {
+          "role": "agent",
+          "content": "opencode run [message..]\n\nrun opencode with a message\n\nPositionals:\n  message  message to send                                                     [array] [default: []]\n\nOptions:\n  -h, --help         show help                                                             [boolean]\n  -v, --version      show version number                                                   [boolean]\n      --print-logs   print logs to stderr                                                  [boolean]\n      --log-level    log level                  [string] [choices: \"DEBUG\", \"INFO\", \"WARN\", \"ERROR\"]\n      --pure         run without external plugins                                          [boolean]\n      --command      the command to run, use message for args                               [string]\n  -c, --continue     continue the last session                                             [boolean]\n  -s, --session      session id to continue                                                 [string]\n      --fork         fork the session before continuing (requires --continue or --session) [boolean]\n      --share        share the session                                                     [boolean]\n  -m, --model        model to use in the format of provider/model                           [string]\n      --agent        agent to use                                                           [string]\n      --format       format: default (formatted) or json (raw JSON events)\n                                          [string] [choices: \"default\", \"json\"] [default: \"default\"]\n  -f, --file         file(s) to attach to message                                            [array]\n      --title        title for the session (uses truncated prompt if no value provided)     [string]\n      --attach       attach to a running opencode server (e.g., http://localhost:4096)      [string]\n  -p, --password     basic auth password (defaults to OPENCODE_SERVER_PASSWORD)             [string]\n  -u, --username     basic auth username (defaults to OPENCODE_SERVER_USERNAME or 'opencode')\n                                                                                            [string]\n      --dir          directory to run in, path on remote server if attaching                [string]\n      --port         port for the local server (defaults to random port if no value provided)\n                                                                                            [number]\n      --variant      model variant (provider-specific reasoning effort, e.g., high, max, minimal)\n                                                                                            [string]\n      --thinking     show thinking blocks                                                  [boolean]\n  -i, --interactive  run in direct interactive split-footer mode          [boolean] [default: false]\n      --auto         auto-approve permissions that are not explicitly denied (dangerous!)\n                                                                          [boolean] [default: false]",
+          "timestamp": 1790952993586,
+          "durationMs": 1113,
+          "exitCode": 1
+        }
+      ],
+      "createdAt": 1790952992472,
+      "lastActiveAt": 1790952993586,
+      "commandCount": 1
+    },
+    "jarvis-openmanus-1790952992482": {
+      "sessionId": "jarvis-openmanus-1790952992482",
+      "agentId": "openmanus",
+      "agentName": "OpenManus Agent",
+      "status": "active",
+      "history": [
+        {
+          "role": "user",
+          "content": "Checking system status. Please respond if active.",
+          "timestamp": 1790952992482
+        },
+        {
+          "role": "agent",
+          "content": "",
+          "timestamp": 1790952992498,
+          "durationMs": 15,
+          "exitCode": -1
+        }
+      ],
+      "createdAt": 1790952992482,
+      "lastActiveAt": 1790952992498,
+      "commandCount": 1
+    },
+    "jarvis-claude-1790953005638": {
+      "sessionId": "jarvis-claude-1790953005638",
+      "agentId": "claude",
+      "agentName": "Claude Code",
+      "status": "active",
+      "history": [
+        {
+          "role": "user",
+          "content": "System check request",
+          "timestamp": 1790953005638
+        },
+        {
+          "role": "agent",
+          "content": "System check is clean. The server on port 3000 is up and every probed subsystem reports nominal.\n\n| Check | Result |\n|---|---|\n| Process | `tsx backend/server.ts` running, bound to `127.0.0.1:3000` (pid 104249), up ~1.5 min |\n| `/api/health` | `ok`, Gemini API key configured |\n| Orchestrator | `nominal` — Gemini, Groq, NVIDIA NIM, and OmniRoute all active |\n| Memory | vault connected, 81 memory nodes, 1,445 conversation turns, 27 knowledge triples; Hermes available; Cognee Cloud connected |\n| Security | `nominal` — OpenShell binary present, gateway ready, hybrid sandbox policy loaded |\n\nOne note: the working tree on `dev` has uncommitted changes across backend, frontend, and `skills/skills_registry.json`. That's expected in-progress work, not a fault.",
+          "timestamp": 1790953047919,
+          "durationMs": 42281,
+          "exitCode": 0
+        }
+      ],
+      "createdAt": 1790953005638,
+      "lastActiveAt": 1790953047919,
+      "commandCount": 1
+    },
+    "jarvis-codex-1790953005644": {
+      "sessionId": "jarvis-codex-1790953005644",
+      "agentId": "codex",
+      "agentName": "Codex CLI",
+      "status": "busy",
+      "history": [
+        {
+          "role": "user",
+          "content": "System check request",
+          "timestamp": 1790953005644
+        }
+      ],
+      "createdAt": 1790953005644,
+      "lastActiveAt": 1790953005644,
+      "commandCount": 0
+    },
+    "jarvis-opencode-1790953005650": {
+      "sessionId": "jarvis-opencode-1790953005650",
+      "agentId": "opencode",
+      "agentName": "OpenCode",
+      "status": "active",
+      "history": [
+        {
+          "role": "user",
+          "content": "System check request",
+          "timestamp": 1790953005651
+        },
+        {
+          "role": "agent",
+          "content": "opencode run [message..]\n\nrun opencode with a message\n\nPositionals:\n  message  message to send                                                     [array] [default: []]\n\nOptions:\n  -h, --help         show help                                                             [boolean]\n  -v, --version      show version number                                                   [boolean]\n      --print-logs   print logs to stderr                                                  [boolean]\n      --log-level    log level                  [string] [choices: \"DEBUG\", \"INFO\", \"WARN\", \"ERROR\"]\n      --pure         run without external plugins                                          [boolean]\n      --command      the command to run, use message for args                               [string]\n  -c, --continue     continue the last session                                             [boolean]\n  -s, --session      session id to continue                                                 [string]\n      --fork         fork the session before continuing (requires --continue or --session) [boolean]\n      --share        share the session                                                     [boolean]\n  -m, --model        model to use in the format of provider/model                           [string]\n      --agent        agent to use                                                           [string]\n      --format       format: default (formatted) or json (raw JSON events)\n                                          [string] [choices: \"default\", \"json\"] [default: \"default\"]\n  -f, --file         file(s) to attach to message                                            [array]\n      --title        title for the session (uses truncated prompt if no value provided)     [string]\n      --attach       attach to a running opencode server (e.g., http://localhost:4096)      [string]\n  -p, --password     basic auth password (defaults to OPENCODE_SERVER_PASSWORD)             [string]\n  -u, --username     basic auth username (defaults to OPENCODE_SERVER_USERNAME or 'opencode')\n                                                                                            [string]\n      --dir          directory to run in, path on remote server if attaching                [string]\n      --port         port for the local server (defaults to random port if no value provided)\n                                                                                            [number]\n      --variant      model variant (provider-specific reasoning effort, e.g., high, max, minimal)\n                                                                                            [string]\n      --thinking     show thinking blocks                                                  [boolean]\n  -i, --interactive  run in direct interactive split-footer mode          [boolean] [default: false]\n      --auto         auto-approve permissions that are not explicitly denied (dangerous!)\n                                                                          [boolean] [default: false]",
+          "timestamp": 1790953006484,
+          "durationMs": 833,
+          "exitCode": 1
+        }
+      ],
+      "createdAt": 1790953005650,
+      "lastActiveAt": 1790953006484,
+      "commandCount": 1
+    },
+    "jarvis-openmanus-1790953005658": {
+      "sessionId": "jarvis-openmanus-1790953005658",
+      "agentId": "openmanus",
+      "agentName": "OpenManus Agent",
+      "status": "active",
+      "history": [
+        {
+          "role": "user",
+          "content": "System check request",
+          "timestamp": 1790953005659
+        },
+        {
+          "role": "agent",
+          "content": "",
+          "timestamp": 1790953005682,
+          "durationMs": 23,
+          "exitCode": -1
+        }
+      ],
+      "createdAt": 1790953005658,
+      "lastActiveAt": 1790953005682,
+      "commandCount": 1
+    },
+    "jarvis-hermes-1790953109946": {
+      "sessionId": "jarvis-hermes-1790953109946",
+      "agentId": "hermes",
+      "agentName": "Hermes Agent",
+      "status": "busy",
+      "history": [
+        {
+          "role": "user",
+          "content": "hi",
+          "timestamp": 1790953109946
+        }
+      ],
+      "createdAt": 1790953109946,
+      "lastActiveAt": 1790953109946,
+      "commandCount": 0
+    },
+    "jarvis-codex-1790953109951": {
+      "sessionId": "jarvis-codex-1790953109951",
+      "agentId": "codex",
+      "agentName": "Codex CLI",
+      "status": "busy",
+      "history": [
+        {
+          "role": "user",
+          "content": "hi",
+          "timestamp": 1790953109952
+        }
+      ],
+      "createdAt": 1790953109951,
+      "lastActiveAt": 1790953109952,
+      "commandCount": 0
+    },
+    "jarvis-claude-1790953109956": {
+      "sessionId": "jarvis-claude-1790953109956",
+      "agentId": "claude",
+      "agentName": "Claude Code",
+      "status": "active",
+      "history": [
+        {
+          "role": "user",
+          "content": "hi",
+          "timestamp": 1790953109957
+        },
+        {
+          "role": "agent",
+          "content": "Hi. What do you want to work on in Jarvis?",
+          "timestamp": 1790953125042,
+          "durationMs": 15085,
+          "exitCode": 0
+        }
+      ],
+      "createdAt": 1790953109956,
+      "lastActiveAt": 1790953125042,
+      "commandCount": 1
+    },
+    "jarvis-opencode-1790953109962": {
+      "sessionId": "jarvis-opencode-1790953109962",
+      "agentId": "opencode",
+      "agentName": "OpenCode",
+      "status": "active",
+      "history": [
+        {
+          "role": "user",
+          "content": "hi",
+          "timestamp": 1790953109962
+        },
+        {
+          "role": "agent",
+          "content": "opencode run [message..]\n\nrun opencode with a message\n\nPositionals:\n  message  message to send                                                     [array] [default: []]\n\nOptions:\n  -h, --help         show help                                                             [boolean]\n  -v, --version      show version number                                                   [boolean]\n      --print-logs   print logs to stderr                                                  [boolean]\n      --log-level    log level                  [string] [choices: \"DEBUG\", \"INFO\", \"WARN\", \"ERROR\"]\n      --pure         run without external plugins                                          [boolean]\n      --command      the command to run, use message for args                               [string]\n  -c, --continue     continue the last session                                             [boolean]\n  -s, --session      session id to continue                                                 [string]\n      --fork         fork the session before continuing (requires --continue or --session) [boolean]\n      --share        share the session                                                     [boolean]\n  -m, --model        model to use in the format of provider/model                           [string]\n      --agent        agent to use                                                           [string]\n      --format       format: default (formatted) or json (raw JSON events)\n                                          [string] [choices: \"default\", \"json\"] [default: \"default\"]\n  -f, --file         file(s) to attach to message                                            [array]\n      --title        title for the session (uses truncated prompt if no value provided)     [string]\n      --attach       attach to a running opencode server (e.g., http://localhost:4096)      [string]\n  -p, --password     basic auth password (defaults to OPENCODE_SERVER_PASSWORD)             [string]\n  -u, --username     basic auth username (defaults to OPENCODE_SERVER_USERNAME or 'opencode')\n                                                                                            [string]\n      --dir          directory to run in, path on remote server if attaching                [string]\n      --port         port for the local server (defaults to random port if no value provided)\n                                                                                            [number]\n      --variant      model variant (provider-specific reasoning effort, e.g., high, max, minimal)\n                                                                                            [string]\n      --thinking     show thinking blocks                                                  [boolean]\n  -i, --interactive  run in direct interactive split-footer mode          [boolean] [default: false]\n      --auto         auto-approve permissions that are not explicitly denied (dangerous!)\n                                                                          [boolean] [default: false]",
+          "timestamp": 1790953110943,
+          "durationMs": 981,
+          "exitCode": 1
+        }
+      ],
+      "createdAt": 1790953109962,
+      "lastActiveAt": 1790953110943,
       "commandCount": 1
     }
   }

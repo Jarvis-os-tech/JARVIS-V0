@@ -9,7 +9,8 @@ import { WebSocket } from 'ws';
 
 export enum ExecutionPath {
   FAST_PATH = 'FAST_PATH',
-  SLOW_PATH = 'SLOW_PATH'
+  SLOW_PATH = 'SLOW_PATH',
+  DELEGATION_PATH = 'DELEGATION_PATH'
 }
 
 export enum TaskStatus {
@@ -29,7 +30,7 @@ export enum AgentRole {
   SYNTHESIZER = 'SYNTHESIZER'
 }
 
-export type TaskDomain = 'code' | 'shell' | 'diagnostics' | 'general' | 'memory' | 'os_control';
+export type TaskDomain = 'code' | 'shell' | 'diagnostics' | 'general' | 'memory' | 'os_control' | 'delegation';
 
 export interface IntentClassificationResult {
   path: ExecutionPath;
@@ -39,6 +40,7 @@ export interface IntentClassificationResult {
   suggestedAction?: string;
   latencyMs: number;
   tokensEvaluated?: number;
+  targetAgent?: string;
 }
 
 export interface FillerAudioSnippet {
@@ -98,9 +100,10 @@ export interface DualPathConfig {
 export interface DualPathExecutionResponse {
   path: ExecutionPath;
   classification: IntentClassificationResult;
-  fastPathResult?: any;
+  fastPathResult?: unknown;
   taskId?: string;
   vocalFillerSent?: boolean;
+  error?: string;
 }
 
 export interface SecondarySynthesisPayload {

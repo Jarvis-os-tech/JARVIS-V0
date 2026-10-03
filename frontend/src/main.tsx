@@ -1,14 +1,28 @@
-import { StrictMode } from 'react';
+import { StrictMode, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
-import { JarvisApp } from './components/jarvis/JarvisApp';
-import './aurora.css';
+import App from './App.tsx';
+import './index.css';
 import { register as registerServiceWorker } from './serviceWorkerRegistration';
 import { Toaster } from 'sonner';
 
+function RootApp() {
+  useEffect(() => {
+    try {
+      localStorage.removeItem('jarvis_ui_mode');
+    } catch (_) {}
+  }, []);
+
+  return (
+    <>
+      <App />
+      <Toaster position="bottom-right" richColors />
+    </>
+  );
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <JarvisApp />
-    <Toaster position="bottom-right" richColors />
+    <RootApp />
   </StrictMode>,
 );
 

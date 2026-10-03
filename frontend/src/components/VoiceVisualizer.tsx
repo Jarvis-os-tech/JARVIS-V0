@@ -227,7 +227,7 @@ export const VoiceVisualizer: React.FC<VoiceVisualizerProps> = ({
       {/* Dynamic Status Text */}
       {connectionState !== 'disconnected' && getStatusText() && (
         <div className="mt-5 text-center">
-          <p className="text-base sm:text-lg font-bold text-slate-100 font-mono flex items-center justify-center gap-2.5 drop-shadow-[0_0_10px_rgba(6,182,212,0.3)]">
+          <p className="text-base sm:text-lg font-bold text-slate-100 font-['Rajdhani',sans-serif] tracking-wider uppercase flex items-center justify-center gap-2.5 drop-shadow-[0_0_12px_rgba(0,240,255,0.45)]">
             {connectionState === 'speaking' && <span className="w-2.5 h-2.5 rounded-full bg-blue-400 animate-ping" />}
             {connectionState === 'listening' && <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping" />}
             {getStatusText()}
@@ -236,7 +236,7 @@ export const VoiceVisualizer: React.FC<VoiceVisualizerProps> = ({
           {connectionState === 'speaking' && (
             <button
               onClick={onInterrupt}
-              className="mt-3 text-xs font-mono font-bold text-cyan-300 hover:text-white bg-cyan-950/60 hover:bg-cyan-900/60 px-5 py-1.5 rounded-full border border-cyan-500/40 transition-all shadow-[0_0_15px_rgba(6,182,212,0.2)]"
+              className="mt-3 text-xs font-mono font-bold text-cyan-300 hover:text-white bg-cyan-950/70 hover:bg-cyan-900/80 px-5 py-1.5 rounded-full border border-cyan-500/50 transition-all shadow-[0_0_18px_rgba(0,240,255,0.25)] active:scale-95"
             >
               Interrupt J.A.R.V.I.S.
             </button>
@@ -245,16 +245,16 @@ export const VoiceVisualizer: React.FC<VoiceVisualizerProps> = ({
       )}
 
       {/* Controls Dock */}
-      <div className="mt-6 flex items-center gap-3.5 bg-slate-950/80 backdrop-blur-2xl p-3 px-6 rounded-2xl border border-cyan-500/30 shadow-[0_0_40px_rgba(6,182,212,0.15)]">
+      <div className="mt-6 flex items-center gap-3.5 bg-[#09101d]/90 backdrop-blur-2xl p-3 px-6 rounded-2xl border border-cyan-500/35 shadow-[0_16px_45px_rgba(0,0,0,0.65),0_0_30px_rgba(0,240,255,0.14)]">
         {connectionState !== 'disconnected' ? (
           <>
             {/* Mute Mic button */}
             <button
               onClick={onToggleMute}
-              className={`p-3.5 rounded-xl transition-all ${
+              className={`p-3.5 rounded-xl transition-all active:scale-95 ${
                 isMuted
-                  ? 'bg-amber-500/20 text-amber-300 border border-amber-400/50 shadow-[0_0_15px_rgba(245,158,11,0.2)]'
-                  : 'bg-slate-900/80 text-cyan-300 hover:bg-cyan-950 border border-cyan-500/25 hover:border-cyan-400'
+                  ? 'bg-amber-500/20 text-amber-300 border border-amber-400/50 shadow-[0_0_18px_rgba(245,158,11,0.25)]'
+                  : 'bg-slate-900/80 text-cyan-300 hover:bg-cyan-950/80 border border-cyan-500/30 hover:border-cyan-400 hover:shadow-[0_0_14px_rgba(0,240,255,0.25)]'
               }`}
               title={isMuted ? 'Unmute Sensors' : 'Mute Sensors'}
             >
@@ -264,10 +264,10 @@ export const VoiceVisualizer: React.FC<VoiceVisualizerProps> = ({
             {/* Camera Vision Button */}
             <button
               onClick={() => onToggleVision('camera')}
-              className={`p-3.5 rounded-xl transition-all ${
+              className={`p-3.5 rounded-xl transition-all active:scale-95 ${
                 isVisionActive && visionMode === 'camera'
-                  ? 'bg-cyan-500 text-slate-950 font-bold shadow-[0_0_20px_rgba(6,182,212,0.5)] border border-cyan-300'
-                  : 'bg-slate-900/80 text-slate-300 hover:bg-cyan-950 hover:text-cyan-300 border border-cyan-500/20 hover:border-cyan-400/50'
+                  ? 'bg-cyan-400 text-slate-950 font-bold shadow-[0_0_24px_rgba(0,240,255,0.6)] border border-cyan-200'
+                  : 'bg-slate-900/80 text-slate-300 hover:bg-cyan-950/80 hover:text-cyan-300 border border-cyan-500/25 hover:border-cyan-400/60'
               }`}
               title="Toggle Camera Optical Sensor"
             >
@@ -277,10 +277,10 @@ export const VoiceVisualizer: React.FC<VoiceVisualizerProps> = ({
             {/* Screen Share Vision Button */}
             <button
               onClick={() => onToggleVision('screen')}
-              className={`p-3.5 rounded-xl transition-all ${
+              className={`p-3.5 rounded-xl transition-all active:scale-95 ${
                 isVisionActive && visionMode === 'screen'
-                  ? 'bg-blue-500 text-white font-bold shadow-[0_0_20px_rgba(59,130,246,0.5)] border border-blue-300'
-                  : 'bg-slate-900/80 text-slate-300 hover:bg-cyan-950 hover:text-cyan-300 border border-cyan-500/20 hover:border-cyan-400/50'
+                  ? 'bg-blue-500 text-white font-bold shadow-[0_0_24px_rgba(59,130,246,0.6)] border border-blue-200'
+                  : 'bg-slate-900/80 text-slate-300 hover:bg-cyan-950/80 hover:text-cyan-300 border border-cyan-500/25 hover:border-cyan-400/60'
               }`}
               title="Toggle Screen Telemetry Stream"
             >
@@ -290,7 +290,7 @@ export const VoiceVisualizer: React.FC<VoiceVisualizerProps> = ({
             {/* End Call / Stop Session */}
             <button
               onClick={onStopSession}
-              className="p-3.5 rounded-xl bg-rose-600/90 hover:bg-rose-500 text-white transition-all shadow-[0_0_20px_rgba(225,29,72,0.4)] border border-rose-400/50 ml-1"
+              className="p-3.5 rounded-xl bg-rose-600/90 hover:bg-rose-500 text-white transition-all shadow-[0_0_22px_rgba(225,29,72,0.45)] border border-rose-400/60 ml-1 active:scale-95"
               title="Disconnect J.A.R.V.I.S. Core"
             >
               <Square className="w-5 h-5 fill-current" />
@@ -301,19 +301,19 @@ export const VoiceVisualizer: React.FC<VoiceVisualizerProps> = ({
             {/* Start Conversation Call */}
             <button
               onClick={onStartSession}
-              className="flex items-center gap-2.5 px-6 py-3.5 rounded-xl bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 text-slate-950 font-extrabold text-sm hover:opacity-95 shadow-[0_0_25px_rgba(6,182,212,0.4)] transition-all hover:scale-105 border border-cyan-300"
+              className="flex items-center gap-2.5 px-6 py-3.5 rounded-xl bg-gradient-to-r from-cyan-400 via-sky-400 to-blue-500 text-slate-950 font-black text-sm tracking-wider font-['Orbitron',sans-serif] hover:opacity-95 shadow-[0_0_30px_rgba(0,240,255,0.5)] transition-all hover:scale-[1.03] active:scale-95 border border-cyan-200"
             >
-              <Zap className="w-4 h-4 fill-current text-slate-950" />
+              <Zap className="w-4 h-4 fill-current text-slate-950 animate-pulse" />
               <span>ENGAGE J.A.R.V.I.S.</span>
             </button>
 
             {/* Camera Vision Button */}
             <button
               onClick={() => onToggleVision('camera')}
-              className={`p-3.5 rounded-xl transition-all ${
+              className={`p-3.5 rounded-xl transition-all active:scale-95 ${
                 isVisionActive && visionMode === 'camera'
-                  ? 'bg-cyan-500 text-slate-950 font-bold shadow-[0_0_20px_rgba(6,182,212,0.5)] border border-cyan-300'
-                  : 'bg-slate-900/80 text-slate-300 hover:bg-cyan-950 hover:text-cyan-300 border border-cyan-500/20 hover:border-cyan-400/50'
+                  ? 'bg-cyan-400 text-slate-950 font-bold shadow-[0_0_24px_rgba(0,240,255,0.6)] border border-cyan-200'
+                  : 'bg-slate-900/80 text-slate-300 hover:bg-cyan-950/80 hover:text-cyan-300 border border-cyan-500/25 hover:border-cyan-400/60'
               }`}
               title="Test Camera Optical Sensor"
             >
@@ -323,10 +323,10 @@ export const VoiceVisualizer: React.FC<VoiceVisualizerProps> = ({
             {/* Screen Share Button */}
             <button
               onClick={() => onToggleVision('screen')}
-              className={`p-3.5 rounded-xl transition-all ${
+              className={`p-3.5 rounded-xl transition-all active:scale-95 ${
                 isVisionActive && visionMode === 'screen'
-                  ? 'bg-blue-500 text-white font-bold shadow-[0_0_20px_rgba(59,130,246,0.5)] border border-blue-300'
-                  : 'bg-slate-900/80 text-slate-300 hover:bg-cyan-950 hover:text-cyan-300 border border-cyan-500/20 hover:border-cyan-400/50'
+                  ? 'bg-blue-500 text-white font-bold shadow-[0_0_24px_rgba(59,130,246,0.6)] border border-blue-200'
+                  : 'bg-slate-900/80 text-slate-300 hover:bg-cyan-950/80 hover:text-cyan-300 border border-cyan-500/25 hover:border-cyan-400/60'
               }`}
               title="Test Screen Telemetry Stream"
             >

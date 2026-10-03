@@ -1,4 +1,5 @@
 import { WebSocket } from 'ws';
+import { EventEmitter } from 'events';
 
 export type TaskStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
 
@@ -13,7 +14,8 @@ export type TaskCategory =
   | 'obsidian'
   | 'research'
   | 'calculation'
-  | 'data_fetch';
+  | 'data_fetch'
+  | 'agent';
 
 export interface BackgroundTask {
   id: string;
@@ -96,11 +98,25 @@ export function inferCategoryFromSkill(skillName: string): TaskCategory {
   return 'data_fetch';
 }
 
-class ParallelTaskManager {
+class ParallelTaskManager extends EventEmitter {
   private activeTasks: Map<string, BackgroundTask> = new Map();
   private completedTasks: BackgroundTask[] = [];
   private maxHistory: number = 50;
   private subscribers: Set<WebSocket> = new Set();
+
+  constructor() {
+    super();
+  }
+
+  public onTaskCompleted(listener: (evt: { task: BackgroundTask; clientWs?: WebSocket; result?: any; speechSummary?: string; displayCard?: any; durationMs?: number }) => void) {
+    this.on('task_completed', listener);
+    return () => this.off('task_completed', listener);
+  }
+
+  public onTaskFailed(listener: (evt: { task: BackgroundTask; clientWs?: WebSocket; error?: string; durationMs?: number }) => void) {
+    this.on('task_failed', listener);
+    return () => this.off('task_failed', listener);
+  }
 
   public subscribe(ws: WebSocket) {
     this.subscribers.add(ws);
@@ -173,6 +189,7 @@ class ParallelTaskManager {
       task,
       timestamp: Date.now(),
     });
+    this.emit('task_cancelled', { taskId: id, task });
     return true;
   }
 
@@ -254,6 +271,7 @@ class ParallelTaskManager {
       },
       options.clientWs
     );
+    this.emit('task_started', { task, clientWs: options.clientWs });
 
     const updateProgress = (msg: string, pct?: number) => {
       if (task.status !== 'running') return;
@@ -269,6 +287,7 @@ class ParallelTaskManager {
         },
         options.clientWs
       );
+      this.emit('task_progress', { taskId, progressMessage: msg, progressPercent: task.progressPercent, clientWs: options.clientWs });
     };
 
     // 2. Execute concurrently in background without blocking the caller
@@ -324,6 +343,14 @@ class ParallelTaskManager {
             },
             options.clientWs
           );
+          this.emit('task_completed', {
+            task,
+            clientWs: options.clientWs,
+            result: task.result,
+            speechSummary: task.speechSummary,
+            displayCard: task.displayCard,
+            durationMs: task.durationMs
+          });
         } else {
           this.broadcast(
             {
@@ -336,6 +363,12 @@ class ParallelTaskManager {
             },
             options.clientWs
           );
+          this.emit('task_failed', {
+            task,
+            clientWs: options.clientWs,
+            error: task.error,
+            durationMs: task.durationMs
+          });
         }
       } catch (err: any) {
         console.error(`[ParallelTaskManager] Task ${taskId} error:`, err);
@@ -362,6 +395,12 @@ class ParallelTaskManager {
           },
           options.clientWs
         );
+        this.emit('task_failed', {
+          task,
+          clientWs: options.clientWs,
+          error: task.error,
+          durationMs: task.durationMs
+        });
       }
     })();
 

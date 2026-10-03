@@ -18,6 +18,7 @@ import path from 'path';
 import { spawn, ChildProcess } from 'child_process';
 import { cliAgentRegistry } from './cli_agent_registry';
 import { assertAuthorizedWorkspace } from './workspace_policy';
+import { openShellPolicyEngine } from './openshell_policy';
 
 const ANSI_REGEX = /\x1b(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g;
 
@@ -62,6 +63,7 @@ export interface CLITaskOptions {
   cwd?: string;
   timeoutMs?: number;
   yoloMode?: boolean;           // Enable YOLO auto-approval bypass (default: false)
+  openShellEnabled?: boolean;   // Enable OpenShell security governance (default: true)
   abortSignal?: AbortSignal;
   onChunk?: (chunk: string) => void;
   onStep?: (stepDescription: string) => void;
@@ -78,6 +80,8 @@ export interface CLITaskResult {
   exitCode: number | null;
   error?: string;
   yoloBypassCount: number;      // How many approval gates were auto-bypassed
+  openShellSecured?: boolean;   // Whether OpenShell security governance was applied
+  policyApplied?: string;       // Name of the OpenShell policy evaluated
 }
 
 export class CLIAgentBridge {
@@ -119,8 +123,46 @@ export class CLIAgentBridge {
     });
 
     console.log(`[CLIAgentBridge] Spawning ${options.agentId} in ${cwd} (session: ${sessionId}, yolo: ${yoloMode})`);
+
+    // OpenShell Policy & Environment Governance
+    const useOpenShell = options.openShellEnabled !== false && agent.entry.openShell?.enabled !== false;
+    const policyResult = openShellPolicyEngine.evaluateToolExecution(`cli_agent_${options.agentId}`, {
+      executable: agent.resolvedPath,
+      args,
+      cwd
+    });
+
+    if (useOpenShell && !policyResult.allowed) {
+      throw new Error(`OpenShell Policy Violation for ${agent.entry.name}: ${policyResult.reason}`);
+    }
+
+    const processEnv = useOpenShell
+      ? openShellPolicyEngine.createSanitizedEnvironment({
+          CI: '1',
+          DEBIAN_FRONTEND: 'noninteractive',
+          FORCE_COLOR: '0',
+          PAGER: 'cat',
+          ...(yoloMode ? {
+            AUTO_APPROVE: '1',
+            NONINTERACTIVE: '1',
+            ACCEPT_ALL: 'true',
+          } : {})
+        })
+      : {
+          ...process.env,
+          CI: '1',
+          DEBIAN_FRONTEND: 'noninteractive',
+          FORCE_COLOR: '0',
+          PAGER: 'cat',
+          ...(yoloMode ? {
+            AUTO_APPROVE: '1',
+            NONINTERACTIVE: '1',
+            ACCEPT_ALL: 'true',
+          } : {})
+        };
+
     if (options.onStep) {
-      options.onStep(`Initializing ${agent.entry.name} process${yoloMode ? ' [YOLO MODE]' : ''}...`);
+      options.onStep(`Initializing ${agent.entry.name} process${yoloMode ? ' [YOLO MODE]' : ''}${useOpenShell ? ' [OPENSHELL SECURED]' : ''}...`);
     }
 
     return new Promise((resolve) => {
@@ -133,20 +175,7 @@ export class CLIAgentBridge {
 
       const proc = spawn(agent.resolvedPath!, args, {
         cwd,
-        env: {
-          ...process.env,
-          // Prevent interactive prompts where possible via env
-          CI: '1',
-          DEBIAN_FRONTEND: 'noninteractive',
-          FORCE_COLOR: '0',
-          PAGER: 'cat',
-          // YOLO-specific env vars that some agents respect
-          ...(yoloMode ? {
-            AUTO_APPROVE: '1',
-            NONINTERACTIVE: '1',
-            ACCEPT_ALL: 'true',
-          } : {})
-        },
+        env: processEnv,
         // stdin is PIPED (not ignored) so we can send approval responses
         stdio: ['pipe', 'pipe', 'pipe']
       });
@@ -279,7 +308,9 @@ export class CLIAgentBridge {
             raw: stdoutAccumulator,
             durationMs,
             exitCode: code,
-            yoloBypassCount
+            yoloBypassCount,
+            openShellSecured: useOpenShell,
+            policyApplied: policyResult.reason
           });
         } else {
           resolve({
@@ -291,7 +322,9 @@ export class CLIAgentBridge {
             durationMs,
             exitCode: code,
             error: stderrAccumulator.trim() || `Process exited with code ${code}`,
-            yoloBypassCount
+            yoloBypassCount,
+            openShellSecured: useOpenShell,
+            policyApplied: policyResult.reason
           });
         }
       });
@@ -313,7 +346,9 @@ export class CLIAgentBridge {
           durationMs: Date.now() - startTime,
           exitCode: -1,
           error: `Failed to spawn ${options.agentId}: ${err.message}`,
-          yoloBypassCount: 0
+          yoloBypassCount: 0,
+          openShellSecured: useOpenShell,
+          policyApplied: policyResult.reason
         });
       });
     });
