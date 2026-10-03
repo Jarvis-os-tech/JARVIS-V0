@@ -62,6 +62,7 @@ import { cliAgentRegistry } from './system_modules/intelligent_system/cli_agent_
 import { cliAgentBridge } from './system_modules/intelligent_system/cli_agent_bridge';
 import { agentSessionManager } from './system_modules/intelligent_system/agent_session_manager';
 import { a2aHub } from './system_modules/intelligent_system/a2a_hub';
+import { a2aServiceBridge } from './system_modules/intelligent_system/a2a_service_bridge';
 import { cliSupervisorLoop } from './system_modules/intelligent_system/cli_supervisor_loop';
 import { parallelAgentOrchestrator } from './system_modules/intelligent_system/parallel_agent_orchestrator';
 import { tmuxSessionBus } from './system_modules/intelligent_system/tmux_session_bus';
@@ -159,7 +160,7 @@ async function startServer() {
   const app = express();
   app.use(express.json({ limit: '10mb' }));
   app.use('/api', requireApiAuth);
-  app.use('/.well-known/agent.json', requireApiAuth);
+  app.use(['/.well-known/agent.json', '/.well-known/agent-card.json'], requireApiAuth);
 
   // Initialize NVIDIA OpenShell Security Runtime
   try {
@@ -281,6 +282,34 @@ async function startServer() {
   app.post('/api/security/policy/verify', (req, res) => {
     const verification = openShellPolicyEngine.verifyPolicyUpdate(req.body);
     res.json(verification);
+  });
+
+  // OpenShell Sandbox Management Endpoints
+  app.get('/api/openshell/sandboxes', async (_req, res) => {
+    try {
+      const result = await openShellRuntime.listSandboxes();
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/openshell/sandboxes', async (req, res) => {
+    try {
+      const result = await openShellRuntime.createSandbox(req.body?.name);
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.delete('/api/openshell/sandboxes/:name', async (req, res) => {
+    try {
+      const result = await openShellRuntime.deleteSandbox(req.params.name);
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
   });
 
   // Broadcast helper for real-time client sync
@@ -451,8 +480,8 @@ async function startServer() {
   // J.A.R.V.I.S. Agent Space — REST API Endpoints
   // ═══════════════════════════════════════════════════════════════════════════
 
-  // A2A Protocol: Master Agent Card
-  app.get('/.well-known/agent.json', (_req, res) => {
+  // A2A Protocol: Master Agent Card (standard A2A v0.3 & v1.0 specifications)
+  app.get(['/.well-known/agent.json', '/.well-known/agent-card.json'], (_req, res) => {
     res.json(a2aHub.getMasterAgentCard());
   });
 
@@ -562,6 +591,51 @@ async function startServer() {
     try {
       const response = await a2aHub.handleRpcRequest(req.body);
       res.json(response);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // A2A Protocol: Hub Status & Connected Agent Cards
+  app.get('/api/a2a/status', async (_req, res) => {
+    try {
+      const bridgeStatus = await a2aServiceBridge.getStatus();
+      const masterCard = a2aHub.getMasterAgentCard();
+      const connectedCards = a2aHub.listAllAgentCards();
+      res.json({
+        status: 'nominal',
+        protocol: 'Agent-to-Agent (A2A) Protocol 1.0',
+        masterCardUrl: '/.well-known/agent-card.json',
+        localBridge: bridgeStatus,
+        totalAgents: connectedCards.length,
+        masterCard,
+        agents: connectedCards
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // A2A Protocol: Start Local Agent Service
+  app.post('/api/a2a/start-service', async (req, res) => {
+    try {
+      const port = Number(req.body?.port) || 3001;
+      const result = await a2aServiceBridge.startServer(port);
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // A2A Protocol: Delegate task to local A2A service
+  app.post('/api/a2a/delegate', async (req, res) => {
+    try {
+      const { prompt, contextId } = req.body;
+      if (!prompt) {
+        return res.status(400).json({ error: 'prompt is required.' });
+      }
+      const result = await a2aServiceBridge.sendTask(prompt, contextId);
+      res.json(result);
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
@@ -1184,36 +1258,21 @@ For multiple desktop actions in one request, call execute_continuous_plan with o
       const rawOutcome = task.speechSummary || (task.result?.text ? task.result.text.slice(0, 300) : (item.type === 'completed' ? 'Task completed successfully.' : (task.error || 'Execution encountered an error.')));
       const cleanOutcome = String(rawOutcome).replace(/\n+/g, ' ').slice(0, 250);
 
-      const proactivePrompt = `[PROACTIVE SUB-AGENT MISSION UPDATE]
-Sub-Agent: ${agentName}
-Task: ${task.title}
-Status: ${item.type === 'completed' ? 'COMPLETED' : 'FAILED'}
-Duration: ${Math.round((task.durationMs || 0) / 1000)} seconds
-Summary of Results:
-${cleanOutcome}
-
-DIRECTIVE FOR J.A.R.V.I.S.:
-Proactively announce to ${OPERATOR_NAME} in your signature polite, refined British persona that ${agentName} has completed the delegated task "${task.title}".
-Concisely deliver the key findings or results in 1-2 natural sentences, and let him know the full technical details are available on his screen.`;
-
-      try {
-        if (typeof session.sendClientContent === 'function') {
-          session.sendClientContent({
-            turns: [
-              {
-                role: 'user',
-                parts: [{ text: proactivePrompt }]
-              }
-            ],
-            turnComplete: true
-          });
-          console.log(`[Proactive Cadence] Injected live announcement for ${agentName} into Gemini Live (${task.id})`);
-        } else if (typeof session.sendRealtimeInput === 'function') {
-          session.sendRealtimeInput({ text: proactivePrompt });
-          console.log(`[Proactive Cadence] Injected realtime text for ${agentName} into Gemini Live (${task.id})`);
-        }
-      } catch (err) {
-        console.warn('[Proactive Cadence] Could not inject proactive notification into Gemini Live:', err);
+      // Send proactive_notification to frontend for display ONLY (no voice injection)
+      // Frontend handles displayCard and only speaks if disconnected
+      if (clientWs.readyState === WebSocket.OPEN) {
+        clientWs.send(JSON.stringify({
+          type: 'proactive_notification',
+          task: {
+            ...task,
+            status: item.type,
+            speechSummary: cleanOutcome
+          },
+          speechSummary: cleanOutcome,
+          displayCard: task.displayCard,
+          timestamp: Date.now()
+        }));
+        console.log(`[Proactive Cadence] Sent proactive_notification for ${agentName} to frontend (${task.id})`);
       }
     }
 
@@ -1688,6 +1747,50 @@ For a multi-action desktop request, call execute_continuous_plan with ordered GU
             }
           },
           {
+            name: 'manage_openshell_sandbox',
+            description: 'Manage NVIDIA OpenShell sandboxes (list running sandboxes, create sandbox, or query gateway status).',
+            parameters: {
+              type: Type.OBJECT,
+              properties: {
+                action: {
+                  type: Type.STRING,
+                  description: 'Action to perform: "list", "create", or "gateway_info"'
+                },
+                name: {
+                  type: Type.STRING,
+                  description: 'Name of the sandbox (optional for create)'
+                }
+              },
+              required: ['action']
+            }
+          },
+          {
+            name: 'get_a2a_status',
+            description: 'Query Agent2Agent (A2A) Protocol hub status, registered Agent Cards, and local A2A Python SDK bridge.',
+            parameters: {
+              type: Type.OBJECT,
+              properties: {}
+            }
+          },
+          {
+            name: 'delegate_a2a_task',
+            description: 'Delegate a task across the Agent-to-Agent (A2A) protocol mesh to another agent squad member.',
+            parameters: {
+              type: Type.OBJECT,
+              properties: {
+                targetAgent: {
+                  type: Type.STRING,
+                  description: 'Name or ID of the recipient agent (e.g. "Hermes", "Claude Code", "OpenCode", or "J.A.R.V.I.S. A2A Gateway")'
+                },
+                prompt: {
+                  type: Type.STRING,
+                  description: 'The task description or prompt to send across A2A protocol'
+                }
+              },
+              required: ['targetAgent', 'prompt']
+            }
+          },
+          {
             name: 'execute_continuous_plan',
             description: 'Start an ordered, non-blocking GUI coworker workflow. The server executes each system-control action sequentially and streams live progress while this call returns immediately.',
             parameters: {
@@ -2115,6 +2218,63 @@ For a multi-action desktop request, call execute_continuous_plan with ordered GU
                           id: callId,
                           name,
                           response: { result: status }
+                        };
+                      }
+
+                      if (name === 'manage_openshell_sandbox') {
+                        const act = String(args?.action || 'list');
+                        const sName = args?.name ? String(args.name) : undefined;
+                        console.log(`[Live WS] J.A.R.V.I.S. executing OpenShell sandbox action: ${act}`);
+                        let sandboxResult: any;
+                        if (act === 'create') {
+                          sandboxResult = await openShellRuntime.createSandbox(sName);
+                        } else if (act === 'gateway_info') {
+                          sandboxResult = await openShellRuntime.getGatewayInfo();
+                        } else {
+                          sandboxResult = await openShellRuntime.listSandboxes();
+                        }
+                        return {
+                          id: callId,
+                          name,
+                          response: { result: sandboxResult }
+                        };
+                      }
+
+                      if (name === 'get_a2a_status') {
+                        console.log(`[Live WS] J.A.R.V.I.S. queried A2A protocol status`);
+                        const hubCards = a2aHub.listAllAgentCards();
+                        const bridgeStatus = await a2aServiceBridge.getStatus();
+                        return {
+                          id: callId,
+                          name,
+                          response: {
+                            result: {
+                              protocol: 'A2A 1.0 (Agent-to-Agent Protocol)',
+                              localService: bridgeStatus,
+                              totalConnectedAgents: hubCards.length,
+                              agents: hubCards.map(c => ({ name: c.name, domain: c.domain, status: c.status }))
+                            }
+                          }
+                        };
+                      }
+
+                      if (name === 'delegate_a2a_task') {
+                        const target = String(args?.targetAgent || '');
+                        const taskPrompt = String(args?.prompt || '');
+                        console.log(`[Live WS] J.A.R.V.I.S. delegating task via A2A to: ${target}`);
+                        const rpcResponse = await a2aHub.handleRpcRequest({
+                          jsonrpc: '2.0',
+                          id: `live-a2a-${Date.now()}`,
+                          method: 'tasks.send',
+                          params: {
+                            targetAgent: target,
+                            prompt: taskPrompt
+                          }
+                        });
+                        return {
+                          id: callId,
+                          name,
+                          response: { result: rpcResponse }
                         };
                       }
 

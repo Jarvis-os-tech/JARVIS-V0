@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-10-03T10:48:22.403Z",
+  "lastUpdated": "2026-10-03T11:00:40.407Z",
   "skills": [
     {
       "name": "diagnose-crash",
@@ -20,6 +20,16 @@
       "skillMdPath": "/home/g0pi/Downloads/jarvis/skills/omarchy/SKILL.md",
       "scripts": [],
       "installedAt": "2026-10-01T12:37:54.909Z"
+    },
+    {
+      "name": "a2a-protocol",
+      "slug": "a2a-protocol",
+      "description": "Linux Foundation / Google Agent-to-Agent (A2A) Protocol - interoperability standard for AI agent discovery, Agent Cards, JSON-RPC 2.0 task delegation, and cross-framework multi-agent squads.",
+      "source": "project",
+      "path": "/home/g0pi/Downloads/jarvis/.agents/skills/a2a-protocol",
+      "skillMdPath": "/home/g0pi/Downloads/jarvis/.agents/skills/a2a-protocol/SKILL.md",
+      "scripts": [],
+      "installedAt": "2026-10-03T10:57:45.390Z"
     },
     {
       "name": "analyze-project-context",
