@@ -12,23 +12,13 @@ import pathlib
 import subprocess
 from typing import Dict, Any, Optional
 
-import shutil
+try:
+    from .binary_resolver import resolve_binary
+except ImportError:
+    from binary_resolver import resolve_binary
 
-def _resolve_binary(name: str) -> pathlib.Path:
-    env_dir = os.environ.get("JARVIS_WORKERS_BIN")
-    if env_dir:
-        cand = pathlib.Path(env_dir) / name
-        if cand.exists():
-            return cand
-    local_cand = pathlib.Path(__file__).resolve().parent.parent / "native_workers" / "bin" / name
-    if local_cand.exists():
-        return local_cand
-    which = shutil.which(name)
-    if which:
-        return pathlib.Path(which)
-    return local_cand
+DESKTOP_BIN = resolve_binary("desktop_control")
 
-DESKTOP_BIN = _resolve_binary("desktop_control")
 
 async def _exec_desktop(args: list) -> Dict[str, Any]:
     """Helper to invoke native desktop_control binary."""

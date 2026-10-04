@@ -36,10 +36,12 @@ export class A2AServiceBridge {
 
   public detectEnvironment(): void {
     const candidatePythons = [
-      path.resolve(process.cwd(), 'a2a-protocol/.venv/bin/python'),
-      path.resolve(__dirname, '../../../a2a-protocol/.venv/bin/python'),
+      path.resolve(process.cwd(), 'protocols/a2a/.venv/bin/python'),
+      path.resolve(__dirname, '../../../protocols/a2a/.venv/bin/python'),
       path.resolve(process.cwd(), 'a2a/.venv/bin/python'),
-      path.resolve(__dirname, '../../../a2a/.venv/bin/python')
+      path.resolve(__dirname, '../../../a2a/.venv/bin/python'),
+      path.resolve(process.cwd(), 'a2a-protocol/.venv/bin/python'),
+      path.resolve(__dirname, '../../../a2a-protocol/.venv/bin/python')
     ];
 
     for (const p of candidatePythons) {
@@ -50,9 +52,11 @@ export class A2AServiceBridge {
     }
 
     const candidateScripts = [
+      path.resolve(process.cwd(), 'protocols/a2a/jarvis_a2a_agent.py'),
+      path.resolve(__dirname, '../../../protocols/a2a/jarvis_a2a_agent.py'),
+      path.resolve(process.cwd(), 'a2a/jarvis_a2a_agent.py'),
       path.resolve(process.cwd(), 'a2a-protocol/jarvis_a2a_agent.py'),
-      path.resolve(__dirname, '../../../a2a-protocol/jarvis_a2a_agent.py'),
-      path.resolve(process.cwd(), 'a2a/jarvis_a2a_agent.py')
+      path.resolve(__dirname, '../../../a2a-protocol/jarvis_a2a_agent.py')
     ];
 
     for (const s of candidateScripts) {

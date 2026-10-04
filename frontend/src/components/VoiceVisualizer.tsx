@@ -1,7 +1,19 @@
 import React, { useState } from 'react';
 import { ConnectionState } from '../types';
-import { Mic, MicOff, Square, Camera, Monitor, Zap, Volume2, Sparkles } from 'lucide-react';
-import { ArcReactor3D } from './ArcReactor3D';
+import { 
+  Mic, 
+  MicOff, 
+  Square, 
+  Camera, 
+  Monitor, 
+  Zap, 
+  Volume2, 
+  Sparkles,
+  Activity,
+  Radio,
+  Layers
+} from 'lucide-react';
+import { GalaxyOrb } from './orbs/GalaxyOrb';
 import { sfx } from '../lib/sfx';
 
 interface VoiceVisualizerProps {
@@ -38,8 +50,6 @@ export const VoiceVisualizer: React.FC<VoiceVisualizerProps> = ({
   visionMode,
   onToggleVision,
 }) => {
-  const [render3D, setRender3D] = useState(true);
-
   const isConnected = connectionState !== 'disconnected' && connectionState !== 'connecting';
   const activeVolume = connectionState === 'speaking' ? outputVolume : inputVolume;
 
@@ -74,15 +84,16 @@ export const VoiceVisualizer: React.FC<VoiceVisualizerProps> = ({
       case 'connected':
         return isMuted ? 'Audio sensors muted' : 'J.A.R.V.I.S. Online // Standing by';
       case 'error':
-        return 'Link connection offline // Tap reactor to reconnect';
+        return 'Link connection offline // Tap core to reconnect';
       default:
-        return 'ARC REACTOR STANDBY // CLICK TO ENGAGE';
+        return 'GALAXY NEXUS STANDBY // CLICK TO ENGAGE';
     }
   };
 
   return (
     <div className="relative flex flex-col items-center justify-center py-4 px-2 w-full max-w-xl mx-auto">
-      {/* 3D Holographic Arc-Reactor Stage Frame */}
+      
+      {/* 3D Holographic Stage Frame */}
       <div className="relative w-72 h-72 sm:w-88 sm:h-88 lg:w-[420px] lg:h-[420px] flex items-center justify-center">
         
         {/* Holographic Outer Reticle Rings (CSS Layer) */}
@@ -103,37 +114,25 @@ export const VoiceVisualizer: React.FC<VoiceVisualizerProps> = ({
           {/* HUD Targeting Ticks */}
           <div className="absolute top-2 left-1/2 -translate-x-1/2 text-[9px] font-mono tracking-widest uppercase opacity-60 flex items-center gap-1.5" style={{ color: themeColor }}>
             <span className="w-1.5 h-1.5 rounded-full animate-ping" style={{ backgroundColor: themeColor }} />
-            ARC CORE // {personaName.toUpperCase()}
+            CORE STAGE // {personaName.toUpperCase()}
           </div>
           <div className="absolute bottom-2 left-1/2 -translate-x-1/2 text-[9px] font-mono tracking-widest uppercase opacity-50 text-slate-400">
             PWR: 100% // FLUX: STABLE
           </div>
         </div>
 
-        {/* 3D Arc Reactor Canvas */}
+        {/* Galaxy Orb Visualizer Stage */}
         <div 
-          className="w-full h-full relative z-10"
+          className="w-full h-full relative z-10 flex items-center justify-center cursor-pointer"
           onClick={connectionState === 'disconnected' ? handleStart : undefined}
         >
-          {render3D ? (
-            <ArcReactor3D
-              connectionState={connectionState}
-              volume={activeVolume}
-              themeColor={themeColor}
-              secondaryColor={secondaryColor}
-              isMuted={isMuted}
-            />
-          ) : (
-            /* Fallback 2D Radial Glow */
-            <div className="w-full h-full flex items-center justify-center">
-              <div 
-                className="w-48 h-48 rounded-full border-2 border-cyan-400/50 flex items-center justify-center animate-pulse"
-                style={{ boxShadow: `0 0 50px ${themeColor}` }}
-              >
-                <Zap className="w-16 h-16 text-cyan-300" />
-              </div>
-            </div>
-          )}
+          <GalaxyOrb
+            connectionState={connectionState}
+            volume={activeVolume}
+            themeColor={themeColor}
+            secondaryColor={secondaryColor}
+            size={380}
+          />
         </div>
 
         {/* Standby Engage Button Overlay */}

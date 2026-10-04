@@ -587,3 +587,189 @@
   transform-origin: bottom;
 }
 
+/* ---------------- Stark Ambient HUD Elements (Ported from JARVIS-UI-UX) ---------------- */
+
+.rail {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  user-select: none;
+}
+
+.rail-title {
+  font-size: 9px;
+  opacity: 0.5;
+  letter-spacing: 0.35em;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--primary, #00f0ff);
+  margin-bottom: 6px;
+}
+
+.rail-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  opacity: 0.85;
+  color: #e2e8f0;
+  font-size: 11px;
+  transition: all 0.2s ease;
+}
+
+.rail-item:hover {
+  opacity: 1;
+  color: #ffffff;
+  transform: translateX(2px);
+}
+
+.rail-item.dim {
+  opacity: 0.35;
+}
+
+.tick {
+  width: 6px;
+  height: 6px;
+  background: var(--primary, #00f0ff);
+  transform: rotate(45deg);
+  box-shadow: 0 0 8px var(--primary, #00f0ff);
+  transition: all 0.2s ease;
+}
+
+.tick-active {
+  background: #10b981;
+  box-shadow: 0 0 10px #10b981;
+}
+
+.tick-warning {
+  background: #f59e0b;
+  box-shadow: 0 0 10px #f59e0b;
+}
+
+.meter {
+  width: 5px;
+  height: 110px;
+  background: rgba(0, 240, 255, 0.12);
+  border-radius: 2px;
+  display: flex;
+  align-items: flex-end;
+  margin: 6px 0;
+  overflow: hidden;
+  border: 1px solid rgba(0, 240, 255, 0.2);
+}
+
+.meter-fill {
+  width: 100%;
+  background: linear-gradient(to top, var(--primary, #00f0ff), #38bdf8);
+  box-shadow: 0 0 12px var(--primary, #00f0ff);
+  transition: height 75ms ease-out;
+}
+
+/* Tool Badge (Top Ambient Readout) */
+.tool-badge {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  white-space: nowrap;
+  padding: 6px 16px 6px 14px;
+  border: 1px solid rgba(0, 240, 255, 0.35);
+  border-radius: 9999px;
+  background: rgba(6, 15, 28, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 0 25px rgba(0, 240, 255, 0.2);
+}
+
+.tool-kicker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 9px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  font-mono: true;
+  font-family: var(--font-mono);
+  opacity: 0.75;
+  color: var(--primary, #00f0ff);
+  padding-right: 10px;
+  border-right: 1px solid rgba(0, 240, 255, 0.25);
+}
+
+.tool-name {
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  letter-spacing: 0.15em;
+  color: #f8fafc;
+  text-shadow: 0 0 16px rgba(0, 240, 255, 0.5);
+  max-width: min(50vw, 550px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.spinner-hud {
+  width: 10px;
+  height: 10px;
+  border: 1.5px solid var(--primary, #00f0ff);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: hud-spin 0.75s linear infinite;
+}
+
+@keyframes hud-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* DecodeText Scrambler Effect */
+.decode-ghost {
+  opacity: 0.85;
+  color: var(--primary, #00f0ff);
+  text-shadow: 0 0 8px var(--primary, #00f0ff);
+  font-family: var(--font-mono);
+}
+
+.decode-veil {
+  opacity: 0;
+  user-select: none;
+}
+
+/* Viewport Corner Brackets */
+.hud-corner {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  pointer-events: none;
+  z-index: 20;
+}
+
+.hud-corner-tl {
+  top: 14px;
+  left: 14px;
+  border-top: 2px solid var(--primary, #00f0ff);
+  border-left: 2px solid var(--primary, #00f0ff);
+}
+
+.hud-corner-tr {
+  top: 14px;
+  right: 14px;
+  border-top: 2px solid var(--primary, #00f0ff);
+  border-right: 2px solid var(--primary, #00f0ff);
+}
+
+.hud-corner-bl {
+  bottom: 14px;
+  left: 14px;
+  border-bottom: 2px solid var(--primary, #00f0ff);
+  border-left: 2px solid var(--primary, #00f0ff);
+}
+
+.hud-corner-br {
+  bottom: 14px;
+  right: 14px;
+  border-bottom: 2px solid var(--primary, #00f0ff);
+  border-right: 2px solid var(--primary, #00f0ff);
+}
+
+

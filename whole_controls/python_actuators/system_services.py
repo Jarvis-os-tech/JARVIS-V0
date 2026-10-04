@@ -10,24 +10,13 @@ import json
 import asyncio
 from typing import Dict, Any, Optional
 
-import os
-import shutil
+try:
+    from .binary_resolver import resolve_binary
+except ImportError:
+    from binary_resolver import resolve_binary
 
-def _resolve_binary(name: str) -> pathlib.Path:
-    env_dir = os.environ.get("JARVIS_WORKERS_BIN")
-    if env_dir:
-        cand = pathlib.Path(env_dir) / name
-        if cand.exists():
-            return cand
-    local_cand = pathlib.Path(__file__).resolve().parent.parent / "native_workers" / "bin" / name
-    if local_cand.exists():
-        return local_cand
-    which = shutil.which(name)
-    if which:
-        return pathlib.Path(which)
-    return local_cand
+SVC_BIN = resolve_binary("service_ctrl")
 
-SVC_BIN = _resolve_binary("service_ctrl")
 
 KNOWN_USER_SERVICES = {
     "hermes": "hermes-gateway.service",

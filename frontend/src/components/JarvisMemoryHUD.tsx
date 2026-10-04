@@ -19,6 +19,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import { sfx } from '../lib/sfx';
+import { toPlainText } from '../lib/utils';
 
 interface JarvisMemoryHUDProps {
   isOpen: boolean;
@@ -49,14 +50,6 @@ const TABS: TabDef[] = [
     icon: Terminal
   }
 ];
-
-function toPlainText(raw: string): string {
-  if (!raw) return '';
-  return raw
-    .replace(/\*\*([^\*]+)\*\*/g, '$1')
-    .replace(/^-\s+/gm, '')
-    .trim();
-}
 
 export const JarvisMemoryHUD: React.FC<JarvisMemoryHUDProps> = ({
   isOpen,

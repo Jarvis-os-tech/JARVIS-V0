@@ -15,23 +15,13 @@ import asyncio
 import pathlib
 from typing import Dict, Any, Optional, List
 
-import shutil
+try:
+    from .binary_resolver import resolve_binary
+except ImportError:
+    from binary_resolver import resolve_binary
 
-def _resolve_binary(name: str) -> pathlib.Path:
-    env_dir = os.environ.get("JARVIS_WORKERS_BIN")
-    if env_dir:
-        cand = pathlib.Path(env_dir) / name
-        if cand.exists():
-            return cand
-    local_cand = pathlib.Path(__file__).resolve().parent.parent / "native_workers" / "bin" / name
-    if local_cand.exists():
-        return local_cand
-    which = shutil.which(name)
-    if which:
-        return pathlib.Path(which)
-    return local_cand
+OMARCHY_BIN = resolve_binary("omarchy_ctrl")
 
-OMARCHY_BIN = _resolve_binary("omarchy_ctrl")
 
 async def execute_omarchy_command(domain: str, action: str, target: str = "") -> Dict[str, Any]:
     """

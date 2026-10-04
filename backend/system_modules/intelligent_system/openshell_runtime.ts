@@ -51,6 +51,8 @@ export class OpenShellRuntime {
    */
   public detectOpenShellBinary(): string | null {
     const candidates = [
+      path.resolve(process.cwd(), 'external/OpenShell/bin/openshell'),
+      path.resolve(__dirname, '../../../external/OpenShell/bin/openshell'),
       path.resolve(process.cwd(), 'openshell/bin/openshell'),
       path.resolve(__dirname, '../../../openshell/bin/openshell'),
       path.resolve(process.cwd(), 'scratch/bin/openshell'),
