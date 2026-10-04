@@ -2,7 +2,7 @@
 
 > **Definitive Codebase & Architectural Specification**  
 > **System**: J.A.R.V.I.S. Autonomous AI Operating System (React 19 + Express + TypeScript + C++ + Python + Rust + Gemini Live)  
-> **Last Verified & Synchronized**: `2026-10-04 06:26:15 IST`  
+> **Last Verified & Synchronized**: `2026-10-04 07:50:09 IST`  
 > **Active Working Branch**: `dev` | **Remote**: `https://github.com/Jarvis-os-tech/JARVIS-V0.git`  
 
 ---
@@ -1622,7 +1622,14 @@
 
 ### Git Visual Branch Graph
 ```text
-* 54f021596 (HEAD -> dev) fix(ui): resolve black screen caused by missing TooltipProvider, add ErrorBoundary, and fix CLI agent startup race condition
+* c69107a57 (HEAD -> dev, origin/main, origin/dev, origin/HEAD, main) docs: redesign README.md with comprehensive J.A.R.V.I.S. OS Mark 85 specifications
+* e9c04ec3a chore: remove temporary hermes query file
+* dee4603d5 fix(ui): remove unused AgentSpace import in App.tsx
+* 1809bae0b chore(agents): update agent sessions and checklist symlink
+* 175eacbce feat(ui): complete fresh holographic UI redesign with Galaxy orb, ambient HUD suite, and 3-tier memory matrix
+* eeb85d1e0 chore(skills): update skills_registry.json after pruning unwanted skills
+* 3480b149b chore(agents): prune unwanted skills and streamline .agents for solid JARVIS development
+* 54f021596 fix(ui): resolve black screen caused by missing TooltipProvider, add ErrorBoundary, and fix CLI agent startup race condition
 * 13eb24846 feat(ui): add core UI design system components and update A2A rest endpoints
 | * a0d83b2c9 (refs/stash) WIP on dev: c7f251dda feat: add OpenShell sandbox management, A2A protocol endpoints, and proactive notification fixes
 |/| 
@@ -1642,15 +1649,6 @@
 * 0e6dddf9a (backup-ui-pre-redesign) chore: snapshot prior to UI redesign
 | * 9ceec26d4 (openshell-upstream/windows) fix(mxc): redact injected secrets from gateway diagnostics (#3853)
 | * 8f22fe84f ci(windows): run MXC host probe, WebSocket agent, and OpenClaw forwar… (#3826)
-| | * 049ca16ab (openshell-upstream/pull-request/4005, openshell-upstream/3928-agent-output-container-log/krishicks) feat(sandbox): write agent output to the container log
-| | | * 3362eb0ac (openshell-upstream/alangou/ci/pin-ci-image-digests) ci: pin CI images by digest and add native architecture smoke checks
-| | | | * 7d843b32c (openshell-upstream/pull-request/3630, openshell-upstream/hicks/push-qpvtnnwnptmz) feat(helm)!: confine gateway workspace permissions with an admission policy
-| | | |/  
-| | |/|   
-| | * | 71440b28f (openshell-upstream/main, openshell-upstream/HEAD) fix(policy): refresh pending proposals when the sandbox policy changes (#3923)
-| | * | 8d418f1f6 fix(supervisor): bound pending exec stdin and cancel stalled writers (#3846)
-| | | | * 0e988adea (openshell-upstream/pull-request/3659, openshell-upstream/add/mxc-examples-missing-files) fix(mxc): align demo workflows with current contracts
-| | | | * 5acc4bece docs(mxc): add missing demo examples for runbook and mTLS scenario
 ```
 
 ### Real-Time Commit Log: `dev` Branch (1587 commits)
@@ -3245,10 +3243,35 @@
 | `cdd1b04a6` | Drew Newberry | 2026-01-29 17:47:19 -0800 | chore(docs): cleanup readme contributing |
 | `b0a719df2` | Drew Newberry | 2026-01-29 12:29:27 -0800 | chore(platform): hello world, intial commit |
 
-### Real-Time Commit Log: `main` Branch (21 commits)
+### Real-Time Commit Log: `main` Branch (46 commits)
 
 | Commit Hash | Author | Date & Time | Commit Message |
 | :--- | :--- | :--- | :--- |
+| `c69107a57` | Jarvis-os-tech | 2026-10-04 07:00:55 +0530 | docs: redesign README.md with comprehensive J.A.R.V.I.S. OS Mark 85 specifications |
+| `e9c04ec3a` | Jarvis-os-tech | 2026-10-04 06:54:35 +0530 | chore: remove temporary hermes query file |
+| `dee4603d5` | Jarvis-os-tech | 2026-10-04 06:53:45 +0530 | fix(ui): remove unused AgentSpace import in App.tsx |
+| `1809bae0b` | Jarvis-os-tech | 2026-10-04 06:52:40 +0530 | chore(agents): update agent sessions and checklist symlink |
+| `175eacbce` | Jarvis-os-tech | 2026-10-04 06:49:01 +0530 | feat(ui): complete fresh holographic UI redesign with Galaxy orb, ambient HUD suite, and 3-tier memory matrix |
+| `eeb85d1e0` | Jarvis-os-tech | 2026-10-04 06:42:00 +0530 | chore(skills): update skills_registry.json after pruning unwanted skills |
+| `3480b149b` | Jarvis-os-tech | 2026-10-04 06:41:03 +0530 | chore(agents): prune unwanted skills and streamline .agents for solid JARVIS development |
+| `54f021596` | Jarvis-os-tech | 2026-10-03 19:13:43 +0530 | fix(ui): resolve black screen caused by missing TooltipProvider, add ErrorBoundary, and fix CLI agent startup race condition |
+| `13eb24846` | Jarvis-os-tech | 2026-10-03 17:59:54 +0530 | feat(ui): add core UI design system components and update A2A rest endpoints |
+| `c7f251dda` | Jarvis-os-tech | 2026-10-03 16:34:31 +0530 | feat: add OpenShell sandbox management, A2A protocol endpoints, and proactive notification fixes |
+| `6a0b5e080` | Jarvis-os-tech | 2026-10-03 16:24:47 +0530 | feat(core): complete full system audit remediation and architectural cleanup |
+| `1d5928c4d` | Jarvis-os-tech | 2026-10-03 13:24:50 +0530 | feat(voice): optimize response latency and add zero-latency natural interruption (barge-in) |
+| `dbe37c265` | Jarvis-os-tech | 2026-10-02 14:15:02 +0530 | feat: implement aurora-ace MK-VII cockpit layout |
+| `b8b26cc28` | Jarvis-os-tech | 2026-10-01 21:45:13 +0530 | feat(selection): implement multi-strategy desktop selection awareness with autonomous self-repair |
+| `086c1fc4e` | Jarvis-os-tech | 2026-10-01 19:06:21 +0530 | fix(agents): expand auto-discovery to all 22 local agents and clean database of binary null-byte garbage |
+| `fa579c29d` | Jarvis-os-tech | 2026-10-01 18:53:45 +0530 | feat(core): implement dynamic AGI self-repairing engine, native Omarchy 4 integration, and fix wallpaper/folder navigation |
+| `0ecc8c03a` | Jarvis-os-tech | 2026-10-01 18:50:44 +0530 | style(ui): redesign Central Brain console with Inter typography, visual KPI cards, Lucide icons, pagination, and browser guide |
+| `29ae0cca3` | Jarvis-os-tech | 2026-10-01 18:30:25 +0530 | fix(db): correct SQL string literal for OFFLINE status in getGlobalMetrics |
+| `cc5d86880` | Jarvis-os-tech | 2026-10-01 18:26:30 +0530 | feat(central_brain): implement sovereign multi-agent memory platform with 5 adapters, two-tier summarizer, dual-format ledger sync, and cascade purge |
+| `fdb6a656d` | Jarvis-os-tech | 2026-10-01 10:55:23 +0530 | feat(ceo): integrate ivfarias/ceo skills and executive roster into J.A.R.V.I.S. |
+| `0e6dddf9a` | Jarvis-os-tech | 2026-09-29 15:30:44 +0530 | chore: snapshot prior to UI redesign |
+| `c29e66b52` | Jarvis-os-tech | 2026-09-29 15:28:28 +0530 | docs: add implementation plan for JARVIS UI redesign |
+| `bb6ab3e9b` | Jarvis-os-tech | 2026-09-29 15:23:14 +0530 | docs: add design spec for JARVIS UI redesign |
+| `f1f014769` | Jarvis-os-tech | 2026-09-29 15:17:07 +0530 | fix(live): eliminate duplicate tool declaration 1007 crash and enable real-time UI memory sync |
+| `641f07d79` | Jarvis-os-tech | 2026-09-29 14:54:17 +0530 | feat(core): enable desktop text deletion, memory clearing, and multi-agent dual-path engine |
 | `79b053072` | Jarvis-os-tech | 2026-09-29 13:10:49 +0530 | Merge branch 'dev' into main |
 | `973888db8` | Jarvis-os-tech | 2026-09-29 13:09:24 +0530 | feat(connectors): enhance Google Workspace & GitHub MCP tools with Groq speculative actuation and date/email normalization |
 | `c5dd417d2` | Jarvis-os-tech | 2026-09-29 10:37:13 +0530 | Merge branch 'dev' into main |
@@ -3273,41 +3296,37 @@
 
 ### Real-Time Working Tree Status
 ```text
-M .agents/skills/code-quality-check/SKILL.md
- M .agents/skills/debug-inference
- M .agents/skills/debug-openshell-cluster
- M .agents/skills/generate-sandbox-policy
- M .agents/skills/openshell-cli
- M .gitignore
- D .hermes_query_1790927794476_45zw.tmp
- M .jarvis_data/agent_sessions.json
- D AUDIT_AND_IMPROVEMENTS.md
- D JARVIS_MEMORY_BUNDLE_IMPROVEMENTS.md
- M backend/system_modules/intelligent_system/a2a_service_bridge.ts
- M backend/system_modules/intelligent_system/openshell_runtime.ts
- ? external/OpenShell
- D frontend/public/manifest.json
- M frontend/src/App.tsx
- D frontend/src/aurora.css
- M frontend/src/components/JarvisMemoryHUD.tsx
- M frontend/src/components/VoiceVisualizer.tsx
- M frontend/src/index.css
- M frontend/src/lib/utils.ts
- ? protocols/a2a
- M skills-lock.json
- M skills/skills_registry.json
- M whole_controls/python_actuators/desktop_automation.py
- M whole_controls/python_actuators/omarchy_skills.py
- M whole_controls/python_actuators/settings_and_hardware.py
- M whole_controls/python_actuators/system_services.py
-?? .agents/skills/a2a-protocol/
-?? .agents/skills/code-quality-check/code-quality-checklist.yaml
-?? .agents/skills/jarvis-ui-system/
-?? frontend/src/components/NavigationSidebar.tsx
-?? frontend/src/components/hud/
-?? frontend/src/components/orbs/
-?? frontend/src/components/views/
-?? whole_controls/python_actuators/binary_resolver.py
+M .env.example
+ M CODEBASE_REFERENCE.md
+ M README.md
+ D central_brain/frontend/index.html
+ D central_brain/frontend/src/App.tsx
+ D central_brain/frontend/src/components/BrowserCaptureGuide.tsx
+ D central_brain/frontend/src/components/DataCurationModal.tsx
+ D central_brain/frontend/src/components/LivePipelineView.tsx
+ D central_brain/frontend/src/components/MemoryLedgerView.tsx
+ D central_brain/frontend/src/main.tsx
+ D central_brain/frontend/vite.config.ts
+ D central_brain/src/adapters/adapter_manager.ts
+ D central_brain/src/adapters/antigravity_adapter.ts
+ D central_brain/src/adapters/browser_adapter.ts
+ D central_brain/src/adapters/claude_adapter.ts
+ D central_brain/src/adapters/codex_adapter.ts
+ D central_brain/src/adapters/hermes_adapter.ts
+ D central_brain/src/core/agent_discovery.ts
+ D central_brain/src/core/brain_graph.ts
+ D central_brain/src/core/db.ts
+ D central_brain/src/core/distillation_engine.ts
+ D central_brain/src/core/master_index_sync.ts
+ D central_brain/src/core/types.ts
+ D central_brain/src/server.ts
+ D central_brain/src/test_harness.ts
+ D central_brain/src/tools/browser_bookmarklet.js
+ D central_brain/src/tools/clean_database.ts
+ M frontend/src/components/AgentSquadDrawer.tsx
+ M frontend/src/components/views/AgentsView.tsx
+ M package.json
+ M scripts/update_codebase_reference.py
 ```
 
 ---
@@ -3397,9 +3416,9 @@ sequenceDiagram
 
 ---
 
-## 5. Complete Module Map (All 4742 Files)
+## 5. Complete Module Map (All 4681 Files)
 
-Below is an exhaustive, 100% complete accounting of every single source file in the repository (4742 files cataloged across 10 subsections with zero omissions):
+Below is an exhaustive, 100% complete accounting of every single source file in the repository (4681 files cataloged across 10 subsections with zero omissions):
 
 ### 5.1 Backend Server, CEO System & Intelligent Core (`backend/`) (74 files)
 
@@ -3415,7 +3434,7 @@ Below is an exhaustive, 100% complete accounting of every single source file in 
 | [backend/memory_bridge.py](file:///home/g0pi/Downloads/jarvis/backend/memory_bridge.py) | 556 | Memory Bridge Subprocess | Python CLI bridge connecting Express with SQLite triad tables (personal_details, preferences, instructions) and Obsidian vault. |
 | [backend/parallel_task_manager.ts](file:///home/g0pi/Downloads/jarvis/backend/parallel_task_manager.ts) | 411 | TypeScript Module | Frontend or backend TypeScript source file. |
 | [backend/server.ts](file:///home/g0pi/Downloads/jarvis/backend/server.ts) | 3233 | Core Server & WS Gateway | Express router, Gemini Live WebSocket (/live), Groq fast actuator integration, tool dispatching, Vite middleware, temporal directives. |
-| [backend/skills_manager.ts](file:///home/g0pi/Downloads/jarvis/backend/skills_manager.ts) | 586 | Universal Skills Engine | Scans, parses, installs, and executes domain skills across project, local .agents, and global home directories. |
+| [backend/skills_manager.ts](file:///home/g0pi/Downloads/jarvis/backend/skills_manager.ts) | 594 | Universal Skills Engine | Scans, parses, installs, and executes domain skills across project, local .agents, and global home directories. |
 | [backend/system_modules/ceo/ceo_orchestrator.ts](file:///home/g0pi/Downloads/jarvis/backend/system_modules/ceo/ceo_orchestrator.ts) | 288 | CEO Executive Orchestrator | Core orchestration engine implementing ivfarias/ceo framework, managing multi-agent roster and mission workflows. |
 | [backend/system_modules/ceo/ceo_roster.ts](file:///home/g0pi/Downloads/jarvis/backend/system_modules/ceo/ceo_roster.ts) | 285 | CEO Agent Roster Loader | Parses agents_roster.yaml, validating active agent personas, capabilities, and system prompts. |
 | [backend/system_modules/ceo/ceo_session_logger.ts](file:///home/g0pi/Downloads/jarvis/backend/system_modules/ceo/ceo_session_logger.ts) | 229 | CEO Session Logger | Persists executive decisions, delegation logs, and mission lifecycles in durable session logs. |
@@ -3659,8 +3678,8 @@ Below is an exhaustive, 100% complete accounting of every single source file in 
 | [jarvis_memory_bundle/vault/conversations/.gitkeep](file:///home/g0pi/Downloads/jarvis/jarvis_memory_bundle/vault/conversations/.gitkeep) | 0 | Obsidian Vault File | Zettelkasten knowledge note, interaction journal, atomic fact, or Obsidian configuration. |
 | [jarvis_memory_bundle/vault/conversations/2026-10-02.md](file:///home/g0pi/Downloads/jarvis/jarvis_memory_bundle/vault/conversations/2026-10-02.md) | 1930 | Obsidian Vault File | Zettelkasten knowledge note, interaction journal, atomic fact, or Obsidian configuration. |
 | [jarvis_memory_bundle/vault/conversations/2026-10-03.md](file:///home/g0pi/Downloads/jarvis/jarvis_memory_bundle/vault/conversations/2026-10-03.md) | 1513 | Obsidian Vault File | Zettelkasten knowledge note, interaction journal, atomic fact, or Obsidian configuration. |
-| [jarvis_memory_bundle/vault/conversations/2026-10-04.md](file:///home/g0pi/Downloads/jarvis/jarvis_memory_bundle/vault/conversations/2026-10-04.md) | 77 | Obsidian Vault File | Zettelkasten knowledge note, interaction journal, atomic fact, or Obsidian configuration. |
-| [jarvis_memory_bundle/vault/conversations/conversation.md](file:///home/g0pi/Downloads/jarvis/jarvis_memory_bundle/vault/conversations/conversation.md) | 3481 | Obsidian Vault File | Zettelkasten knowledge note, interaction journal, atomic fact, or Obsidian configuration. |
+| [jarvis_memory_bundle/vault/conversations/2026-10-04.md](file:///home/g0pi/Downloads/jarvis/jarvis_memory_bundle/vault/conversations/2026-10-04.md) | 89 | Obsidian Vault File | Zettelkasten knowledge note, interaction journal, atomic fact, or Obsidian configuration. |
+| [jarvis_memory_bundle/vault/conversations/conversation.md](file:///home/g0pi/Downloads/jarvis/jarvis_memory_bundle/vault/conversations/conversation.md) | 3493 | Obsidian Vault File | Zettelkasten knowledge note, interaction journal, atomic fact, or Obsidian configuration. |
 | [jarvis_memory_bundle/vault/creative/.gitkeep](file:///home/g0pi/Downloads/jarvis/jarvis_memory_bundle/vault/creative/.gitkeep) | 0 | Obsidian Vault File | Zettelkasten knowledge note, interaction journal, atomic fact, or Obsidian configuration. |
 | [jarvis_memory_bundle/vault/decisions/.gitkeep](file:///home/g0pi/Downloads/jarvis/jarvis_memory_bundle/vault/decisions/.gitkeep) | 0 | Obsidian Vault File | Zettelkasten knowledge note, interaction journal, atomic fact, or Obsidian configuration. |
 | [jarvis_memory_bundle/vault/default/.gitkeep](file:///home/g0pi/Downloads/jarvis/jarvis_memory_bundle/vault/default/.gitkeep) | 0 | Obsidian Vault File | Zettelkasten knowledge note, interaction journal, atomic fact, or Obsidian configuration. |
@@ -3687,7 +3706,7 @@ Below is an exhaustive, 100% complete accounting of every single source file in 
 | [jarvis_memory_bundle/vault/finance/.gitkeep](file:///home/g0pi/Downloads/jarvis/jarvis_memory_bundle/vault/finance/.gitkeep) | 0 | Obsidian Vault File | Zettelkasten knowledge note, interaction journal, atomic fact, or Obsidian configuration. |
 | [jarvis_memory_bundle/vault/knowledge/.gitkeep](file:///home/g0pi/Downloads/jarvis/jarvis_memory_bundle/vault/knowledge/.gitkeep) | 0 | Obsidian Vault File | Zettelkasten knowledge note, interaction journal, atomic fact, or Obsidian configuration. |
 | [jarvis_memory_bundle/vault/lessons/.gitkeep](file:///home/g0pi/Downloads/jarvis/jarvis_memory_bundle/vault/lessons/.gitkeep) | 0 | Obsidian Vault File | Zettelkasten knowledge note, interaction journal, atomic fact, or Obsidian configuration. |
-| [jarvis_memory_bundle/vault/memory.db](file:///home/g0pi/Downloads/jarvis/jarvis_memory_bundle/vault/memory.db) | 3502 | Obsidian Vault File | Zettelkasten knowledge note, interaction journal, atomic fact, or Obsidian configuration. |
+| [jarvis_memory_bundle/vault/memory.db](file:///home/g0pi/Downloads/jarvis/jarvis_memory_bundle/vault/memory.db) | 3504 | Obsidian Vault File | Zettelkasten knowledge note, interaction journal, atomic fact, or Obsidian configuration. |
 | [jarvis_memory_bundle/vault/ops/.gitkeep](file:///home/g0pi/Downloads/jarvis/jarvis_memory_bundle/vault/ops/.gitkeep) | 0 | Obsidian Vault File | Zettelkasten knowledge note, interaction journal, atomic fact, or Obsidian configuration. |
 | [jarvis_memory_bundle/vault/patterns/.gitkeep](file:///home/g0pi/Downloads/jarvis/jarvis_memory_bundle/vault/patterns/.gitkeep) | 0 | Obsidian Vault File | Zettelkasten knowledge note, interaction journal, atomic fact, or Obsidian configuration. |
 | [jarvis_memory_bundle/vault/personal/.gitkeep](file:///home/g0pi/Downloads/jarvis/jarvis_memory_bundle/vault/personal/.gitkeep) | 0 | Obsidian Vault File | Zettelkasten knowledge note, interaction journal, atomic fact, or Obsidian configuration. |
@@ -3714,9 +3733,9 @@ Below is an exhaustive, 100% complete accounting of every single source file in 
 | [frontend/public/icons/icon.svg](file:///home/g0pi/Downloads/jarvis/frontend/public/icons/icon.svg) | 107 | Repository Asset | Supporting configuration or resource file. |
 | [frontend/public/manifest.webmanifest](file:///home/g0pi/Downloads/jarvis/frontend/public/manifest.webmanifest) | 88 | Repository Asset | Supporting configuration or resource file. |
 | [frontend/public/sw.js](file:///home/g0pi/Downloads/jarvis/frontend/public/sw.js) | 120 | Repository Asset | Supporting configuration or resource file. |
-| [frontend/src/App.tsx](file:///home/g0pi/Downloads/jarvis/frontend/src/App.tsx) | 1678 | Main Application Root | Coordinates audio session, WebSocket events, Arc-Reactor visualizer, optical stream PiP, CEO HUD, and modal toggles. |
+| [frontend/src/App.tsx](file:///home/g0pi/Downloads/jarvis/frontend/src/App.tsx) | 1677 | Main Application Root | Coordinates audio session, WebSocket events, Arc-Reactor visualizer, optical stream PiP, CEO HUD, and modal toggles. |
 | [frontend/src/components/AgentSpace.tsx](file:///home/g0pi/Downloads/jarvis/frontend/src/components/AgentSpace.tsx) | 275 | TypeScript Module | Frontend or backend TypeScript source file. |
-| [frontend/src/components/AgentSquadDrawer.tsx](file:///home/g0pi/Downloads/jarvis/frontend/src/components/AgentSquadDrawer.tsx) | 466 | TypeScript Module | Frontend or backend TypeScript source file. |
+| [frontend/src/components/AgentSquadDrawer.tsx](file:///home/g0pi/Downloads/jarvis/frontend/src/components/AgentSquadDrawer.tsx) | 448 | TypeScript Module | Frontend or backend TypeScript source file. |
 | [frontend/src/components/ApiKeyModal.tsx](file:///home/g0pi/Downloads/jarvis/frontend/src/components/ApiKeyModal.tsx) | 171 | API Key Modal | Modal for verifying and updating Gemini and Groq API keys. |
 | [frontend/src/components/ArcReactor3D.tsx](file:///home/g0pi/Downloads/jarvis/frontend/src/components/ArcReactor3D.tsx) | 284 | TypeScript Module | Frontend or backend TypeScript source file. |
 | [frontend/src/components/CeoExecutiveHUD.tsx](file:///home/g0pi/Downloads/jarvis/frontend/src/components/CeoExecutiveHUD.tsx) | 467 | CEO Executive HUD | Full-screen or floating executive command HUD visualizing active missions, agents roster, and session logs. |
@@ -3757,7 +3776,7 @@ Below is an exhaustive, 100% complete accounting of every single source file in 
 | [frontend/src/components/ui/dropdown-menu.tsx](file:///home/g0pi/Downloads/jarvis/frontend/src/components/ui/dropdown-menu.tsx) | 141 | TypeScript Module | Frontend or backend TypeScript source file. |
 | [frontend/src/components/ui/separator.tsx](file:///home/g0pi/Downloads/jarvis/frontend/src/components/ui/separator.tsx) | 25 | TypeScript Module | Frontend or backend TypeScript source file. |
 | [frontend/src/components/ui/tooltip.tsx](file:///home/g0pi/Downloads/jarvis/frontend/src/components/ui/tooltip.tsx) | 39 | TypeScript Module | Frontend or backend TypeScript source file. |
-| [frontend/src/components/views/AgentsView.tsx](file:///home/g0pi/Downloads/jarvis/frontend/src/components/views/AgentsView.tsx) | 365 | TypeScript Module | Frontend or backend TypeScript source file. |
+| [frontend/src/components/views/AgentsView.tsx](file:///home/g0pi/Downloads/jarvis/frontend/src/components/views/AgentsView.tsx) | 347 | TypeScript Module | Frontend or backend TypeScript source file. |
 | [frontend/src/components/views/MemoryView.tsx](file:///home/g0pi/Downloads/jarvis/frontend/src/components/views/MemoryView.tsx) | 389 | TypeScript Module | Frontend or backend TypeScript source file. |
 | [frontend/src/components/views/TasksView.tsx](file:///home/g0pi/Downloads/jarvis/frontend/src/components/views/TasksView.tsx) | 473 | TypeScript Module | Frontend or backend TypeScript source file. |
 | [frontend/src/data/personas.ts](file:///home/g0pi/Downloads/jarvis/frontend/src/data/personas.ts) | 75 | Frontend Personas Data | Client-side metadata for the 6 Coworker personas. |
@@ -3768,25 +3787,25 @@ Below is an exhaustive, 100% complete accounting of every single source file in 
 | [frontend/src/lib/error-capture.ts](file:///home/g0pi/Downloads/jarvis/frontend/src/lib/error-capture.ts) | 81 | TypeScript Module | Frontend or backend TypeScript source file. |
 | [frontend/src/lib/error-page.ts](file:///home/g0pi/Downloads/jarvis/frontend/src/lib/error-page.ts) | 30 | TypeScript Module | Frontend or backend TypeScript source file. |
 | [frontend/src/lib/sfx.ts](file:///home/g0pi/Downloads/jarvis/frontend/src/lib/sfx.ts) | 239 | TypeScript Module | Frontend or backend TypeScript source file. |
-| [frontend/src/lib/utils.ts](file:///home/g0pi/Downloads/jarvis/frontend/src/lib/utils.ts) | 15 | TypeScript Module | Frontend or backend TypeScript source file. |
+| [frontend/src/lib/utils.ts](file:///home/g0pi/Downloads/jarvis/frontend/src/lib/utils.ts) | 27 | TypeScript Module | Frontend or backend TypeScript source file. |
 | [frontend/src/main.tsx](file:///home/g0pi/Downloads/jarvis/frontend/src/main.tsx) | 33 | React Client Entrypoint | Mounts App into DOM root with StrictMode. |
 | [frontend/src/serviceWorkerRegistration.ts](file:///home/g0pi/Downloads/jarvis/frontend/src/serviceWorkerRegistration.ts) | 69 | PWA Service Worker Registration | Registers and updates the progressive web app service worker. |
 | [frontend/src/services/authService.ts](file:///home/g0pi/Downloads/jarvis/frontend/src/services/authService.ts) | 108 | Auth Service | Client authentication state management. |
 | [frontend/src/services/demoVoiceService.ts](file:///home/g0pi/Downloads/jarvis/frontend/src/services/demoVoiceService.ts) | 191 | Demo Voice Service | Local audio synthesis fallback for offline or keyless operation. |
 | [frontend/src/services/memoryEngine.ts](file:///home/g0pi/Downloads/jarvis/frontend/src/services/memoryEngine.ts) | 822 | Client Memory Engine | Manages local working context and synchronizes with server memory endpoints in real time. |
 | [frontend/src/services/workspaceService.ts](file:///home/g0pi/Downloads/jarvis/frontend/src/services/workspaceService.ts) | 246 | Workspace Service | Interacts with workspace tools and directory APIs. |
-| [frontend/src/types.ts](file:///home/g0pi/Downloads/jarvis/frontend/src/types.ts) | 186 | Frontend Type Definitions | Interfaces for audio state, coworkers, telemetry, memory matrix, and settings. |
+| [frontend/src/types.ts](file:///home/g0pi/Downloads/jarvis/frontend/src/types.ts) | 204 | Frontend Type Definitions | Interfaces for audio state, coworkers, telemetry, memory matrix, and settings. |
 | [frontend/src/utils/audio.ts](file:///home/g0pi/Downloads/jarvis/frontend/src/utils/audio.ts) | 206 | Audio Utility Functions | Base64 encoding/decoding, PCM conversion, and AudioContext helpers. |
 | [frontend/src/utils/automatic_greeting.ts](file:///home/g0pi/Downloads/jarvis/frontend/src/utils/automatic_greeting.ts) | 87 | Client Greeting Generator | Selects contextual greeting phrases based on current state. |
 | [frontend/src/utils/voice_transfer.ts](file:///home/g0pi/Downloads/jarvis/frontend/src/utils/voice_transfer.ts) | 150 | Client Handoff Detector | Client-side regex fallback for detecting verbal coworker switch requests. |
 | [frontend/src/vite-env.d.ts](file:///home/g0pi/Downloads/jarvis/frontend/src/vite-env.d.ts) | 16 | Vite Environment Types | TypeScript client type definitions for Vite client environment. |
 | [frontend/vite.config.ts](file:///home/g0pi/Downloads/jarvis/frontend/vite.config.ts) | 30 | Vite Bundler Config | Configures React plugin, Tailwind CSS v4, and dev server options. |
 
-### 5.6 Executive CEO Roster, Agents & Universal Skills (`.agents/`, `skills/`) (95 files)
+### 5.6 Executive CEO Roster, Agents & Universal Skills (`.agents/`, `skills/`) (61 files)
 
 | File Path | Lines | Role | Verified Responsibilities |
 | :--- | :---: | :--- | :--- |
-| [.agents/README.md](file:///home/g0pi/Downloads/jarvis/.agents/README.md) | 23 | Agents Roster Documentation | Overview of multi-agent workflows and autonomous engineer guidelines. |
+| [.agents/README.md](file:///home/g0pi/Downloads/jarvis/.agents/README.md) | 84 | Agents Roster Documentation | Overview of multi-agent workflows and autonomous engineer guidelines. |
 | [.agents/ceo_resources/checklists/code-quality-checklist.yaml](file:///home/g0pi/Downloads/jarvis/.agents/ceo_resources/checklists/code-quality-checklist.yaml) | 323 | CEO Operational Resource | Executive checklist, prompt guidelines, technical preferences, or framework definition. |
 | [.agents/ceo_resources/checklists/openai-sdk-compliance-checklist.yaml](file:///home/g0pi/Downloads/jarvis/.agents/ceo_resources/checklists/openai-sdk-compliance-checklist.yaml) | 121 | CEO Operational Resource | Executive checklist, prompt guidelines, technical preferences, or framework definition. |
 | [.agents/ceo_resources/data/calculation-best-practices.yaml](file:///home/g0pi/Downloads/jarvis/.agents/ceo_resources/data/calculation-best-practices.yaml) | 66 | CEO Operational Resource | Executive checklist, prompt guidelines, technical preferences, or framework definition. |
@@ -3803,40 +3822,13 @@ Below is an exhaustive, 100% complete accounting of every single source file in 
 | [.agents/skills/analyze-project-context/CREATION-LOG.md](file:///home/g0pi/Downloads/jarvis/.agents/skills/analyze-project-context/CREATION-LOG.md) | 262 | Skill Supporting Resource | Configuration, template, or documentation resource for 'analyze-project-context' skill. |
 | [.agents/skills/analyze-project-context/SKILL.md](file:///home/g0pi/Downloads/jarvis/.agents/skills/analyze-project-context/SKILL.md) | 306 | Skill Specification | Autonomous agent skill definition, operational workflows, and directives for 'analyze-project-context'. |
 | [.agents/skills/brainstorming/SKILL.md](file:///home/g0pi/Downloads/jarvis/.agents/skills/brainstorming/SKILL.md) | 54 | Skill Specification | Autonomous agent skill definition, operational workflows, and directives for 'brainstorming'. |
-| [.agents/skills/brandkit/SKILL.md](file:///home/g0pi/Downloads/jarvis/.agents/skills/brandkit/SKILL.md) | 798 | Skill Specification | Autonomous agent skill definition, operational workflows, and directives for 'brandkit'. |
 | [.agents/skills/code-quality-check/SKILL.md](file:///home/g0pi/Downloads/jarvis/.agents/skills/code-quality-check/SKILL.md) | 86 | Skill Specification | Autonomous agent skill definition, operational workflows, and directives for 'code-quality-check'. |
 | [.agents/skills/code-quality-check/code-quality-checklist.yaml](file:///home/g0pi/Downloads/jarvis/.agents/skills/code-quality-check/code-quality-checklist.yaml) | 323 | Skill Supporting Resource | Configuration, template, or documentation resource for 'code-quality-check' skill. |
-| [.agents/skills/create-deep-research-prompt/SKILL.md](file:///home/g0pi/Downloads/jarvis/.agents/skills/create-deep-research-prompt/SKILL.md) | 57 | Skill Specification | Autonomous agent skill definition, operational workflows, and directives for 'create-deep-research-prompt'. |
-| [.agents/skills/design-taste-frontend-v1/SKILL.md](file:///home/g0pi/Downloads/jarvis/.agents/skills/design-taste-frontend-v1/SKILL.md) | 226 | Skill Specification | Autonomous agent skill definition, operational workflows, and directives for 'design-taste-frontend-v1'. |
-| [.agents/skills/design-taste-frontend/SKILL.md](file:///home/g0pi/Downloads/jarvis/.agents/skills/design-taste-frontend/SKILL.md) | 1206 | Skill Specification | Autonomous agent skill definition, operational workflows, and directives for 'design-taste-frontend'. |
-| [.agents/skills/developing-marketing-strategy/SKILL.md](file:///home/g0pi/Downloads/jarvis/.agents/skills/developing-marketing-strategy/SKILL.md) | 68 | Skill Specification | Autonomous agent skill definition, operational workflows, and directives for 'developing-marketing-strategy'. |
 | [.agents/skills/dispatching-parallel-agents/SKILL.md](file:///home/g0pi/Downloads/jarvis/.agents/skills/dispatching-parallel-agents/SKILL.md) | 180 | Skill Specification | Autonomous agent skill definition, operational workflows, and directives for 'dispatching-parallel-agents'. |
-| [.agents/skills/document-project-state/SKILL.md](file:///home/g0pi/Downloads/jarvis/.agents/skills/document-project-state/SKILL.md) | 59 | Skill Specification | Autonomous agent skill definition, operational workflows, and directives for 'document-project-state'. |
 | [.agents/skills/executing-plans/SKILL.md](file:///home/g0pi/Downloads/jarvis/.agents/skills/executing-plans/SKILL.md) | 76 | Skill Specification | Autonomous agent skill definition, operational workflows, and directives for 'executing-plans'. |
-| [.agents/skills/finishing-a-development-branch/SKILL.md](file:///home/g0pi/Downloads/jarvis/.agents/skills/finishing-a-development-branch/SKILL.md) | 200 | Skill Specification | Autonomous agent skill definition, operational workflows, and directives for 'finishing-a-development-branch'. |
-| [.agents/skills/full-output-enforcement/SKILL.md](file:///home/g0pi/Downloads/jarvis/.agents/skills/full-output-enforcement/SKILL.md) | 49 | Skill Specification | Autonomous agent skill definition, operational workflows, and directives for 'full-output-enforcement'. |
-| [.agents/skills/gpt-taste/SKILL.md](file:///home/g0pi/Downloads/jarvis/.agents/skills/gpt-taste/SKILL.md) | 74 | Skill Specification | Autonomous agent skill definition, operational workflows, and directives for 'gpt-taste'. |
-| [.agents/skills/high-end-visual-design/SKILL.md](file:///home/g0pi/Downloads/jarvis/.agents/skills/high-end-visual-design/SKILL.md) | 98 | Skill Specification | Autonomous agent skill definition, operational workflows, and directives for 'high-end-visual-design'. |
-| [.agents/skills/image-to-code/SKILL.md](file:///home/g0pi/Downloads/jarvis/.agents/skills/image-to-code/SKILL.md) | 1228 | Skill Specification | Autonomous agent skill definition, operational workflows, and directives for 'image-to-code'. |
-| [.agents/skills/imagegen-frontend-mobile/SKILL.md](file:///home/g0pi/Downloads/jarvis/.agents/skills/imagegen-frontend-mobile/SKILL.md) | 1465 | Skill Specification | Autonomous agent skill definition, operational workflows, and directives for 'imagegen-frontend-mobile'. |
-| [.agents/skills/imagegen-frontend-web/SKILL.md](file:///home/g0pi/Downloads/jarvis/.agents/skills/imagegen-frontend-web/SKILL.md) | 987 | Skill Specification | Autonomous agent skill definition, operational workflows, and directives for 'imagegen-frontend-web'. |
-| [.agents/skills/industrial-brutalist-ui/SKILL.md](file:///home/g0pi/Downloads/jarvis/.agents/skills/industrial-brutalist-ui/SKILL.md) | 92 | Skill Specification | Autonomous agent skill definition, operational workflows, and directives for 'industrial-brutalist-ui'. |
 | [.agents/skills/jarvis-ui-system/SKILL.md](file:///home/g0pi/Downloads/jarvis/.agents/skills/jarvis-ui-system/SKILL.md) | 83 | Skill Specification | Autonomous agent skill definition, operational workflows, and directives for 'jarvis-ui-system'. |
-| [.agents/skills/minimalist-ui/SKILL.md](file:///home/g0pi/Downloads/jarvis/.agents/skills/minimalist-ui/SKILL.md) | 85 | Skill Specification | Autonomous agent skill definition, operational workflows, and directives for 'minimalist-ui'. |
-| [.agents/skills/promptify/SKILL.md](file:///home/g0pi/Downloads/jarvis/.agents/skills/promptify/SKILL.md) | 45 | Skill Specification | Autonomous agent skill definition, operational workflows, and directives for 'promptify'. |
-| [.agents/skills/receiving-code-review/SKILL.md](file:///home/g0pi/Downloads/jarvis/.agents/skills/receiving-code-review/SKILL.md) | 213 | Skill Specification | Autonomous agent skill definition, operational workflows, and directives for 'receiving-code-review'. |
-| [.agents/skills/redesign-existing-projects/SKILL.md](file:///home/g0pi/Downloads/jarvis/.agents/skills/redesign-existing-projects/SKILL.md) | 178 | Skill Specification | Autonomous agent skill definition, operational workflows, and directives for 'redesign-existing-projects'. |
 | [.agents/skills/requesting-code-review/SKILL.md](file:///home/g0pi/Downloads/jarvis/.agents/skills/requesting-code-review/SKILL.md) | 105 | Skill Specification | Autonomous agent skill definition, operational workflows, and directives for 'requesting-code-review'. |
 | [.agents/skills/requesting-code-review/code-reviewer.md](file:///home/g0pi/Downloads/jarvis/.agents/skills/requesting-code-review/code-reviewer.md) | 146 | Skill Supporting Resource | Configuration, template, or documentation resource for 'requesting-code-review' skill. |
-| [.agents/skills/speckit-checklist/SKILL.md](file:///home/g0pi/Downloads/jarvis/.agents/skills/speckit-checklist/SKILL.md) | 227 | Skill Specification | Autonomous agent skill definition, operational workflows, and directives for 'speckit-checklist'. |
-| [.agents/skills/speckit-constitution/SKILL.md](file:///home/g0pi/Downloads/jarvis/.agents/skills/speckit-constitution/SKILL.md) | 279 | Skill Specification | Autonomous agent skill definition, operational workflows, and directives for 'speckit-constitution'. |
-| [.agents/skills/speckit-plan/SKILL.md](file:///home/g0pi/Downloads/jarvis/.agents/skills/speckit-plan/SKILL.md) | 200 | Skill Specification | Autonomous agent skill definition, operational workflows, and directives for 'speckit-plan'. |
-| [.agents/skills/speckit-specify/SKILL.md](file:///home/g0pi/Downloads/jarvis/.agents/skills/speckit-specify/SKILL.md) | 148 | Skill Specification | Autonomous agent skill definition, operational workflows, and directives for 'speckit-specify'. |
-| [.agents/skills/speckit-tasks/SKILL.md](file:///home/g0pi/Downloads/jarvis/.agents/skills/speckit-tasks/SKILL.md) | 242 | Skill Specification | Autonomous agent skill definition, operational workflows, and directives for 'speckit-tasks'. |
-| [.agents/skills/speckit/CREATION-LOG.md](file:///home/g0pi/Downloads/jarvis/.agents/skills/speckit/CREATION-LOG.md) | 242 | Skill Supporting Resource | Configuration, template, or documentation resource for 'speckit' skill. |
-| [.agents/skills/speckit/SKILL.md](file:///home/g0pi/Downloads/jarvis/.agents/skills/speckit/SKILL.md) | 357 | Skill Specification | Autonomous agent skill definition, operational workflows, and directives for 'speckit'. |
-| [.agents/skills/stitch-design-taste/DESIGN.md](file:///home/g0pi/Downloads/jarvis/.agents/skills/stitch-design-taste/DESIGN.md) | 121 | Skill Supporting Resource | Configuration, template, or documentation resource for 'stitch-design-taste' skill. |
-| [.agents/skills/stitch-design-taste/SKILL.md](file:///home/g0pi/Downloads/jarvis/.agents/skills/stitch-design-taste/SKILL.md) | 184 | Skill Specification | Autonomous agent skill definition, operational workflows, and directives for 'stitch-design-taste'. |
 | [.agents/skills/subagent-driven-development/SKILL.md](file:///home/g0pi/Downloads/jarvis/.agents/skills/subagent-driven-development/SKILL.md) | 240 | Skill Specification | Autonomous agent skill definition, operational workflows, and directives for 'subagent-driven-development'. |
 | [.agents/skills/subagent-driven-development/code-quality-reviewer-prompt.md](file:///home/g0pi/Downloads/jarvis/.agents/skills/subagent-driven-development/code-quality-reviewer-prompt.md) | 20 | Skill Supporting Resource | Configuration, template, or documentation resource for 'subagent-driven-development' skill. |
 | [.agents/skills/subagent-driven-development/implementer-prompt.md](file:///home/g0pi/Downloads/jarvis/.agents/skills/subagent-driven-development/implementer-prompt.md) | 78 | Skill Supporting Resource | Configuration, template, or documentation resource for 'subagent-driven-development' skill. |
@@ -3861,14 +3853,7 @@ Below is an exhaustive, 100% complete accounting of every single source file in 
 | [.agents/skills/using-git-worktrees/SKILL.md](file:///home/g0pi/Downloads/jarvis/.agents/skills/using-git-worktrees/SKILL.md) | 217 | Skill Specification | Autonomous agent skill definition, operational workflows, and directives for 'using-git-worktrees'. |
 | [.agents/skills/verification-before-completion/SKILL.md](file:///home/g0pi/Downloads/jarvis/.agents/skills/verification-before-completion/SKILL.md) | 139 | Skill Specification | Autonomous agent skill definition, operational workflows, and directives for 'verification-before-completion'. |
 | [.agents/skills/writing-plans/SKILL.md](file:///home/g0pi/Downloads/jarvis/.agents/skills/writing-plans/SKILL.md) | 116 | Skill Specification | Autonomous agent skill definition, operational workflows, and directives for 'writing-plans'. |
-| [.agents/skills/writing-skills/SKILL.md](file:///home/g0pi/Downloads/jarvis/.agents/skills/writing-skills/SKILL.md) | 655 | Skill Specification | Autonomous agent skill definition, operational workflows, and directives for 'writing-skills'. |
-| [.agents/skills/writing-skills/anthropic-best-practices.md](file:///home/g0pi/Downloads/jarvis/.agents/skills/writing-skills/anthropic-best-practices.md) | 1150 | Skill Supporting Resource | Configuration, template, or documentation resource for 'writing-skills' skill. |
-| [.agents/skills/writing-skills/examples/CLAUDE_MD_TESTING.md](file:///home/g0pi/Downloads/jarvis/.agents/skills/writing-skills/examples/CLAUDE_MD_TESTING.md) | 189 | Skill Supporting Resource | Configuration, template, or documentation resource for 'writing-skills' skill. |
-| [.agents/skills/writing-skills/graphviz-conventions.dot](file:///home/g0pi/Downloads/jarvis/.agents/skills/writing-skills/graphviz-conventions.dot) | 172 | Skill Supporting Resource | Configuration, template, or documentation resource for 'writing-skills' skill. |
-| [.agents/skills/writing-skills/persuasion-principles.md](file:///home/g0pi/Downloads/jarvis/.agents/skills/writing-skills/persuasion-principles.md) | 187 | Skill Supporting Resource | Configuration, template, or documentation resource for 'writing-skills' skill. |
-| [.agents/skills/writing-skills/render-graphs.js](file:///home/g0pi/Downloads/jarvis/.agents/skills/writing-skills/render-graphs.js) | 168 | Skill Supporting Resource | Configuration, template, or documentation resource for 'writing-skills' skill. |
-| [.agents/skills/writing-skills/testing-skills-with-subagents.md](file:///home/g0pi/Downloads/jarvis/.agents/skills/writing-skills/testing-skills-with-subagents.md) | 384 | Skill Supporting Resource | Configuration, template, or documentation resource for 'writing-skills' skill. |
-| [.agents/workflows/coding-agnts.md](file:///home/g0pi/Downloads/jarvis/.agents/workflows/coding-agnts.md) | 59 | 24/7 Co-Worker Workflow Protocol | Mandatory 5-phase engineering protocol (Triage, Architecture, Spec, TDD, Production). |
+| [.agents/workflows/coding-agnts.md](file:///home/g0pi/Downloads/jarvis/.agents/workflows/coding-agnts.md) | 66 | 24/7 Co-Worker Workflow Protocol | Mandatory 5-phase engineering protocol (Triage, Architecture, Spec, TDD, Production). |
 | [agents_roster.yaml](file:///home/g0pi/Downloads/jarvis/agents_roster.yaml) | 155 | CEO Agent Roster Specification | Declarative YAML manifest defining all active AI agents, roles, tools, and lead engineer Hermes. |
 | [skills-lock.json](file:///home/g0pi/Downloads/jarvis/skills-lock.json) | 11 | Skills Lockfile | Integrity hashes and version tracking for installed domain skills. |
 | [skills/diagnose-crash/SKILL.md](file:///home/g0pi/Downloads/jarvis/skills/diagnose-crash/SKILL.md) | 97 | Markdown Documentation | Project documentation or specification file. |
@@ -3880,22 +3865,22 @@ Below is an exhaustive, 100% complete accounting of every single source file in 
 | [skills/omarchy/hyprland.md](file:///home/g0pi/Downloads/jarvis/skills/omarchy/hyprland.md) | 78 | Markdown Documentation | Project documentation or specification file. |
 | [skills/omarchy/plugins.md](file:///home/g0pi/Downloads/jarvis/skills/omarchy/plugins.md) | 52 | Markdown Documentation | Project documentation or specification file. |
 | [skills/omarchy/theming.md](file:///home/g0pi/Downloads/jarvis/skills/omarchy/theming.md) | 79 | Markdown Documentation | Project documentation or specification file. |
-| [skills/skills_registry.json](file:///home/g0pi/Downloads/jarvis/skills/skills_registry.json) | 245 | Universal Skills Registry | Dynamic catalog of indexed skills, scripts, and descriptions. |
+| [skills/skills_registry.json](file:///home/g0pi/Downloads/jarvis/skills/skills_registry.json) | 265 | Universal Skills Registry | Dynamic catalog of indexed skills, scripts, and descriptions. |
 
 ### 5.7 Project Documentation, Specifications & Schemas (`project_docs/`, `docs/`) (16 files)
 
 | File Path | Lines | Role | Verified Responsibilities |
 | :--- | :---: | :--- | :--- |
+| [AUDIT_AND_IMPROVEMENTS.md](file:///home/g0pi/Downloads/jarvis/AUDIT_AND_IMPROVEMENTS.md) | 309 | Engineering Audit & Hardening Blueprint | Deep audit of memory bundle edge cases and prioritized hardening recipes. |
 | [GEMINI.md](file:///home/g0pi/Downloads/jarvis/GEMINI.md) | 34 | Workspace Engineering Rules | Mandatory workspace instructions: port 3000, 4-subfolder layout, dev branch policy, quality gates. |
-| [README.md](file:///home/g0pi/Downloads/jarvis/README.md) | 40 | Project Readme | High-level overview of J.A.R.V.I.S. Autonomous AI OS features, CEO integration, and quickstart. |
+| [JARVIS_MEMORY_BUNDLE_IMPROVEMENTS.md](file:///home/g0pi/Downloads/jarvis/JARVIS_MEMORY_BUNDLE_IMPROVEMENTS.md) | 309 | Memory Hardening Reference | Detailed technical analysis of memory bundle optimizations. |
+| [README.md](file:///home/g0pi/Downloads/jarvis/README.md) | 216 | Project Readme | High-level overview of J.A.R.V.I.S. Autonomous AI OS features, CEO integration, and quickstart. |
 | [docs/superpowers/plans/2026-09-29-jarvis-ui-redesign.md](file:///home/g0pi/Downloads/jarvis/docs/superpowers/plans/2026-09-29-jarvis-ui-redesign.md) | 854 | UI Redesign Implementation Plan | Detailed implementation steps for modernizing J.A.R.V.I.S. frontend. |
 | [docs/superpowers/specs/2026-09-29-jarvis-ui-redesign-design.md](file:///home/g0pi/Downloads/jarvis/docs/superpowers/specs/2026-09-29-jarvis-ui-redesign-design.md) | 123 | UI Redesign Design Specification | UX specifications and component layouts for HUD modernization. |
 | [project_docs/ARCHITECTURE.md](file:///home/g0pi/Downloads/jarvis/project_docs/ARCHITECTURE.md) | 95 | System Architecture Blueprint | High-level architecture documentation and component diagrams. |
 | [project_docs/AUDIT_AND_IMPROVEMENTS.md](file:///home/g0pi/Downloads/jarvis/project_docs/AUDIT_AND_IMPROVEMENTS.md) | 309 | Markdown Documentation | Project documentation or specification file. |
 | [project_docs/AUTONOMOUS_JARVIS_BLUEPRINT.md](file:///home/g0pi/Downloads/jarvis/project_docs/AUTONOMOUS_JARVIS_BLUEPRINT.md) | 177 | Autonomous Jarvis Blueprint | Vision and architecture for 24/7 autonomous digital coworker. |
 | [project_docs/AUTONOMY_PLAN.md](file:///home/g0pi/Downloads/jarvis/project_docs/AUTONOMY_PLAN.md) | 71 | Autonomy Roadmap | Phased implementation plan for continuous background operation. |
-| [project_docs/CENTRAL_BRAIN_CONTEXT_AND_PLAN.md](file:///home/g0pi/Downloads/jarvis/project_docs/CENTRAL_BRAIN_CONTEXT_AND_PLAN.md) | 379 | Central Brain Blueprint & Execution Plan | Comprehensive plan for central brain consolidation, dynamic routing, and session indexing. |
-| [project_docs/CENTRAL_MEMORY_SPEC.md](file:///home/g0pi/Downloads/jarvis/project_docs/CENTRAL_MEMORY_SPEC.md) | 136 | Central Memory Architecture Spec | Design specification for SQLite central memory store and cross-session coherence. |
 | [project_docs/COWORKERS.md](file:///home/g0pi/Downloads/jarvis/project_docs/COWORKERS.md) | 240 | AI Coworkers Roster & Protocol | Detailed guide to the 6 Coworker personas and Voice Transfer Protocol. |
 | [project_docs/OPENMANUS_INTEGRATION_ANALYSIS.md](file:///home/g0pi/Downloads/jarvis/project_docs/OPENMANUS_INTEGRATION_ANALYSIS.md) | 48 | OpenManus Integration Analysis | Comparative study of OpenManus agent architecture. |
 | [project_docs/README.md](file:///home/g0pi/Downloads/jarvis/project_docs/README.md) | 23 | Project Docs Index | Directory overview for documentation files. |
@@ -4108,50 +4093,18 @@ Below is an exhaustive, 100% complete accounting of every single source file in 
 | [antigravity-sdk-python-main/skills/google-antigravity-sdk/references/observability.md](file:///home/g0pi/Downloads/jarvis/antigravity-sdk-python-main/skills/google-antigravity-sdk/references/observability.md) | 85 | Antigravity SDK Documentation | Documentation or usage guide for Antigravity Python SDK. |
 | [antigravity-sdk-python-main/skills/google-antigravity-sdk/references/safety_policies.md](file:///home/g0pi/Downloads/jarvis/antigravity-sdk-python-main/skills/google-antigravity-sdk/references/safety_policies.md) | 244 | Antigravity SDK Documentation | Documentation or usage guide for Antigravity Python SDK. |
 
-### 5.10 Central Brain Multi-Agent Knowledge Ledger (`central_brain/`) (27 files)
-
-| File Path | Lines | Role | Verified Responsibilities |
-| :--- | :---: | :--- | :--- |
-| [central_brain/data/central_brain.db](file:///home/g0pi/Downloads/jarvis/central_brain/data/central_brain.db) | 2474 | Central Brain Primary DB | SQLite database storing cross-agent memory ledger, sessions, and facts. |
-| [central_brain/data/master_index.json](file:///home/g0pi/Downloads/jarvis/central_brain/data/master_index.json) | 506 | Master Knowledge Index (JSON) | Machine-readable live index of all cross-agent knowledge, sessions, and capabilities. |
-| [central_brain/data/master_index.md](file:///home/g0pi/Downloads/jarvis/central_brain/data/master_index.md) | 302 | Master Knowledge Index (MD) | Human-readable live documentation matrix of all multi-agent operations. |
-| [central_brain/frontend/index.html](file:///home/g0pi/Downloads/jarvis/central_brain/frontend/index.html) | 85 | Central Brain Cockpit HTML | HTML entrypoint for the Central Brain visualizer. |
-| [central_brain/frontend/src/App.tsx](file:///home/g0pi/Downloads/jarvis/central_brain/frontend/src/App.tsx) | 538 | Central Brain Cockpit App | Main React application for the Central Brain multi-agent knowledge cockpit. |
-| [central_brain/frontend/src/components/BrowserCaptureGuide.tsx](file:///home/g0pi/Downloads/jarvis/central_brain/frontend/src/components/BrowserCaptureGuide.tsx) | 209 | TypeScript Module | Frontend or backend TypeScript source file. |
-| [central_brain/frontend/src/components/DataCurationModal.tsx](file:///home/g0pi/Downloads/jarvis/central_brain/frontend/src/components/DataCurationModal.tsx) | 269 | Memory Curation Modal | Interactive editor for inspecting, tagging, and modifying central brain entries. |
-| [central_brain/frontend/src/components/LivePipelineView.tsx](file:///home/g0pi/Downloads/jarvis/central_brain/frontend/src/components/LivePipelineView.tsx) | 456 | Live Pipeline Visualizer | Real-time interactive HUD visualizer showing cross-agent data streams and ingestion events. |
-| [central_brain/frontend/src/components/MemoryLedgerView.tsx](file:///home/g0pi/Downloads/jarvis/central_brain/frontend/src/components/MemoryLedgerView.tsx) | 355 | Memory Ledger Browser | Interactive data grid for browsing, searching, and filtering distilled agent memory items. |
-| [central_brain/frontend/src/main.tsx](file:///home/g0pi/Downloads/jarvis/central_brain/frontend/src/main.tsx) | 9 | Central Brain React Entry | Mounts the Central Brain frontend cockpit into the DOM root. |
-| [central_brain/frontend/vite.config.ts](file:///home/g0pi/Downloads/jarvis/central_brain/frontend/vite.config.ts) | 21 | Central Brain Vite Config | Vite build and dev configuration for the Central Brain frontend. |
-| [central_brain/src/adapters/adapter_manager.ts](file:///home/g0pi/Downloads/jarvis/central_brain/src/adapters/adapter_manager.ts) | 81 | Agent Adapter Coordinator | Central coordinator registering, routing, and dispatching events across all agent adapters. |
-| [central_brain/src/adapters/antigravity_adapter.ts](file:///home/g0pi/Downloads/jarvis/central_brain/src/adapters/antigravity_adapter.ts) | 136 | Antigravity IDE Adapter | Bi-directional session bridge connecting Google Antigravity IDE and subagents. |
-| [central_brain/src/adapters/browser_adapter.ts](file:///home/g0pi/Downloads/jarvis/central_brain/src/adapters/browser_adapter.ts) | 37 | Browser Telemetry Adapter | Ingests user web browsing context and bookmarklet captures into the Central Brain. |
-| [central_brain/src/adapters/claude_adapter.ts](file:///home/g0pi/Downloads/jarvis/central_brain/src/adapters/claude_adapter.ts) | 128 | Claude Agent Adapter | Session ingest and learning bridge for Anthropic Claude Code agent. |
-| [central_brain/src/adapters/codex_adapter.ts](file:///home/g0pi/Downloads/jarvis/central_brain/src/adapters/codex_adapter.ts) | 77 | Codex Agent Adapter | Session ingest adapter for OpenAI Codex / Copilot agents. |
-| [central_brain/src/adapters/hermes_adapter.ts](file:///home/g0pi/Downloads/jarvis/central_brain/src/adapters/hermes_adapter.ts) | 101 | Hermes Agent Adapter | Bidirectional session and memory bridge connecting Lead Engineer Hermes. |
-| [central_brain/src/core/agent_discovery.ts](file:///home/g0pi/Downloads/jarvis/central_brain/src/core/agent_discovery.ts) | 226 | Agent Discovery & Heartbeat | Discovers, tracks, and monitors live agent instances (Hermes, Claude, Antigravity, Codex). |
-| [central_brain/src/core/brain_graph.ts](file:///home/g0pi/Downloads/jarvis/central_brain/src/core/brain_graph.ts) | 179 | Multi-Agent Knowledge Graph | Relational graph linking concepts, projects, decisions, and agent execution nodes. |
-| [central_brain/src/core/db.ts](file:///home/g0pi/Downloads/jarvis/central_brain/src/core/db.ts) | 258 | Central Brain SQLite Ledger | SQLite database managing multi-agent session records, distilled facts, and master indices. |
-| [central_brain/src/core/distillation_engine.ts](file:///home/g0pi/Downloads/jarvis/central_brain/src/core/distillation_engine.ts) | 229 | Insight Distillation Engine | Real-time cross-agent distillation transforming raw sessions into atomic insights. |
-| [central_brain/src/core/master_index_sync.ts](file:///home/g0pi/Downloads/jarvis/central_brain/src/core/master_index_sync.ts) | 82 | Master Index Synchronizer | Generates and synchronizes master_index.json and master_index.md across all connected agents. |
-| [central_brain/src/core/types.ts](file:///home/g0pi/Downloads/jarvis/central_brain/src/core/types.ts) | 74 | Central Brain Schema Types | TypeScript interfaces for cross-agent memory ledger, session metadata, and graph nodes. |
-| [central_brain/src/server.ts](file:///home/g0pi/Downloads/jarvis/central_brain/src/server.ts) | 302 | Central Brain API Server | Express & WebSocket server hosting the Central Brain API and event broadcast bus. |
-| [central_brain/src/test_harness.ts](file:///home/g0pi/Downloads/jarvis/central_brain/src/test_harness.ts) | 117 | Central Brain Test Harness | Comprehensive test harness validating cross-agent sync, distillation, and DB queries. |
-| [central_brain/src/tools/browser_bookmarklet.js](file:///home/g0pi/Downloads/jarvis/central_brain/src/tools/browser_bookmarklet.js) | 56 | Browser Capture Bookmarklet | One-click JavaScript bookmarklet for instant web research ingestion into Central Brain. |
-| [central_brain/src/tools/clean_database.ts](file:///home/g0pi/Downloads/jarvis/central_brain/src/tools/clean_database.ts) | 149 | TypeScript Module | Frontend or backend TypeScript source file. |
-
 ### 5.11 Build Scripts, Data Stores & Root Configuration (`scripts/`, `data/`, root files) (4053 files)
 
 | File Path | Lines | Role | Verified Responsibilities |
 | :--- | :---: | :--- | :--- |
 | [.env](file:///home/g0pi/Downloads/jarvis/.env) | 78 | Environment Secrets | Local configuration keys (GEMINI_API_KEY, GROQ_API_KEY, PORT=3000, etc.). |
-| [.env.example](file:///home/g0pi/Downloads/jarvis/.env.example) | 47 | Environment Template | Template file showing required configuration variables. |
+| [.env.example](file:///home/g0pi/Downloads/jarvis/.env.example) | 42 | Environment Template | Template file showing required configuration variables. |
 | [.gitignore](file:///home/g0pi/Downloads/jarvis/.gitignore) | 55 | Git Ignore Rules | Ignores node_modules, dist, .env, build artifacts, and temporary databases. |
 | [.gitmodules](file:///home/g0pi/Downloads/jarvis/.gitmodules) | 6 | Repository Asset | Supporting configuration or resource file. |
-| [.jarvis_data/agent_sessions.json](file:///home/g0pi/Downloads/jarvis/.jarvis_data/agent_sessions.json) | 384 | JSON Configuration | Configuration or data file in JSON format. |
+| [.jarvis_data/agent_sessions.json](file:///home/g0pi/Downloads/jarvis/.jarvis_data/agent_sessions.json) | 394 | JSON Configuration | Configuration or data file in JSON format. |
 | [.jarvis_data/jarvis_memory.db](file:///home/g0pi/Downloads/jarvis/.jarvis_data/jarvis_memory.db) | 0 | Repository Asset | Supporting configuration or resource file. |
 | [.omnirush/swarm.md](file:///home/g0pi/Downloads/jarvis/.omnirush/swarm.md) | 17 | Markdown Documentation | Project documentation or specification file. |
-| [CODEBASE_REFERENCE.md](file:///home/g0pi/Downloads/jarvis/CODEBASE_REFERENCE.md) | 6398 | Workspace Codebase Reference | Local copy of the authoritative J.A.R.V.I.S. technical reference manual. |
+| [CODEBASE_REFERENCE.md](file:///home/g0pi/Downloads/jarvis/CODEBASE_REFERENCE.md) | 8500 | Workspace Codebase Reference | Local copy of the authoritative J.A.R.V.I.S. technical reference manual. |
 | [data/.vault-key](file:///home/g0pi/Downloads/jarvis/data/.vault-key) | 1 | Encryption Key Salt | Machine-specific key for connector token encryption. |
 | [data/audio_fillers/code.pcm](file:///home/g0pi/Downloads/jarvis/data/audio_fillers/code.pcm) | 435 | PCM Audio Vocal Filler | Pre-synthesized 24kHz/16kHz raw PCM audio filler chunk played to eliminate silence during reasoning. |
 | [data/audio_fillers/general.pcm](file:///home/g0pi/Downloads/jarvis/data/audio_fillers/general.pcm) | 435 | PCM Audio Vocal Filler | Pre-synthesized 24kHz/16kHz raw PCM audio filler chunk played to eliminate silence during reasoning. |
@@ -6018,7 +5971,7 @@ Below is an exhaustive, 100% complete accounting of every single source file in 
 | [external/OpenShell/tests/tmachine/src/qemu/vm.rs](file:///home/g0pi/Downloads/jarvis/external/OpenShell/tests/tmachine/src/qemu/vm.rs) | 173 | Rust Source Code | Rust native memory engine source file. |
 | [external/OpenShell/uv.lock](file:///home/g0pi/Downloads/jarvis/external/OpenShell/uv.lock) | 636 | Repository Asset | Supporting configuration or resource file. |
 | [package-lock.json](file:///home/g0pi/Downloads/jarvis/package-lock.json) | 6870 | NPM Dependency Lockfile | Deterministic dependency tree lockfile. |
-| [package.json](file:///home/g0pi/Downloads/jarvis/package.json) | 67 | NPM Package Manifest | Project metadata, scripts (dev, build, lint, clean, update:ref), and production/dev dependencies. |
+| [package.json](file:///home/g0pi/Downloads/jarvis/package.json) | 64 | NPM Package Manifest | Project metadata, scripts (dev, build, lint, clean, update:ref), and production/dev dependencies. |
 | [protocols/a2a/.devcontainer/README.md](file:///home/g0pi/Downloads/jarvis/protocols/a2a/.devcontainer/README.md) | 83 | Markdown Documentation | Project documentation or specification file. |
 | [protocols/a2a/.devcontainer/devcontainer.json](file:///home/g0pi/Downloads/jarvis/protocols/a2a/.devcontainer/devcontainer.json) | 33 | JSON Configuration | Configuration or data file in JSON format. |
 | [protocols/a2a/.devcontainer/setup.sh](file:///home/g0pi/Downloads/jarvis/protocols/a2a/.devcontainer/setup.sh) | 72 | Repository Asset | Supporting configuration or resource file. |
@@ -8194,7 +8147,7 @@ Below is an exhaustive, 100% complete accounting of every single source file in 
 | [scripts/launch_jarvis_browser.sh](file:///home/g0pi/Downloads/jarvis/scripts/launch_jarvis_browser.sh) | 64 | Repository Asset | Supporting configuration or resource file. |
 | [scripts/sync_openshell.sh](file:///home/g0pi/Downloads/jarvis/scripts/sync_openshell.sh) | 68 | Repository Asset | Supporting configuration or resource file. |
 | [scripts/sync_protocols.sh](file:///home/g0pi/Downloads/jarvis/scripts/sync_protocols.sh) | 59 | Repository Asset | Supporting configuration or resource file. |
-| [scripts/update_codebase_reference.py](file:///home/g0pi/Downloads/jarvis/scripts/update_codebase_reference.py) | 1006 | Reference Manual Generator | Autonomous script that refreshes CODEBASE_REFERENCE.md with real-time Git commits and line counts. |
+| [scripts/update_codebase_reference.py](file:///home/g0pi/Downloads/jarvis/scripts/update_codebase_reference.py) | 976 | Reference Manual Generator | Autonomous script that refreshes CODEBASE_REFERENCE.md with real-time Git commits and line counts. |
 | [scripts/update_codebase_reference.sh](file:///home/g0pi/Downloads/jarvis/scripts/update_codebase_reference.sh) | 11 | Repository Asset | Supporting configuration or resource file. |
 | [tsconfig.json](file:///home/g0pi/Downloads/jarvis/tsconfig.json) | 35 | TypeScript Configuration | Compiler options enforcing strict type checking, ES2022 target, and module resolution. |
 
@@ -8538,4 +8491,4 @@ npm run update:ref
 python3 scripts/update_codebase_reference.py
 ```
 
-*Manual automatically compiled and verified by Antigravity AI Engine at `2026-10-04 06:26:15 IST`.*
+*Manual automatically compiled and verified by Antigravity AI Engine at `2026-10-04 07:50:09 IST`.*

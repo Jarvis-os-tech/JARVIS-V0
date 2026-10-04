@@ -56,14 +56,10 @@ export const AgentSquadDrawer: React.FC<AgentSquadDrawerProps> = ({
 
   // Fetch registered A2A Agent Cards
   const fetchAgents = async () => {
-    try {
-      const res = await fetch('/api/a2a/agents');
-      if (res.ok) {
-        const data = await res.json();
-        setAgents(data.agents || []);
-      }
-    } catch (_) {}
+    const list = await fetchRegisteredAgents();
+    setAgents(list as AgentCardItem[]);
   };
+
 
   useEffect(() => {
     if (isOpen) {

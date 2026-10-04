@@ -18,23 +18,9 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { sfx } from '../../lib/sfx';
+import { AgentCardItem } from '../../types';
+import { fetchRegisteredAgents } from '../../lib/utils';
 
-interface AgentCardItem {
-  name: string;
-  description: string;
-  url: string;
-  version: string;
-  domain: 'cli' | 'ide' | 'web' | 'core';
-  status?: string;
-  capabilities?: {
-    openShell?: {
-      enabled: boolean;
-      mode?: string;
-      policy?: string;
-    };
-  };
-  skills: Array<{ id: string; name: string; description: string }>;
-}
 
 const DEFAULT_COWORKERS = [
   {
@@ -119,14 +105,10 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
   const terminalEndRef = useRef<HTMLDivElement>(null);
 
   const fetchAgents = async () => {
-    try {
-      const res = await fetch('/api/a2a/agents');
-      if (res.ok) {
-        const data = await res.json();
-        setAgents(data.agents || []);
-      }
-    } catch (_) {}
+    const list = await fetchRegisteredAgents();
+    setAgents(list as AgentCardItem[]);
   };
+
 
   useEffect(() => {
     fetchAgents();

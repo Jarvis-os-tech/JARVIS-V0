@@ -66,32 +66,6 @@ KNOWN_ROLES = {
     "backend/system_modules/intelligent_system/omarchy_quattro_core.ts": ("Omarchy Quattro Engine", "Pre-built Omarchy 4 core integrating 367+ command center tools directly into J.A.R.V.I.S."),
     "backend/system_modules/intelligent_system/self_repair.ts": ("Autonomous Self-Repair Engine", "Intercepts command and tool failures, probes alternative strategies, and heals system automatically."),
 
-    # Central Brain Subsystem
-    "central_brain/src/core/types.ts": ("Central Brain Schema Types", "TypeScript interfaces for cross-agent memory ledger, session metadata, and graph nodes."),
-    "central_brain/src/core/db.ts": ("Central Brain SQLite Ledger", "SQLite database managing multi-agent session records, distilled facts, and master indices."),
-    "central_brain/src/core/distillation_engine.ts": ("Insight Distillation Engine", "Real-time cross-agent distillation transforming raw sessions into atomic insights."),
-    "central_brain/src/core/master_index_sync.ts": ("Master Index Synchronizer", "Generates and synchronizes master_index.json and master_index.md across all connected agents."),
-    "central_brain/src/core/brain_graph.ts": ("Multi-Agent Knowledge Graph", "Relational graph linking concepts, projects, decisions, and agent execution nodes."),
-    "central_brain/src/core/agent_discovery.ts": ("Agent Discovery & Heartbeat", "Discovers, tracks, and monitors live agent instances (Hermes, Claude, Antigravity, Codex)."),
-    "central_brain/src/adapters/hermes_adapter.ts": ("Hermes Agent Adapter", "Bidirectional session and memory bridge connecting Lead Engineer Hermes."),
-    "central_brain/src/adapters/claude_adapter.ts": ("Claude Agent Adapter", "Session ingest and learning bridge for Anthropic Claude Code agent."),
-    "central_brain/src/adapters/antigravity_adapter.ts": ("Antigravity IDE Adapter", "Bi-directional session bridge connecting Google Antigravity IDE and subagents."),
-    "central_brain/src/adapters/codex_adapter.ts": ("Codex Agent Adapter", "Session ingest adapter for OpenAI Codex / Copilot agents."),
-    "central_brain/src/adapters/browser_adapter.ts": ("Browser Telemetry Adapter", "Ingests user web browsing context and bookmarklet captures into the Central Brain."),
-    "central_brain/src/adapters/adapter_manager.ts": ("Agent Adapter Coordinator", "Central coordinator registering, routing, and dispatching events across all agent adapters."),
-    "central_brain/src/tools/browser_bookmarklet.js": ("Browser Capture Bookmarklet", "One-click JavaScript bookmarklet for instant web research ingestion into Central Brain."),
-    "central_brain/src/server.ts": ("Central Brain API Server", "Express & WebSocket server hosting the Central Brain API and event broadcast bus."),
-    "central_brain/src/test_harness.ts": ("Central Brain Test Harness", "Comprehensive test harness validating cross-agent sync, distillation, and DB queries."),
-    "central_brain/data/central_brain.db": ("Central Brain Primary DB", "SQLite database storing cross-agent memory ledger, sessions, and facts."),
-    "central_brain/data/master_index.json": ("Master Knowledge Index (JSON)", "Machine-readable live index of all cross-agent knowledge, sessions, and capabilities."),
-    "central_brain/data/master_index.md": ("Master Knowledge Index (MD)", "Human-readable live documentation matrix of all multi-agent operations."),
-    "central_brain/frontend/src/components/LivePipelineView.tsx": ("Live Pipeline Visualizer", "Real-time interactive HUD visualizer showing cross-agent data streams and ingestion events."),
-    "central_brain/frontend/src/components/MemoryLedgerView.tsx": ("Memory Ledger Browser", "Interactive data grid for browsing, searching, and filtering distilled agent memory items."),
-    "central_brain/frontend/src/components/DataCurationModal.tsx": ("Memory Curation Modal", "Interactive editor for inspecting, tagging, and modifying central brain entries."),
-    "central_brain/frontend/src/App.tsx": ("Central Brain Cockpit App", "Main React application for the Central Brain multi-agent knowledge cockpit."),
-    "central_brain/frontend/src/main.tsx": ("Central Brain React Entry", "Mounts the Central Brain frontend cockpit into the DOM root."),
-    "central_brain/frontend/vite.config.ts": ("Central Brain Vite Config", "Vite build and dev configuration for the Central Brain frontend."),
-    "central_brain/frontend/index.html": ("Central Brain Cockpit HTML", "HTML entrypoint for the Central Brain visualizer."),
     "CODEBASE_REFERENCE.md": ("Workspace Codebase Reference", "Local copy of the authoritative J.A.R.V.I.S. technical reference manual."),
 
     # Backend
@@ -261,8 +235,6 @@ KNOWN_ROLES = {
     "project_docs/COWORKERS.md": ("AI Coworkers Roster & Protocol", "Detailed guide to the 6 Coworker personas and Voice Transfer Protocol."),
     "project_docs/AUTONOMOUS_JARVIS_BLUEPRINT.md": ("Autonomous Jarvis Blueprint", "Vision and architecture for 24/7 autonomous digital coworker."),
     "project_docs/AUTONOMY_PLAN.md": ("Autonomy Roadmap", "Phased implementation plan for continuous background operation."),
-    "project_docs/CENTRAL_BRAIN_CONTEXT_AND_PLAN.md": ("Central Brain Blueprint & Execution Plan", "Comprehensive plan for central brain consolidation, dynamic routing, and session indexing."),
-    "project_docs/CENTRAL_MEMORY_SPEC.md": ("Central Memory Architecture Spec", "Design specification for SQLite central memory store and cross-session coherence."),
     "project_docs/CODEBASE_REFERENCE.md": ("Codebase Technical Reference", "Workspace-local mirror of the technical reference manual."),
     "project_docs/futher.md": ("Future Architecture Specifications", "Extended roadmap and advanced features specification."),
     "project_docs/OPENMANUS_INTEGRATION_ANALYSIS.md": ("OpenManus Integration Analysis", "Comparative study of OpenManus agent architecture."),
@@ -523,13 +495,11 @@ def build_section_5(files):
         ("5.7 Project Documentation, Specifications & Schemas (`project_docs/`, `docs/`)", lambda p: p.startswith(("project_docs/", "docs/")) or p in ["AUDIT_AND_IMPROVEMENTS.md", "JARVIS_MEMORY_BUNDLE_IMPROVEMENTS.md", "GEMINI.md", "README.md"]),
         ("5.8 Hermes Agent Connection Protocol (`hermes-connection/`)", lambda p: p.startswith("hermes-connection/")),
         ("5.9 Antigravity Python SDK Subsystem (`antigravity-sdk-python-main/`)", lambda p: p.startswith("antigravity-sdk-python-main/")),
-        ("5.10 Central Brain Multi-Agent Knowledge Ledger (`central_brain/`)", lambda p: p.startswith("central_brain/")),
         ("5.11 Build Scripts, Data Stores & Root Configuration (`scripts/`, `data/`, root files)", lambda p: not any([
             p.startswith("backend/"), p.startswith("connectors/"), p.startswith("whole_controls/"),
             p.startswith("jarvis_memory_bundle/"), p.startswith("frontend/"), p.startswith(".agents/"),
             p.startswith("skills/"), p.startswith("project_docs/"), p.startswith("docs/"),
             p.startswith("hermes-connection/"), p.startswith("antigravity-sdk-python-main/"),
-            p.startswith("central_brain/"),
             p in ["agents_roster.yaml", "skills-lock.json", "AUDIT_AND_IMPROVEMENTS.md", "JARVIS_MEMORY_BUNDLE_IMPROVEMENTS.md", "GEMINI.md", "README.md"]
         ]))
     ]

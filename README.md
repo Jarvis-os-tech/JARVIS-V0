@@ -81,15 +81,6 @@ The persistent left navigation rail allows instant view switching without droppi
 - **Memory**: 3-pillar sovereign memory matrix (Personal Data, Preferences, Directives) with inline editing, search, and SQLite sync.
 - **Agents**: Coworker squad matrix (Hermes, Athena, etc.) with A2A goal delegation and streaming terminal outputs.
 
-### 3. 🧠 Central Brain: Multi-Agent Sovereign Memory
-- **Unified Adapter Mesh**: 5 bi-directional memory adapters (Antigravity, Browser, Claude, Codex, Hermes).
-- **Deterministic 3-Pillar Triad**:
-  1. **Personal Data**: User identity, roles, and project context.
-  2. **Preferences**: Architectural, procedural, and aesthetic choices.
-  3. **Directives**: Behavioral constraints and operational laws.
-- **Auto-Distillation & Ledgers**: Asynchronous conversation turns are distilled into structured markdown ledgers and SQLite tables (`.jarvis_data/`).
-- **Cascade Purge & Sync**: Server-side sync endpoint (`/api/memory/triad`) with automatic conflict resolution.
-
 ### 4. 🛡️ NVIDIA OpenShell Sandbox & Security Boundary
 - Isolated container runtime for arbitrary code execution and terminal commands.
 - Configurable security policies (`openshell_policy.json`) restricting network egress, filesystem access, and environment secrets.
