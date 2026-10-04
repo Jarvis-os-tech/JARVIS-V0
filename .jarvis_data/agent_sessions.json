@@ -129,7 +129,7 @@
       "sessionId": "jarvis-codex-1790952992469",
       "agentId": "codex",
       "agentName": "Codex CLI",
-      "status": "busy",
+      "status": "active",
       "history": [
         {
           "role": "user",
@@ -214,7 +214,7 @@
       "sessionId": "jarvis-codex-1790953005644",
       "agentId": "codex",
       "agentName": "Codex CLI",
-      "status": "busy",
+      "status": "active",
       "history": [
         {
           "role": "user",
@@ -276,7 +276,7 @@
       "sessionId": "jarvis-hermes-1790953109946",
       "agentId": "hermes",
       "agentName": "Hermes Agent",
-      "status": "busy",
+      "status": "active",
       "history": [
         {
           "role": "user",
@@ -292,7 +292,7 @@
       "sessionId": "jarvis-codex-1790953109951",
       "agentId": "codex",
       "agentName": "Codex CLI",
-      "status": "busy",
+      "status": "active",
       "history": [
         {
           "role": "user",
@@ -349,6 +349,46 @@
       "createdAt": 1790953109962,
       "lastActiveAt": 1790953110943,
       "commandCount": 1
+    },
+    "jarvis-hermes-1791070951008": {
+      "sessionId": "jarvis-hermes-1791070951008",
+      "agentId": "hermes",
+      "agentName": "Hermes CLI",
+      "status": "active",
+      "history": [],
+      "createdAt": 1791070951008,
+      "lastActiveAt": 1791070951008,
+      "commandCount": 0
+    },
+    "jarvis-hermes-1791072880149": {
+      "sessionId": "jarvis-hermes-1791072880149",
+      "agentId": "hermes",
+      "agentName": "Hermes CLI",
+      "status": "active",
+      "history": [],
+      "createdAt": 1791072880149,
+      "lastActiveAt": 1791072880149,
+      "commandCount": 0
+    },
+    "jarvis-hermes-1791073902342": {
+      "sessionId": "jarvis-hermes-1791073902342",
+      "agentId": "hermes",
+      "agentName": "Hermes CLI",
+      "status": "active",
+      "history": [],
+      "createdAt": 1791073902342,
+      "lastActiveAt": 1791073902342,
+      "commandCount": 0
+    },
+    "jarvis-hermes-1791075890910": {
+      "sessionId": "jarvis-hermes-1791075890910",
+      "agentId": "hermes",
+      "agentName": "Hermes CLI",
+      "status": "active",
+      "history": [],
+      "createdAt": 1791075890910,
+      "lastActiveAt": 1791075890910,
+      "commandCount": 0
     }
   }
 }
