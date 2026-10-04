@@ -9,7 +9,6 @@ import { JarvisMemoryHUD } from './components/JarvisMemoryHUD';
 import { CeoExecutiveHUD } from './components/CeoExecutiveHUD';
 import { SecurityHUDModal } from './components/SecurityHUDModal';
 import { AgentSquadDrawer } from './components/AgentSquadDrawer';
-import { AgentSpace } from './components/AgentSpace';
 import { ConnectorsView } from '@connectors/ui';
 import { NavigationSidebar, NavView } from './components/NavigationSidebar';
 import { TasksView } from './components/views/TasksView';
