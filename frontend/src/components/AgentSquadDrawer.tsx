@@ -17,23 +17,9 @@ import {
   Zap,
   CheckSquare
 } from 'lucide-react';
+import { AgentCardItem } from '../types';
+import { fetchRegisteredAgents } from '../lib/utils';
 
-interface AgentCardItem {
-  name: string;
-  description: string;
-  url: string;
-  version: string;
-  domain: 'cli' | 'ide' | 'web' | 'core';
-  status?: string;
-  capabilities?: {
-    openShell?: {
-      enabled: boolean;
-      mode?: string;
-      policy?: string;
-    };
-  };
-  skills: Array<{ id: string; name: string; description: string }>;
-}
 
 interface AgentSquadDrawerProps {
   isOpen: boolean;

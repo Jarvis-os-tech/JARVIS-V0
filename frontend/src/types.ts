@@ -184,3 +184,21 @@ export interface BackgroundTask {
   sources?: any[];
   error?: string;
 }
+
+export interface AgentCardItem {
+  name: string;
+  description: string;
+  url: string;
+  version: string;
+  domain: 'cli' | 'ide' | 'web' | 'core';
+  status?: string;
+  capabilities?: {
+    openShell?: {
+      enabled: boolean;
+      mode?: string;
+      policy?: string;
+    };
+  };
+  skills?: Array<{ id: string; name: string; description: string }>;
+}
+

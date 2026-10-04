@@ -13,3 +13,15 @@ export function toPlainText(raw: string): string {
     .trim();
 }
 
+export async function fetchRegisteredAgents() {
+  try {
+    const res = await fetch('/api/a2a/agents');
+    if (res.ok) {
+      const data = await res.json();
+      return data.agents || [];
+    }
+  } catch (_) {}
+  return [];
+}
+
+
