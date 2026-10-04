@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-10-03T12:22:43.506Z",
+  "lastUpdated": "2026-10-04T01:11:20.061Z",
   "skills": [
     {
       "name": "diagnose-crash",
@@ -52,64 +52,14 @@
       "installedAt": "2026-10-03T11:05:47.880Z"
     },
     {
-      "name": "brandkit",
-      "slug": "brandkit",
-      "description": "Premium brand-kit image generation skill for creating high-end brand-guidelines boards, logo systems, identity decks, and visual-world presentations. Trained for minimalist, cinematic, editorial, dark-tech, luxury, cultural, security, gaming, developer-tool, and consumer-app brand systems. Optimized for intentional logo concepting, refined composition, sparse typography, strong symbolic meaning, premium mockups, art-directed imagery, and flexible grid layouts.",
-      "source": "project",
-      "path": "/home/g0pi/Downloads/jarvis/.agents/skills/brandkit",
-      "skillMdPath": "/home/g0pi/Downloads/jarvis/.agents/skills/brandkit/SKILL.md",
-      "scripts": [],
-      "installedAt": "2026-10-03T11:05:47.880Z"
-    },
-    {
-      "name": "CODE_QUALITY_CHECK",
+      "name": "code-quality-check",
       "slug": "code-quality-check",
       "description": "Apply the code-quality checklist to audit files or directories and produce a Markdown report with findings and suggested fixes. Use when asked to \"audit these files\", \"run a quality check\", \"code quality review\", or \"check against the code-quality checklist\".",
       "source": "project",
       "path": "/home/g0pi/Downloads/jarvis/.agents/skills/code-quality-check",
       "skillMdPath": "/home/g0pi/Downloads/jarvis/.agents/skills/code-quality-check/SKILL.md",
       "scripts": [],
-      "installedAt": "2026-10-03T11:05:47.880Z"
-    },
-    {
-      "name": "CREATE_DEEP_RESEARCH_PROMPT",
-      "slug": "create-deep-research-prompt",
-      "description": "Generate a structured deep research prompt. USE WHEN the user needs to research a complex topic, market, or bug deeply. Capabilities include objective clarification, tech stack validation, and prompt generation.",
-      "source": "project",
-      "path": "/home/g0pi/Downloads/jarvis/.agents/skills/create-deep-research-prompt",
-      "skillMdPath": "/home/g0pi/Downloads/jarvis/.agents/skills/create-deep-research-prompt/SKILL.md",
-      "scripts": [],
-      "installedAt": "2026-10-03T11:05:47.880Z"
-    },
-    {
-      "name": "design-taste-frontend",
-      "slug": "design-taste-frontend",
-      "description": "Anti-slop frontend skill for landing pages, portfolios, and redesigns. The agent reads the brief, infers the right design direction, and ships interfaces that do not look templated. Real design systems when applicable, audit-first on redesigns, strict pre-flight check.",
-      "source": "project",
-      "path": "/home/g0pi/Downloads/jarvis/.agents/skills/design-taste-frontend",
-      "skillMdPath": "/home/g0pi/Downloads/jarvis/.agents/skills/design-taste-frontend/SKILL.md",
-      "scripts": [],
-      "installedAt": "2026-10-03T11:05:47.881Z"
-    },
-    {
-      "name": "design-taste-frontend-v1",
-      "slug": "design-taste-frontend-v1",
-      "description": "The original v1 taste-skill, preserved for projects depending on its exact behavior. The current default is `design-taste-frontend` (v2 experimental), which is a substantial rewrite. Use this v1 install name only if you need exact backward compatibility.",
-      "source": "project",
-      "path": "/home/g0pi/Downloads/jarvis/.agents/skills/design-taste-frontend-v1",
-      "skillMdPath": "/home/g0pi/Downloads/jarvis/.agents/skills/design-taste-frontend-v1/SKILL.md",
-      "scripts": [],
-      "installedAt": "2026-10-03T11:05:47.880Z"
-    },
-    {
-      "name": "developing-marketing-strategy",
-      "slug": "developing-marketing-strategy",
-      "description": "Use for go-to-market strategy, user acquisition, channel analysis, and performance marketing.",
-      "source": "project",
-      "path": "/home/g0pi/Downloads/jarvis/.agents/skills/developing-marketing-strategy",
-      "skillMdPath": "/home/g0pi/Downloads/jarvis/.agents/skills/developing-marketing-strategy/SKILL.md",
-      "scripts": [],
-      "installedAt": "2026-10-03T11:05:47.881Z"
+      "installedAt": "2026-10-04T00:53:55.215Z"
     },
     {
       "name": "dispatching-parallel-agents",
@@ -118,16 +68,6 @@
       "source": "project",
       "path": "/home/g0pi/Downloads/jarvis/.agents/skills/dispatching-parallel-agents",
       "skillMdPath": "/home/g0pi/Downloads/jarvis/.agents/skills/dispatching-parallel-agents/SKILL.md",
-      "scripts": [],
-      "installedAt": "2026-10-03T11:05:47.881Z"
-    },
-    {
-      "name": "DOCUMENT_PROJECT_STATE",
-      "slug": "document-project-state",
-      "description": "Generate documentation for an existing project. USE WHEN onboarded to a new codebase OR documenting legacy code. Capabilities include architectural mapping, tech stack inventory, and technical debt documentation.",
-      "source": "project",
-      "path": "/home/g0pi/Downloads/jarvis/.agents/skills/document-project-state",
-      "skillMdPath": "/home/g0pi/Downloads/jarvis/.agents/skills/document-project-state/SKILL.md",
       "scripts": [],
       "installedAt": "2026-10-03T11:05:47.881Z"
     },
@@ -142,124 +82,34 @@
       "installedAt": "2026-10-03T11:05:47.881Z"
     },
     {
-      "name": "finishing-a-development-branch",
-      "slug": "finishing-a-development-branch",
-      "description": "Use when implementation is complete, all tests pass, and you need to decide how to integrate the work - guides completion of development work by presenting structured options for merge, PR, or cleanup",
+      "name": "generate-sandbox-policy",
+      "slug": "generate-sandbox-policy",
+      "description": "Generate sandbox security policies from plain-language requirements and optional REST API documentation. Produces L4 or fine-grained L7 network policies and ordered network middleware configuration. Use for API access rules, middleware host selection, failure behavior, or built-in and operator-run middleware attachment. Trigger keywords - generate policy, create policy, update policy, change policy, sandbox policy, network policy, API policy, security policy, allow API, restrict API, network middleware, supervisor middleware.",
       "source": "project",
-      "path": "/home/g0pi/Downloads/jarvis/.agents/skills/finishing-a-development-branch",
-      "skillMdPath": "/home/g0pi/Downloads/jarvis/.agents/skills/finishing-a-development-branch/SKILL.md",
+      "path": "/home/g0pi/Downloads/jarvis/.agents/skills/generate-sandbox-policy",
+      "skillMdPath": "/home/g0pi/Downloads/jarvis/.agents/skills/generate-sandbox-policy/SKILL.md",
       "scripts": [],
-      "installedAt": "2026-10-03T11:05:47.881Z"
+      "installedAt": "2026-10-01T17:05:42.744Z"
     },
     {
-      "name": "full-output-enforcement",
-      "slug": "full-output-enforcement",
-      "description": "Overrides default LLM truncation behavior. Enforces complete code generation, bans placeholder patterns, and handles token-limit splits cleanly. Apply to any task requiring exhaustive, unabridged output.",
+      "name": "jarvis-ui-system",
+      "slug": "jarvis-ui-system",
+      "description": "Authoritative Frontend Architecture & Cybernetic HUD Design System for J.A.R.V.I.S. (React 19, Tailwind CSS v4, Arc-Reactor telemetry, 60fps animations, accessible Stark OS UI). Use when designing, building, or refactoring any frontend UI components, HUD widgets, or visualizers.",
       "source": "project",
-      "path": "/home/g0pi/Downloads/jarvis/.agents/skills/full-output-enforcement",
-      "skillMdPath": "/home/g0pi/Downloads/jarvis/.agents/skills/full-output-enforcement/SKILL.md",
+      "path": "/home/g0pi/Downloads/jarvis/.agents/skills/jarvis-ui-system",
+      "skillMdPath": "/home/g0pi/Downloads/jarvis/.agents/skills/jarvis-ui-system/SKILL.md",
       "scripts": [],
-      "installedAt": "2026-10-03T11:05:47.881Z"
+      "installedAt": "2026-10-04T01:08:39.744Z"
     },
     {
-      "name": "gpt-taste",
-      "slug": "gpt-taste",
-      "description": "Elite UX/UI & Advanced GSAP Motion Engineer. Enforces Python-driven true randomization for layout variance, strict AIDA page structure, wide editorial typography (bans 6-line wraps), gapless bento grids, strict GSAP ScrollTriggers (pinning, stacking, scrubbing), inline micro-images, and massive section spacing.",
+      "name": "openshell-cli",
+      "slug": "openshell-cli",
+      "description": "Guide agents through using the OpenShell CLI (openshell) for sandbox management, gateway registration, provider configuration and refresh, profile management, policy iteration, settings, service exposure, BYOC workflows, and attached-provider inference. Covers basic through advanced multi-step workflows. Trigger keywords - openshell, sandbox create, sandbox exec, sandbox connect, logs, provider create, profile list, profile describe, provider refresh, policy set, policy get, settings, service expose, forward, port forward, BYOC, bring your own container, inference, use openshell, run openshell, CLI usage, manage sandbox, manage provider, gateway add, gateway select.",
       "source": "project",
-      "path": "/home/g0pi/Downloads/jarvis/.agents/skills/gpt-taste",
-      "skillMdPath": "/home/g0pi/Downloads/jarvis/.agents/skills/gpt-taste/SKILL.md",
+      "path": "/home/g0pi/Downloads/jarvis/.agents/skills/openshell-cli",
+      "skillMdPath": "/home/g0pi/Downloads/jarvis/.agents/skills/openshell-cli/SKILL.md",
       "scripts": [],
-      "installedAt": "2026-10-03T11:05:47.881Z"
-    },
-    {
-      "name": "high-end-visual-design",
-      "slug": "high-end-visual-design",
-      "description": "Teaches the AI to design like a high-end agency. Defines the exact fonts, spacing, shadows, card structures, and animations that make a website feel expensive. Blocks all the common defaults that make AI designs look cheap or generic.",
-      "source": "project",
-      "path": "/home/g0pi/Downloads/jarvis/.agents/skills/high-end-visual-design",
-      "skillMdPath": "/home/g0pi/Downloads/jarvis/.agents/skills/high-end-visual-design/SKILL.md",
-      "scripts": [],
-      "installedAt": "2026-10-03T11:05:47.881Z"
-    },
-    {
-      "name": "image-to-code",
-      "slug": "image-to-code",
-      "description": "Elite website image-to-code skill for Codex. For visually important web tasks, it must first generate the design image(s) itself, deeply analyze them, then implement the website to match them as closely as possible. In Codex, it must prefer large, readable, section-specific images instead of tiny compressed boards, generate fresh standalone images for sections or detail views instead of cropping old ones, avoid lazy under-generation, avoid cards-inside-cards-inside-cards UI, and keep the hero clean, spacious, readable, and visible on a small laptop.",
-      "source": "project",
-      "path": "/home/g0pi/Downloads/jarvis/.agents/skills/image-to-code",
-      "skillMdPath": "/home/g0pi/Downloads/jarvis/.agents/skills/image-to-code/SKILL.md",
-      "scripts": [],
-      "installedAt": "2026-10-03T11:05:47.881Z"
-    },
-    {
-      "name": "imagegen-frontend-mobile",
-      "slug": "imagegen-frontend-mobile",
-      "description": "Elite mobile app image-generation skill for creating premium, app-native screen concepts and flows. Designed for iOS, Android, and cross-platform mobile products. Prioritizes clean hierarchy, comfortably readable text, strong multi-screen consistency, controlled color palettes, non-generic creative direction, textured surfaces, image-led composition, tasteful custom iconography, and clean phone mockup framing. By default, screens should be shown inside a subtle premium iPhone or similar phone mockup with a visible frame, while the main focus stays on the app content itself. This skill generates images only. It does not write code.",
-      "source": "project",
-      "path": "/home/g0pi/Downloads/jarvis/.agents/skills/imagegen-frontend-mobile",
-      "skillMdPath": "/home/g0pi/Downloads/jarvis/.agents/skills/imagegen-frontend-mobile/SKILL.md",
-      "scripts": [],
-      "installedAt": "2026-10-03T11:05:47.881Z"
-    },
-    {
-      "name": "imagegen-frontend-web",
-      "slug": "imagegen-frontend-web",
-      "description": "Elite frontend image-direction skill for generating premium, conversion-aware website design references. CRITICAL OUTPUT RULE — generate ONE separate horizontal image FOR EVERY section. A landing page with 8 sections produces 8 images. Never compress multiple sections into one image. Enforces composition variety (not always left-text / right-image), background-image freedom, varied CTAs, varied hero scales (giant / mid / mini minimalist), narrative concept spine, second-read moments, and a single consistent palette across all images. Optimized for landing pages, marketing sites, and product comps that developers or coding models can accurately recreate.",
-      "source": "project",
-      "path": "/home/g0pi/Downloads/jarvis/.agents/skills/imagegen-frontend-web",
-      "skillMdPath": "/home/g0pi/Downloads/jarvis/.agents/skills/imagegen-frontend-web/SKILL.md",
-      "scripts": [],
-      "installedAt": "2026-10-03T11:05:47.881Z"
-    },
-    {
-      "name": "industrial-brutalist-ui",
-      "slug": "industrial-brutalist-ui",
-      "description": "Raw mechanical interfaces fusing Swiss typographic print with military terminal aesthetics. Rigid grids, extreme type scale contrast, utilitarian color, analog degradation effects. For data-heavy dashboards, portfolios, or editorial sites that need to feel like declassified blueprints.",
-      "source": "project",
-      "path": "/home/g0pi/Downloads/jarvis/.agents/skills/industrial-brutalist-ui",
-      "skillMdPath": "/home/g0pi/Downloads/jarvis/.agents/skills/industrial-brutalist-ui/SKILL.md",
-      "scripts": [],
-      "installedAt": "2026-10-03T11:05:47.881Z"
-    },
-    {
-      "name": "minimalist-ui",
-      "slug": "minimalist-ui",
-      "description": "Clean editorial-style interfaces. Warm monochrome palette, typographic contrast, flat bento grids, muted pastels. No gradients, no heavy shadows.",
-      "source": "project",
-      "path": "/home/g0pi/Downloads/jarvis/.agents/skills/minimalist-ui",
-      "skillMdPath": "/home/g0pi/Downloads/jarvis/.agents/skills/minimalist-ui/SKILL.md",
-      "scripts": [],
-      "installedAt": "2026-10-03T11:05:47.882Z"
-    },
-    {
-      "name": "promptify",
-      "slug": "promptify",
-      "description": "Transform user requests into detailed, precise prompts for AI models. Use when users say \"promptify\", \"promptify this\", or explicitly request prompt engineering or improvement of their request for better AI responses.",
-      "source": "project",
-      "path": "/home/g0pi/Downloads/jarvis/.agents/skills/promptify",
-      "skillMdPath": "/home/g0pi/Downloads/jarvis/.agents/skills/promptify/SKILL.md",
-      "scripts": [],
-      "installedAt": "2026-10-03T11:05:47.882Z"
-    },
-    {
-      "name": "receiving-code-review",
-      "slug": "receiving-code-review",
-      "description": "Use when receiving code review feedback, before implementing suggestions, especially if feedback seems unclear or technically questionable - requires technical rigor and verification, not performative agreement or blind implementation",
-      "source": "project",
-      "path": "/home/g0pi/Downloads/jarvis/.agents/skills/receiving-code-review",
-      "skillMdPath": "/home/g0pi/Downloads/jarvis/.agents/skills/receiving-code-review/SKILL.md",
-      "scripts": [],
-      "installedAt": "2026-10-03T11:05:47.882Z"
-    },
-    {
-      "name": "redesign-existing-projects",
-      "slug": "redesign-existing-projects",
-      "description": "Upgrades existing websites and apps to premium quality. Audits current design, identifies generic AI patterns, and applies high-end design standards without breaking functionality. Works with any CSS framework or vanilla CSS.",
-      "source": "project",
-      "path": "/home/g0pi/Downloads/jarvis/.agents/skills/redesign-existing-projects",
-      "skillMdPath": "/home/g0pi/Downloads/jarvis/.agents/skills/redesign-existing-projects/SKILL.md",
-      "scripts": [],
-      "installedAt": "2026-10-03T11:05:47.882Z"
+      "installedAt": "2026-10-01T17:05:42.745Z"
     },
     {
       "name": "requesting-code-review",
@@ -270,76 +120,6 @@
       "skillMdPath": "/home/g0pi/Downloads/jarvis/.agents/skills/requesting-code-review/SKILL.md",
       "scripts": [],
       "installedAt": "2026-10-03T11:05:47.882Z"
-    },
-    {
-      "name": "speckit",
-      "slug": "speckit",
-      "description": "Use when user wants to work with specifications or create feature requirements following the spec-driven development workflow",
-      "source": "project",
-      "path": "/home/g0pi/Downloads/jarvis/.agents/skills/speckit",
-      "skillMdPath": "/home/g0pi/Downloads/jarvis/.agents/skills/speckit/SKILL.md",
-      "scripts": [],
-      "installedAt": "2026-10-03T11:05:47.884Z"
-    },
-    {
-      "name": "speckit-checklist",
-      "slug": "speckit-checklist",
-      "description": "Generate custom checklist for the current feature based on user requirements",
-      "source": "project",
-      "path": "/home/g0pi/Downloads/jarvis/.agents/skills/speckit-checklist",
-      "skillMdPath": "/home/g0pi/Downloads/jarvis/.agents/skills/speckit-checklist/SKILL.md",
-      "scripts": [],
-      "installedAt": "2026-10-03T11:05:47.883Z"
-    },
-    {
-      "name": "speckit-constitution",
-      "slug": "speckit-constitution",
-      "description": "Create or update the project constitution from interactive or provided principle inputs, ensuring all dependent templates stay in sync",
-      "source": "project",
-      "path": "/home/g0pi/Downloads/jarvis/.agents/skills/speckit-constitution",
-      "skillMdPath": "/home/g0pi/Downloads/jarvis/.agents/skills/speckit-constitution/SKILL.md",
-      "scripts": [],
-      "installedAt": "2026-10-03T11:05:47.883Z"
-    },
-    {
-      "name": "speckit-plan",
-      "slug": "speckit-plan",
-      "description": "Execute implementation planning workflow using the plan template to generate design artifacts",
-      "source": "project",
-      "path": "/home/g0pi/Downloads/jarvis/.agents/skills/speckit-plan",
-      "skillMdPath": "/home/g0pi/Downloads/jarvis/.agents/skills/speckit-plan/SKILL.md",
-      "scripts": [],
-      "installedAt": "2026-10-03T11:05:47.883Z"
-    },
-    {
-      "name": "speckit-specify",
-      "slug": "speckit-specify",
-      "description": "Create or update feature specification from natural language feature description",
-      "source": "project",
-      "path": "/home/g0pi/Downloads/jarvis/.agents/skills/speckit-specify",
-      "skillMdPath": "/home/g0pi/Downloads/jarvis/.agents/skills/speckit-specify/SKILL.md",
-      "scripts": [],
-      "installedAt": "2026-10-03T11:05:47.883Z"
-    },
-    {
-      "name": "speckit-tasks",
-      "slug": "speckit-tasks",
-      "description": "Generate actionable, dependency-ordered tasks.md for the feature based on available design artifacts",
-      "source": "project",
-      "path": "/home/g0pi/Downloads/jarvis/.agents/skills/speckit-tasks",
-      "skillMdPath": "/home/g0pi/Downloads/jarvis/.agents/skills/speckit-tasks/SKILL.md",
-      "scripts": [],
-      "installedAt": "2026-10-03T11:05:47.883Z"
-    },
-    {
-      "name": "stitch-design-taste",
-      "slug": "stitch-design-taste",
-      "description": "Semantic Design System Skill for Google Stitch. Generates agent-friendly DESIGN.md files that enforce premium, anti-generic UI standards — strict typography, calibrated color, asymmetric layouts, perpetual micro-motion, and hardware-accelerated performance.",
-      "source": "project",
-      "path": "/home/g0pi/Downloads/jarvis/.agents/skills/stitch-design-taste",
-      "skillMdPath": "/home/g0pi/Downloads/jarvis/.agents/skills/stitch-design-taste/SKILL.md",
-      "scripts": [],
-      "installedAt": "2026-10-03T11:05:47.884Z"
     },
     {
       "name": "subagent-driven-development",
@@ -399,7 +179,7 @@
       "path": "/home/g0pi/Downloads/jarvis/.agents/skills/using-ceo",
       "skillMdPath": "/home/g0pi/Downloads/jarvis/.agents/skills/using-ceo/SKILL.md",
       "scripts": [],
-      "installedAt": "2026-10-03T11:05:47.885Z"
+      "installedAt": "2026-10-04T00:40:29.337Z"
     },
     {
       "name": "using-git-worktrees",
@@ -428,16 +208,6 @@
       "source": "project",
       "path": "/home/g0pi/Downloads/jarvis/.agents/skills/writing-plans",
       "skillMdPath": "/home/g0pi/Downloads/jarvis/.agents/skills/writing-plans/SKILL.md",
-      "scripts": [],
-      "installedAt": "2026-10-03T11:05:47.885Z"
-    },
-    {
-      "name": "writing-skills",
-      "slug": "writing-skills",
-      "description": "Use when creating new skills, editing existing skills, or verifying skills work before deployment",
-      "source": "project",
-      "path": "/home/g0pi/Downloads/jarvis/.agents/skills/writing-skills",
-      "skillMdPath": "/home/g0pi/Downloads/jarvis/.agents/skills/writing-skills/SKILL.md",
       "scripts": [],
       "installedAt": "2026-10-03T11:05:47.885Z"
     },
