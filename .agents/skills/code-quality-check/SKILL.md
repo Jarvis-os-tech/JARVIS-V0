@@ -1,14 +1,14 @@
 ---
-name: CODE_QUALITY_CHECK
+name: code-quality-check
 description: Apply the code-quality checklist to audit files or directories and produce a Markdown report with findings and suggested fixes. Use when asked to "audit these files", "run a quality check", "code quality review", or "check against the code-quality checklist".
 ---
 
 # CODE QUALITY CHECK
 
-**Owner:** QA
+**Owner:** QA / Code Auditor (E.D.I.T.H.)
 
 ## Goal
-Audit a target (file set or directory) against `.claude/checklists/code-quality-checklist.yaml` and deliver a Markdown report with evidence and actionable fixes.
+Audit a target (file set or directory) against `code-quality-checklist.yaml` (located directly inside this skill folder) and deliver a Markdown report with evidence and actionable fixes.
 
 ## Workflow
 

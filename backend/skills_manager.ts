@@ -123,8 +123,16 @@ export function scanAndIndexSkills(): SkillInfo[] {
     try {
       const entries = fs.readdirSync(baseDir, { withFileTypes: true });
       for (const entry of entries) {
-        if (!entry.isDirectory()) continue;
         const skillDir = path.resolve(baseDir, entry.name);
+        let isDir = entry.isDirectory();
+        if (!isDir && entry.isSymbolicLink()) {
+          try {
+            isDir = fs.statSync(skillDir).isDirectory();
+          } catch {
+            isDir = false;
+          }
+        }
+        if (!isDir) continue;
         const skillMd = path.resolve(skillDir, 'SKILL.md');
 
         if (fs.existsSync(skillMd)) {
